@@ -1,0 +1,9 @@
+# buildUponDefaultConfig = true (build.gradle.kts) 이므로
+# 이 파일에는 detekt 기본값과 다르게 적용하고 싶은 룰만 작성합니다.
+#
+# 예시)
+# style:
+#   MagicNumber:
+#     active: false
+#   MaxLineLength:
+#     maxLineLength: 140

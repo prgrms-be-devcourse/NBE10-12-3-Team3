@@ -7,6 +7,9 @@ plugins {
     id("org.springframework.boot") version "4.1.0"
     id("io.spring.dependency-management") version "1.1.7"
     jacoco
+
+    id("org.jlleitschuh.gradle.ktlint") version "14.2.0"
+    id("io.gitlab.arturbosch.detekt") version "1.23.8"
 }
 
 group = "com"
@@ -69,21 +72,44 @@ dependencies {
     implementation("io.micrometer:micrometer-registry-prometheus")
 }
 
+detekt {
+    config.setFrom("$projectDir/config/detekt/detekt.yml")
+    buildUponDefaultConfig = true
+}
+
+// detekt 내장 컴파일러가 아직 JvmTarget 25를 지원하지 않아 타입 리졸루션 시 에러를 피하기 위해 detekt 태스크에 한해 21 사용
+tasks.withType<io.gitlab.arturbosch.detekt.Detekt>().configureEach {
+    jvmTarget = "21"
+}
+
+// detekt가 내부적으로 쓰는 Kotlin 컴파일러 버전을 detekt 1.23.8이 공식 지원하는 버전으로 강제
+configurations.matching { it.name == "detekt" }.configureEach {
+    resolutionStrategy.eachDependency {
+        if (requested.group == "org.jetbrains.kotlin") {
+            useVersion(
+                io.gitlab.arturbosch.detekt
+                    .getSupportedKotlinVersion(),
+            )
+        }
+    }
+}
+
 jacoco {
     toolVersion = "0.8.13"
 }
 
-val jacocoExcludePatterns = listOf(
-    "**/dto/**",
-    "**/entity/**",
-    "**/repository/**",
-    "**/config/**",
-    "**/init/**",
-    "**/base/**",
-    "**/*Application*",
-    "**/exception/**",
-    "**/security/**"
-)
+val jacocoExcludePatterns =
+    listOf(
+        "**/dto/**",
+        "**/entity/**",
+        "**/repository/**",
+        "**/config/**",
+        "**/init/**",
+        "**/base/**",
+        "**/*Application*",
+        "**/exception/**",
+        "**/security/**",
+    )
 
 tasks.withType<Test> {
     useJUnitPlatform()
@@ -93,21 +119,25 @@ tasks.withType<Test> {
 
 tasks.jacocoTestReport {
     reports {
-        xml.required = true
-        html.required = true
+        xml.required.set(true)
+        html.required.set(true)
     }
     classDirectories.setFrom(
-        files(classDirectories.files.map {
-            fileTree(it) { exclude(jacocoExcludePatterns) }
-        })
+        files(
+            classDirectories.files.map {
+                fileTree(it) { exclude(jacocoExcludePatterns) }
+            },
+        ),
     )
 }
 
 tasks.jacocoTestCoverageVerification {
     classDirectories.setFrom(
-        files(classDirectories.files.map {
-            fileTree(it) { exclude(jacocoExcludePatterns) }
-        })
+        files(
+            classDirectories.files.map {
+                fileTree(it) { exclude(jacocoExcludePatterns) }
+            },
+        ),
     )
     violationRules {
         rule {
