@@ -72,6 +72,11 @@ dependencies {
     implementation("io.micrometer:micrometer-registry-prometheus")
 }
 
+ktlint {
+    version.set("1.8.0")
+    ignoreFailures.set(false)
+}
+
 detekt {
     config.setFrom("$projectDir/config/detekt/detekt.yml")
     buildUponDefaultConfig = true
