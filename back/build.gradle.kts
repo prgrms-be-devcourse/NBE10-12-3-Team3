@@ -78,8 +78,15 @@ detekt {
 }
 
 // detekt 내장 컴파일러가 아직 JvmTarget 25를 지원하지 않아 타입 리졸루션 시 에러를 피하기 위해 detekt 태스크에 한해 21 사용
+// detekt이 JDK 25의 버전 문자열(예: 25.0.3)을 파싱하지 못해 크래시되는 것을 막기 위해
+// Gradle daemon 버전을 21로 고정(gradle/gradle-daemon-jvm.properties) 및 이하에서 detekt CLI의 jvmTarget/jdkHome를 21로 명시.
 tasks.withType<io.gitlab.arturbosch.detekt.Detekt>().configureEach {
     jvmTarget = "21"
+    jdkHome.set(
+        javaToolchains
+            .launcherFor { languageVersion.set(JavaLanguageVersion.of(21)) }
+            .map { it.metadata.installationPath },
+    )
 }
 
 // detekt가 내부적으로 쓰는 Kotlin 컴파일러 버전을 detekt 1.23.8이 공식 지원하는 버전으로 강제
