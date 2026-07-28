@@ -32,6 +32,16 @@ import java.util.Random
 
 @Service
 @Profile("prod")
+@Suppress(
+    "LongMethod",
+    "LongParameterList",
+    "CyclomaticComplexMethod",
+    "ComplexCondition",
+    "NestedBlockDepth",
+    "MagicNumber",
+    "LoopWithTooManyJumpStatements",
+    "MaxLineLength",
+)
 class ProdInitDataService(
     private val userRepository: UserRepository,
     private val seriesRepository: SeriesRepository,

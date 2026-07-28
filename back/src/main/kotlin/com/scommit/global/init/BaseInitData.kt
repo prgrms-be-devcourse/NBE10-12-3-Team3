@@ -25,6 +25,16 @@ import java.util.Random
 
 @Profile("dev")
 @Component
+@Suppress(
+    "LongMethod",
+    "LongParameterList",
+    "CyclomaticComplexMethod",
+    "ComplexCondition",
+    "NestedBlockDepth",
+    "MagicNumber",
+    "LoopWithTooManyJumpStatements",
+    "MaxLineLength",
+)
 class BaseInitData(
     private val userRepository: UserRepository,
     private val seriesRepository: SeriesRepository,

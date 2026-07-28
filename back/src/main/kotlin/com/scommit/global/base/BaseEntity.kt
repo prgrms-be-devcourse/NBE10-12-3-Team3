@@ -22,8 +22,8 @@ abstract class BaseEntity {
     @Column(updatable = false)
     val createdAt: LocalDateTime? = null
 
-    var deletedAt: LocalDateTime? = null
-        protected set
+    final var deletedAt: LocalDateTime? = null
+        private set
 
     fun softDelete() {
         deletedAt = LocalDateTime.now()

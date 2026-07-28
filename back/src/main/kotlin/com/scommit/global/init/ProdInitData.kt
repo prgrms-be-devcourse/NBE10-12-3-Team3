@@ -15,6 +15,12 @@ import org.springframework.stereotype.Component
 
 @Profile("prod")
 @Component
+@Suppress(
+    "LongParameterList",
+    "MagicNumber",
+    "MaxLineLength",
+    "ComplexCondition",
+)
 class ProdInitData(
     private val userRepository: UserRepository,
     private val postRepository: PostRepository,
