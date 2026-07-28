@@ -1,6 +1,5 @@
-## 관련 이슈
-
-closes #
+## 관련 티켓
+[TRIPLES-](https://triples3.atlassian.net/browse/TRIPLES-)
 
 ## 작업 내용
 
