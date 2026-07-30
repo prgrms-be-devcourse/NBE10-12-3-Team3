@@ -173,6 +173,15 @@ class UserControllerE2ETest {
         return client.get().uri("/api/users/" + userId).exchange();
     }
 
+    // 업로드/수정/삭제의 결과를 되짚어 확인할 때 공통으로 쓴다.
+    private RestTestClient.ResponseSpec getMedia(Long userId) {
+        return client.get().uri("/api/users/" + userId + "/medias").exchange();
+    }
+
+    private static ParameterizedTypeReference<ApiResponse<UserMediaResponse>> mediaBody() {
+        return new ParameterizedTypeReference<>() {};
+    }
+
     private RestTestClient.ResponseSpec patchMe(String accessToken, MultiValueMap<String, HttpEntity<?>> multipartBody) {
         return client.patch().uri("/api/users/me")
                 .header("Authorization", bearer(accessToken))
@@ -266,40 +275,6 @@ class UserControllerE2ETest {
                 .expiration(expiration)
                 .signWith(key)
                 .compact();
-    }
-
-    @Test
-    void signUpThenLogin_returnsAccessToken() {
-        String email = uniqueEmail();
-        String nickname = uniqueNickname();
-
-        ApiResponse<SignupResponse> signUpResult = signUp(client, email, DEFAULT_PASSWORD, nickname);
-        assertThat(signUpResult.resultCode()).isEqualTo("201-1");
-        assertThat(signUpResult.data().email()).isEqualTo(email);
-        assertThat(signUpResult.data().nickname()).isEqualTo(nickname);
-
-        ApiResponse<LoginResponse> loginResult = login(client, email, DEFAULT_PASSWORD);
-        assertThat(loginResult.resultCode()).isEqualTo("200-1");
-        assertThat(loginResult.data().accessToken()).isNotBlank();
-        assertThat(loginResult.data().refreshToken()).isNotBlank();
-        assertThat(loginResult.data().user().email()).isEqualTo(email);
-        assertThat(loginResult.data().user().nickname()).isEqualTo(nickname);
-    }
-
-    @Test
-    void getMe_withValidAccessToken_returns200() {
-        String email = uniqueEmail();
-        String nickname = uniqueNickname();
-        String accessToken = createUserAndGetAccessToken(client, email, DEFAULT_PASSWORD, nickname);
-
-        getMe(accessToken)
-                .expectStatus().isOk()
-                .expectBody(new ParameterizedTypeReference<ApiResponse<UserMeResponse>>() {})
-                .value(body -> {
-                    assertThat(body.resultCode()).isEqualTo("200-1");
-                    assertThat(body.data().email()).isEqualTo(email);
-                    assertThat(body.data().profile().nickname()).isEqualTo(nickname);
-                });
     }
 
     @Nested
@@ -412,6 +387,10 @@ class UserControllerE2ETest {
 
         @Test
         @DisplayName("1. 성공하면 200과 토큰·유저 정보를 반환하고 쿠키를 내려준다")
+        // FIXME: SecurityHelper.setCookie가 모든 쿠키에 Secure=true를 강제하는데 이 테스트는 평문
+        // HTTP로 요청한다. 브라우저였다면 저장되지 않았을 쿠키라서, Set-Cookie 헤더가 내려왔다는
+        // 것까지만 확인할 수 있고 쿠키 기반 인증 흐름 자체는 재현할 수 없다(그래서 인증은 Bearer
+        // 헤더만 쓴다). 상세: docs/user-e2e-known-issues.md #5
         void login_success_returns200WithTokensAndCookies() {
             String email = uniqueEmail();
             String nickname = uniqueNickname();
@@ -695,21 +674,44 @@ class UserControllerE2ETest {
         }
 
         @Test
-        @DisplayName("2. 프로필 이미지를 함께 업로드하면 200과 profileImageUrl을 반환한다")
+        @DisplayName("2. 프로필 이미지를 함께 업로드하면 200과 profileImageUrl을 반환하고, 그 URL이 실제로 조회된다")
         void updateMe_successWithProfileImage_returns200WithImageUrl() {
-            String accessToken = createUserAndGetAccessToken(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname());
+            LoginResponse session = createUserAndLogin(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname());
+            String accessToken = session.accessToken();
+            Long userId = session.user().id();
 
             MultiValueMap<String, HttpEntity<?>> multipartBody = new LinkedMultiValueMap<>();
             multipartBody.add("request", jsonPart(new UserUpdateRequest(null, "with image")));
             multipartBody.add("profileImage", filePart(PNG_BYTES, "profile.png", MediaType.IMAGE_PNG));
 
+            String[] uploadedUrlHolder = new String[1];
             patchMe(accessToken, multipartBody)
                     .expectStatus().isOk()
                     .expectBody(new ParameterizedTypeReference<ApiResponse<UserUpdateResponse>>() {})
                     .value(body -> {
                         assertThat(body.resultCode()).isEqualTo("200-1");
                         assertThat(body.data().profile().profileImageUrl()).isNotBlank();
+                        assertThat(body.data().profile().introduction()).isEqualTo("with image");
+                        uploadedUrlHolder[0] = body.data().profile().profileImageUrl();
                     });
+
+            // 응답에 실린 URL이 실제로 저장된 미디어인지 되짚어 확인한다.
+            // (PATCH도 POST /me/medias와 같은 UserMediaService.uploadMedia를 타므로 동일한 URL이어야 한다)
+            getMedia(userId)
+                    .expectStatus().isOk()
+                    .expectBody(mediaBody())
+                    .value(body -> {
+                        assertThat(body.data()).isNotNull();
+                        assertThat(body.data().url()).isEqualTo(uploadedUrlHolder[0]);
+                        assertThat(body.data().userId()).isEqualTo(userId);
+                    });
+
+            // 내 정보 조회에도 같은 URL이 실린다.
+            getMe(accessToken)
+                    .expectStatus().isOk()
+                    .expectBody(new ParameterizedTypeReference<ApiResponse<UserMeResponse>>() {})
+                    .value(body -> assertThat(body.data().profile().profileImageUrl())
+                            .isEqualTo(uploadedUrlHolder[0]));
         }
 
         @Test
@@ -866,16 +868,23 @@ class UserControllerE2ETest {
         }
 
         @Test
-        @DisplayName("2. 성공(로그인 상태)이면 200을 반환한다")
-        void getUserProfile_authenticated_returns200() {
+        @DisplayName("2. 성공(로그인 상태)이면 200과 비로그인 때와 같은 내용을 반환한다")
+        void getUserProfile_authenticated_returnsSameContentAsAnonymous() {
             String accessToken = createUserAndGetAccessToken(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname());
 
+            // 케이스 1(비로그인)과 같은 값을 확인해서, 인증 여부가 응답 내용을 바꾸지 않는다는 것까지 고정한다.
             client.get().uri("/api/users/" + followerCountFixture.creatorId())
                     .header("Authorization", bearer(accessToken))
                     .exchange()
                     .expectStatus().isOk()
                     .expectBody(new ParameterizedTypeReference<ApiResponse<UserProfileResponse>>() {})
-                    .value(body -> assertThat(body.resultCode()).isEqualTo("200-1"));
+                    .value(body -> {
+                        assertThat(body.resultCode()).isEqualTo("200-1");
+                        assertThat(body.data().id()).isEqualTo(followerCountFixture.creatorId());
+                        assertThat(body.data().followerCount()).isEqualTo(followerCountFixture.followerCount());
+                        assertThat(body.data().profile()).isNotNull();
+                        assertThat(body.data().profile().nickname()).isNotBlank();
+                    });
         }
 
         @Test
@@ -912,18 +921,31 @@ class UserControllerE2ETest {
     class UploadMedia {
 
         @Test
-        @DisplayName("1. 성공하면 201과 업로드된 이미지 URL·mediaType을 반환한다")
+        @DisplayName("1. 성공하면 201과 업로드된 이미지 URL·mediaType을 반환하고, 그 URL이 실제로 조회된다")
         void uploadMedia_success_returns201WithUrlAndImageType() {
-            String accessToken = createUserAndGetAccessToken(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname());
+            LoginResponse session = createUserAndLogin(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname());
+            Long userId = session.user().id();
 
-            uploadMedia(accessToken, mediaFilePart(PNG_BYTES, "profile.png", MediaType.IMAGE_PNG))
+            String[] uploadedUrlHolder = new String[1];
+            uploadMedia(session.accessToken(), mediaFilePart(PNG_BYTES, "profile.png", MediaType.IMAGE_PNG))
                     .expectStatus().isCreated()
-                    .expectBody(new ParameterizedTypeReference<ApiResponse<UserMediaResponse>>() {})
+                    .expectBody(mediaBody())
                     .value(body -> {
                         assertThat(body.resultCode()).isEqualTo("201-1");
                         assertThat(body.data().url()).isNotBlank();
+                        assertThat(body.data().userId()).isEqualTo(userId);
                         assertThat(body.data().mediaType())
                                 .isEqualTo(com.scommit.domain.media.media.entity.MediaType.IMAGE);
+                        uploadedUrlHolder[0] = body.data().url();
+                    });
+
+            // 응답만 그럴듯한 게 아니라 실제로 저장되었는지 조회로 확인한다.
+            getMedia(userId)
+                    .expectStatus().isOk()
+                    .expectBody(mediaBody())
+                    .value(body -> {
+                        assertThat(body.data()).isNotNull();
+                        assertThat(body.data().url()).isEqualTo(uploadedUrlHolder[0]);
                     });
         }
 
@@ -972,10 +994,9 @@ class UserControllerE2ETest {
             uploadMedia(session.accessToken(), mediaFilePart(PNG_BYTES, "profile.png", MediaType.IMAGE_PNG))
                     .expectStatus().isCreated();
 
-            client.get().uri("/api/users/" + userId + "/medias")
-                    .exchange()
+            getMedia(userId)
                     .expectStatus().isOk()
-                    .expectBody(new ParameterizedTypeReference<ApiResponse<UserMediaResponse>>() {})
+                    .expectBody(mediaBody())
                     .value(body -> {
                         assertThat(body.resultCode()).isEqualTo("200-1");
                         assertThat(body.data().url()).isNotBlank();
@@ -988,10 +1009,9 @@ class UserControllerE2ETest {
         void getMedia_withoutMedia_returns200WithNullData() {
             LoginResponse session = createUserAndLogin(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname());
 
-            client.get().uri("/api/users/" + session.user().id() + "/medias")
-                    .exchange()
+            getMedia(session.user().id())
                     .expectStatus().isOk()
-                    .expectBody(new ParameterizedTypeReference<ApiResponse<UserMediaResponse>>() {})
+                    .expectBody(mediaBody())
                     .value(body -> {
                         assertThat(body.resultCode()).isEqualTo("200-1");
                         assertThat(body.data()).isNull();
@@ -1001,9 +1021,7 @@ class UserControllerE2ETest {
         @Test
         @DisplayName("3. 존재하지 않는 유저면 404-2를 반환한다")
         void getMedia_nonExistentUser_returns404_2() {
-            expectResultCode(
-                    client.get().uri("/api/users/" + NON_EXISTENT_USER_ID + "/medias").exchange(),
-                    HttpStatus.NOT_FOUND, "404-2");
+            expectResultCode(getMedia(NON_EXISTENT_USER_ID), HttpStatus.NOT_FOUND, "404-2");
         }
     }
 
@@ -1081,14 +1099,30 @@ class UserControllerE2ETest {
         }
 
         @Test
-        @DisplayName("1. 성공하면 200을 반환한다")
-        void deleteMedia_success_returns200() {
-            String accessToken = createUserAndGetAccessToken(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname());
+        @DisplayName("1. 성공하면 200을 반환하고, 이후 조회하면 data=null이 된다")
+        void deleteMedia_success_returns200_andMediaIsGone() {
+            LoginResponse session = createUserAndLogin(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname());
+            String accessToken = session.accessToken();
+            Long userId = session.user().id();
 
             uploadMedia(accessToken, mediaFilePart(PNG_BYTES, "profile.png", MediaType.IMAGE_PNG))
                     .expectStatus().isCreated();
+            getMedia(userId)
+                    .expectStatus().isOk()
+                    .expectBody(mediaBody())
+                    .value(body -> assertThat(body.data()).isNotNull());
 
             expectResultCode(deleteMedia(accessToken), HttpStatus.OK, "200-1");
+
+            // 삭제라는 부작용 자체를 확인한다. 미디어가 없는 유저는 404가 아니라
+            // 200 + data=null 이 계약이다(GetMedia 2번 케이스와 동일).
+            getMedia(userId)
+                    .expectStatus().isOk()
+                    .expectBody(mediaBody())
+                    .value(body -> {
+                        assertThat(body.resultCode()).isEqualTo("200-1");
+                        assertThat(body.data()).isNull();
+                    });
         }
 
         @Test
