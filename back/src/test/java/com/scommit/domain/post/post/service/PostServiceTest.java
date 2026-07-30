@@ -653,7 +653,7 @@ class PostServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .hasFieldOrPropertyWithValue("errorCode", ErrorCode.POST_NOT_FOUND);
 
-            verify(seriesRepository, never()).findByIdAndDeletedAtIsNull(any());
+            verify(seriesRepository, never()).findByIdAndDeletedAtIsNull(anyLong());
         }
 
         // 포스트 주인이 아니면 시리즈 조회 전에 차단해야 함
@@ -667,7 +667,7 @@ class PostServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .hasFieldOrPropertyWithValue("errorCode", ErrorCode.ACCESS_DENIED);
 
-            verify(seriesRepository, never()).findByIdAndDeletedAtIsNull(any());
+            verify(seriesRepository, never()).findByIdAndDeletedAtIsNull(anyLong());
         }
 
         @Test
