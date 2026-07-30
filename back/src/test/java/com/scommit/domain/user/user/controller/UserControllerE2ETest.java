@@ -16,9 +16,11 @@ package com.scommit.domain.user.user.controller;
 // - 픽스처: 회원가입 API로 만들 수 있는 데이터는 API로 직접 만들고(UserE2EFixtures 미사용),
 //   API로 만들 수 없는 것(팔로워 수 집계, 검색 페이징용 다건 유저)만 UserE2EFixtures에서
 //   리포지토리로 직접 심는다.
-// - 대상: UserController의 12개 API 전부
+// - 대상: UserController의 12개 API 전부 + 시나리오(통합 흐름) 3개
+// - 공통 요소(ApiResponse 미러 레코드, 클라이언트 생성, 회원가입/로그인/Bearer 헬퍼)는
+//   com.scommit.global.e2e 로 분리해 static import 한다. 상속 강제(추상 클래스)는 하지 않는다.
+//   컨벤션 문서는 docs/e2e-test-convention.md 참고.
 
-import com.scommit.domain.user.user.dto.LoginRequest;
 import com.scommit.domain.user.user.dto.LoginResponse;
 import com.scommit.domain.user.user.dto.SignupRequest;
 import com.scommit.domain.user.user.dto.SignupResponse;
@@ -34,6 +36,8 @@ import com.scommit.domain.user.user.entity.User;
 import com.scommit.domain.user.user.entity.UserRole;
 import com.scommit.domain.user.user.repository.UserRepository;
 import com.scommit.domain.user.usermedia.dto.UserMediaResponse;
+import com.scommit.global.e2e.ApiResponse;
+import com.scommit.global.e2e.E2ETestSupport;
 import com.scommit.global.security.jwt.AuthTokenProperties;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
@@ -54,6 +58,7 @@ import org.springframework.core.io.Resource;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
@@ -71,9 +76,18 @@ import java.time.Duration;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
-import java.util.UUID;
 import java.util.stream.Stream;
 
+import static com.scommit.global.e2e.E2ETestSupport.bearer;
+import static com.scommit.global.e2e.E2ETestSupport.createUserAndGetAccessToken;
+import static com.scommit.global.e2e.E2ETestSupport.createUserAndLogin;
+import static com.scommit.global.e2e.E2ETestSupport.expectResultCode;
+import static com.scommit.global.e2e.E2ETestSupport.login;
+import static com.scommit.global.e2e.E2ETestSupport.loginRequest;
+import static com.scommit.global.e2e.E2ETestSupport.signUp;
+import static com.scommit.global.e2e.E2ETestSupport.signUpRequest;
+import static com.scommit.global.e2e.E2ETestSupport.uniqueEmail;
+import static com.scommit.global.e2e.E2ETestSupport.uniqueNickname;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest(
@@ -88,12 +102,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 class UserControllerE2ETest {
 
     private static final String DEFAULT_PASSWORD = "password123";
-
-    // RsData.statusCode는 @JsonIgnore이면서도 record의 정규 생성자 파라미터라서 응답 JSON에는
-    // 나오지 않는데, RsData<T> 자체로 역직렬화하면 int statusCode에 null을 매핑하려다 실패한다
-    // (tools.jackson.databind.exc.MismatchedInputException). src/main은 수정할 수 없으므로
-    // 테스트에서만 쓰는 미러 레코드로 우회한다. docs/user-e2e-known-issues.md 참고.
-    private record ApiResponse<T>(String resultCode, String msg, T data) {}
 
     // GET /api/users/search가 Spring Data의 Page<T>를 그대로 직렬화하는데(9-4장 Q4 참고),
     // Page는 인터페이스라 클라이언트에서 역직렬화할 구체 타입이 없다. Q4 결정대로
@@ -125,9 +133,7 @@ class UserControllerE2ETest {
 
     @BeforeEach
     void setUpClient() {
-        client = RestTestClient.bindToServer()
-                .baseUrl("http://localhost:" + port)
-                .build();
+        client = E2ETestSupport.client(port);
     }
 
     @AfterAll
@@ -149,49 +155,6 @@ class UserControllerE2ETest {
         }
     }
 
-    private static String uniqueEmail() {
-        return "e2e-" + UUID.randomUUID() + "@test.com";
-    }
-
-    private static String uniqueNickname() {
-        return "e2e" + UUID.randomUUID().toString().replace("-", "").substring(0, 10);
-    }
-
-    private ApiResponse<SignupResponse> signUp(String email, String password, String nickname) {
-        return client.post().uri("/api/users/signup")
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(new SignupRequest(email, password, nickname))
-                .exchange()
-                .expectStatus().isCreated()
-                .expectBody(new ParameterizedTypeReference<ApiResponse<SignupResponse>>() {})
-                .returnResult()
-                .getResponseBody();
-    }
-
-    private ApiResponse<LoginResponse> login(String email, String password) {
-        return client.post().uri("/api/users/login")
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(new LoginRequest(email, password))
-                .exchange()
-                .expectStatus().isOk()
-                .expectBody(new ParameterizedTypeReference<ApiResponse<LoginResponse>>() {})
-                .returnResult()
-                .getResponseBody();
-    }
-
-    /**
-     * 회원가입 API로 새 계정을 만들고 바로 로그인해 액세스 토큰을 발급받는다.
-     */
-    private String createUserAndGetAccessToken(String email, String password, String nickname) {
-        signUp(email, password, nickname);
-        ApiResponse<LoginResponse> loginResult = login(email, password);
-        return loginResult.data().accessToken();
-    }
-
-    private String bearer(String accessToken) {
-        return "Bearer " + accessToken;
-    }
-
     private RestTestClient.ResponseSpec deleteAccount(String accessToken, String password) {
         return client.method(HttpMethod.DELETE).uri("/api/users")
                 .header("Authorization", bearer(accessToken))
@@ -204,6 +167,10 @@ class UserControllerE2ETest {
         return client.get().uri("/api/users/me")
                 .header("Authorization", bearer(accessToken))
                 .exchange();
+    }
+
+    private RestTestClient.ResponseSpec getUserProfile(Long userId) {
+        return client.get().uri("/api/users/" + userId).exchange();
     }
 
     private RestTestClient.ResponseSpec patchMe(String accessToken, MultiValueMap<String, HttpEntity<?>> multipartBody) {
@@ -219,11 +186,15 @@ class UserControllerE2ETest {
     // 난다(webflux 의존성 추가 금지). 대신 FormHttpMessageConverter가 맵의 key를 part name으로,
     // HttpEntity의 헤더/본문을 그대로 파트 헤더/본문으로 쓰는 것을 이용해 직접 구성한다.
     private MultiValueMap<String, HttpEntity<?>> multipartRequestPart(String nickname, String introduction) {
-        HttpHeaders requestPartHeaders = new HttpHeaders();
-        requestPartHeaders.setContentType(MediaType.APPLICATION_JSON);
         MultiValueMap<String, HttpEntity<?>> body = new LinkedMultiValueMap<>();
-        body.add("request", new HttpEntity<>(new UserUpdateRequest(nickname, introduction), requestPartHeaders));
+        body.add("request", jsonPart(new UserUpdateRequest(nickname, introduction)));
         return body;
+    }
+
+    private HttpEntity<Object> jsonPart(Object value) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        return new HttpEntity<>(value, headers);
     }
 
     private HttpEntity<Resource> filePart(byte[] content, String filename, MediaType contentType) {
@@ -262,6 +233,25 @@ class UserControllerE2ETest {
                 .exchange();
     }
 
+    // SearchUsers와 시나리오 3에서 함께 쓴다.
+    private RestTestClient.ResponseSpec searchUsers(String keyword, Integer page, Integer size) {
+        UriComponentsBuilder builder = UriComponentsBuilder.fromPath("/api/users/search");
+        if (keyword != null) {
+            builder.queryParam("keyword", keyword);
+        }
+        if (page != null) {
+            builder.queryParam("page", page);
+        }
+        if (size != null) {
+            builder.queryParam("size", size);
+        }
+        return client.get().uri(builder.build().toUriString()).exchange();
+    }
+
+    private static ParameterizedTypeReference<ApiResponse<PageResult<UserSearchResponse>>> searchBody() {
+        return new ParameterizedTypeReference<>() {};
+    }
+
     // JwtProvider는 만료된 토큰을 만드는 공개 API가 없어, 같은 서명 키로 직접 발급한다.
     private String expiredAccessToken(Long userId, String email, String nickname, UserRole role) {
         SecretKey key = Keys.hmacShaKeyFor(Decoders.BASE64.decode(authTokenProperties.accessToken().secretKey()));
@@ -283,12 +273,12 @@ class UserControllerE2ETest {
         String email = uniqueEmail();
         String nickname = uniqueNickname();
 
-        ApiResponse<SignupResponse> signUpResult = signUp(email, DEFAULT_PASSWORD, nickname);
+        ApiResponse<SignupResponse> signUpResult = signUp(client, email, DEFAULT_PASSWORD, nickname);
         assertThat(signUpResult.resultCode()).isEqualTo("201-1");
         assertThat(signUpResult.data().email()).isEqualTo(email);
         assertThat(signUpResult.data().nickname()).isEqualTo(nickname);
 
-        ApiResponse<LoginResponse> loginResult = login(email, DEFAULT_PASSWORD);
+        ApiResponse<LoginResponse> loginResult = login(client, email, DEFAULT_PASSWORD);
         assertThat(loginResult.resultCode()).isEqualTo("200-1");
         assertThat(loginResult.data().accessToken()).isNotBlank();
         assertThat(loginResult.data().refreshToken()).isNotBlank();
@@ -300,11 +290,9 @@ class UserControllerE2ETest {
     void getMe_withValidAccessToken_returns200() {
         String email = uniqueEmail();
         String nickname = uniqueNickname();
-        String accessToken = createUserAndGetAccessToken(email, DEFAULT_PASSWORD, nickname);
+        String accessToken = createUserAndGetAccessToken(client, email, DEFAULT_PASSWORD, nickname);
 
-        client.get().uri("/api/users/me")
-                .header("Authorization", bearer(accessToken))
-                .exchange()
+        getMe(accessToken)
                 .expectStatus().isOk()
                 .expectBody(new ParameterizedTypeReference<ApiResponse<UserMeResponse>>() {})
                 .value(body -> {
@@ -324,7 +312,7 @@ class UserControllerE2ETest {
             String email = uniqueEmail();
             String nickname = uniqueNickname();
 
-            ApiResponse<SignupResponse> result = signUp(email, DEFAULT_PASSWORD, nickname);
+            ApiResponse<SignupResponse> result = signUp(client, email, DEFAULT_PASSWORD, nickname);
 
             assertThat(result.resultCode()).isEqualTo("201-1");
             assertThat(result.data().id()).isNotNull();
@@ -343,101 +331,74 @@ class UserControllerE2ETest {
         @DisplayName("2. 이메일이 중복되면 409-1을 반환한다")
         void signUp_duplicateEmail_returns409_1() {
             String email = uniqueEmail();
-            signUp(email, DEFAULT_PASSWORD, uniqueNickname());
+            signUp(client, email, DEFAULT_PASSWORD, uniqueNickname());
 
-            client.post().uri("/api/users/signup")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(new SignupRequest(email, DEFAULT_PASSWORD, uniqueNickname()))
-                    .exchange()
-                    .expectStatus().isEqualTo(409)
-                    .expectBody(new ParameterizedTypeReference<ApiResponse<Void>>() {})
-                    .value(body -> assertThat(body.resultCode()).isEqualTo("409-1"));
+            expectResultCode(
+                    signUpRequest(client, new SignupRequest(email, DEFAULT_PASSWORD, uniqueNickname())),
+                    HttpStatus.CONFLICT, "409-1");
         }
 
         @Test
         @DisplayName("3. 닉네임이 중복되면 409-3을 반환한다")
         void signUp_duplicateNickname_returns409_3() {
             String nickname = uniqueNickname();
-            signUp(uniqueEmail(), DEFAULT_PASSWORD, nickname);
+            signUp(client, uniqueEmail(), DEFAULT_PASSWORD, nickname);
 
-            client.post().uri("/api/users/signup")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(new SignupRequest(uniqueEmail(), DEFAULT_PASSWORD, nickname))
-                    .exchange()
-                    .expectStatus().isEqualTo(409)
-                    .expectBody(new ParameterizedTypeReference<ApiResponse<Void>>() {})
-                    .value(body -> assertThat(body.resultCode()).isEqualTo("409-3"));
+            expectResultCode(
+                    signUpRequest(client, new SignupRequest(uniqueEmail(), DEFAULT_PASSWORD, nickname)),
+                    HttpStatus.CONFLICT, "409-3");
         }
 
         @Test
         @DisplayName("4. 이메일이 없으면 400-1을 반환한다")
         void signUp_missingEmail_returns400_1() {
-            client.post().uri("/api/users/signup")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(new SignupRequest(null, DEFAULT_PASSWORD, uniqueNickname()))
-                    .exchange()
-                    .expectStatus().isBadRequest()
-                    .expectBody(new ParameterizedTypeReference<ApiResponse<Void>>() {})
-                    .value(body -> assertThat(body.resultCode()).isEqualTo("400-1"));
+            expectResultCode(
+                    signUpRequest(client, new SignupRequest(null, DEFAULT_PASSWORD, uniqueNickname())),
+                    HttpStatus.BAD_REQUEST, "400-1");
         }
 
         @Test
         @DisplayName("5. 이메일 형식이 올바르지 않으면 400-1을 반환한다")
         void signUp_invalidEmailFormat_returns400_1() {
-            client.post().uri("/api/users/signup")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(new SignupRequest("not-an-email", DEFAULT_PASSWORD, uniqueNickname()))
-                    .exchange()
-                    .expectStatus().isBadRequest()
-                    .expectBody(new ParameterizedTypeReference<ApiResponse<Void>>() {})
-                    .value(body -> assertThat(body.resultCode()).isEqualTo("400-1"));
+            expectResultCode(
+                    signUpRequest(client, new SignupRequest("not-an-email", DEFAULT_PASSWORD, uniqueNickname())),
+                    HttpStatus.BAD_REQUEST, "400-1");
         }
 
         @Test
         @DisplayName("6. 비밀번호가 6자 미만이면 400-1을 반환한다")
         void signUp_passwordTooShort_returns400_1() {
-            client.post().uri("/api/users/signup")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(new SignupRequest(uniqueEmail(), "12345", uniqueNickname()))
-                    .exchange()
-                    .expectStatus().isBadRequest()
-                    .expectBody(new ParameterizedTypeReference<ApiResponse<Void>>() {})
-                    .value(body -> assertThat(body.resultCode()).isEqualTo("400-1"));
+            expectResultCode(
+                    signUpRequest(client, new SignupRequest(uniqueEmail(), "12345", uniqueNickname())),
+                    HttpStatus.BAD_REQUEST, "400-1");
         }
 
         @Test
         @DisplayName("7. 닉네임이 2자 미만이면 400-1을 반환한다")
         void signUp_nicknameTooShort_returns400_1() {
-            client.post().uri("/api/users/signup")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(new SignupRequest(uniqueEmail(), DEFAULT_PASSWORD, "n"))
-                    .exchange()
-                    .expectStatus().isBadRequest()
-                    .expectBody(new ParameterizedTypeReference<ApiResponse<Void>>() {})
-                    .value(body -> assertThat(body.resultCode()).isEqualTo("400-1"));
+            expectResultCode(
+                    signUpRequest(client, new SignupRequest(uniqueEmail(), DEFAULT_PASSWORD, "n")),
+                    HttpStatus.BAD_REQUEST, "400-1");
         }
 
         @Test
         @DisplayName("8. 닉네임이 21자면 400-1을 반환한다")
         void signUp_nicknameTooLong_returns400_1() {
-            client.post().uri("/api/users/signup")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(new SignupRequest(uniqueEmail(), DEFAULT_PASSWORD, "n".repeat(21)))
-                    .exchange()
-                    .expectStatus().isBadRequest()
-                    .expectBody(new ParameterizedTypeReference<ApiResponse<Void>>() {})
-                    .value(body -> assertThat(body.resultCode()).isEqualTo("400-1"));
+            expectResultCode(
+                    signUpRequest(client, new SignupRequest(uniqueEmail(), DEFAULT_PASSWORD, "n".repeat(21))),
+                    HttpStatus.BAD_REQUEST, "400-1");
         }
 
         @Test
         @DisplayName("9. JSON 형식이 올바르지 않으면 400-1과 파싱 실패 메시지를 반환한다")
         void signUp_malformedJson_returns400_1WithParseErrorMessage() {
+            // 본문이 SignupRequest가 아니라 깨진 문자열이라 signUpRequest 헬퍼를 쓸 수 없다.
             client.post().uri("/api/users/signup")
                     .contentType(MediaType.APPLICATION_JSON)
                     .body("{ \"email\": ")
                     .exchange()
                     .expectStatus().isBadRequest()
-                    .expectBody(new ParameterizedTypeReference<ApiResponse<Void>>() {})
+                    .expectBody(ApiResponse.VOID_BODY)
                     .value(body -> {
                         assertThat(body.resultCode()).isEqualTo("400-1");
                         assertThat(body.msg()).isEqualTo("올바른 JSON 요청 형식이 아닙니다.");
@@ -454,12 +415,9 @@ class UserControllerE2ETest {
         void login_success_returns200WithTokensAndCookies() {
             String email = uniqueEmail();
             String nickname = uniqueNickname();
-            signUp(email, DEFAULT_PASSWORD, nickname);
+            signUp(client, email, DEFAULT_PASSWORD, nickname);
 
-            client.post().uri("/api/users/login")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(new LoginRequest(email, DEFAULT_PASSWORD))
-                    .exchange()
+            loginRequest(client, email, DEFAULT_PASSWORD)
                     .expectStatus().isOk()
                     .expectCookie().exists("accessToken")
                     .expectCookie().exists("refreshToken")
@@ -482,13 +440,9 @@ class UserControllerE2ETest {
         // Mockito로 목 처리해 강제로 UNAUTHORIZED(401-1)를 던지게 만든 결과일 뿐 실제 구현과
         // 다르다. E2E는 실제 구현(401-2)을 정답으로 고정한다. 상세: docs/user-e2e-known-issues.md #1
         void login_emailNotFound_returns401_2() {
-            client.post().uri("/api/users/login")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(new LoginRequest(uniqueEmail(), DEFAULT_PASSWORD))
-                    .exchange()
-                    .expectStatus().isUnauthorized()
-                    .expectBody(new ParameterizedTypeReference<ApiResponse<Void>>() {})
-                    .value(body -> assertThat(body.resultCode()).isEqualTo("401-2"));
+            expectResultCode(
+                    loginRequest(client, uniqueEmail(), DEFAULT_PASSWORD),
+                    HttpStatus.UNAUTHORIZED, "401-2");
         }
 
         @Test
@@ -496,15 +450,11 @@ class UserControllerE2ETest {
         // FIXME: docs/user-e2e-known-issues.md #1 참고 — 목 검증(401-1)과 실제 구현(401-2)이 다르다.
         void login_wrongPassword_returns401_2() {
             String email = uniqueEmail();
-            signUp(email, DEFAULT_PASSWORD, uniqueNickname());
+            signUp(client, email, DEFAULT_PASSWORD, uniqueNickname());
 
-            client.post().uri("/api/users/login")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(new LoginRequest(email, "wrong-password"))
-                    .exchange()
-                    .expectStatus().isUnauthorized()
-                    .expectBody(new ParameterizedTypeReference<ApiResponse<Void>>() {})
-                    .value(body -> assertThat(body.resultCode()).isEqualTo("401-2"));
+            expectResultCode(
+                    loginRequest(client, email, "wrong-password"),
+                    HttpStatus.UNAUTHORIZED, "401-2");
         }
 
         @Test
@@ -512,46 +462,29 @@ class UserControllerE2ETest {
         // FIXME: docs/user-e2e-known-issues.md #1 참고 — 목 검증(401-1)과 실제 구현(401-2)이 다르다.
         void login_softDeletedAccount_returns401_2() {
             String email = uniqueEmail();
-            String accessToken = createUserAndGetAccessToken(email, DEFAULT_PASSWORD, uniqueNickname());
+            String accessToken = createUserAndGetAccessToken(client, email, DEFAULT_PASSWORD, uniqueNickname());
 
-            client.method(HttpMethod.DELETE).uri("/api/users")
-                    .header("Authorization", bearer(accessToken))
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(new UserDeleteRequest(DEFAULT_PASSWORD))
-                    .exchange()
-                    .expectStatus().isOk();
+            deleteAccount(accessToken, DEFAULT_PASSWORD).expectStatus().isOk();
 
-            client.post().uri("/api/users/login")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(new LoginRequest(email, DEFAULT_PASSWORD))
-                    .exchange()
-                    .expectStatus().isUnauthorized()
-                    .expectBody(new ParameterizedTypeReference<ApiResponse<Void>>() {})
-                    .value(body -> assertThat(body.resultCode()).isEqualTo("401-2"));
+            expectResultCode(
+                    loginRequest(client, email, DEFAULT_PASSWORD),
+                    HttpStatus.UNAUTHORIZED, "401-2");
         }
 
         @Test
         @DisplayName("5. 이메일 형식이 올바르지 않으면 400-1을 반환한다")
         void login_invalidEmailFormat_returns400_1() {
-            client.post().uri("/api/users/login")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(new LoginRequest("not-an-email", DEFAULT_PASSWORD))
-                    .exchange()
-                    .expectStatus().isBadRequest()
-                    .expectBody(new ParameterizedTypeReference<ApiResponse<Void>>() {})
-                    .value(body -> assertThat(body.resultCode()).isEqualTo("400-1"));
+            expectResultCode(
+                    loginRequest(client, "not-an-email", DEFAULT_PASSWORD),
+                    HttpStatus.BAD_REQUEST, "400-1");
         }
 
         @Test
         @DisplayName("6. 비밀번호가 없으면 400-1을 반환한다")
         void login_missingPassword_returns400_1() {
-            client.post().uri("/api/users/login")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(new LoginRequest(uniqueEmail(), null))
-                    .exchange()
-                    .expectStatus().isBadRequest()
-                    .expectBody(new ParameterizedTypeReference<ApiResponse<Void>>() {})
-                    .value(body -> assertThat(body.resultCode()).isEqualTo("400-1"));
+            expectResultCode(
+                    loginRequest(client, uniqueEmail(), null),
+                    HttpStatus.BAD_REQUEST, "400-1");
         }
     }
 
@@ -562,21 +495,16 @@ class UserControllerE2ETest {
         @Test
         @DisplayName("1. 성공하면 200을 반환하고 refreshToken을 무효화하며 쿠키를 삭제한다")
         void logout_success_returns200AndInvalidatesRefreshToken() {
-            String email = uniqueEmail();
-            signUp(email, DEFAULT_PASSWORD, uniqueNickname());
-            ApiResponse<LoginResponse> loginResult = login(email, DEFAULT_PASSWORD);
-            String accessToken = loginResult.data().accessToken();
-            String originalRefreshToken = loginResult.data().refreshToken();
-            Long userId = loginResult.data().user().id();
+            LoginResponse session = createUserAndLogin(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname());
+            String originalRefreshToken = session.refreshToken();
+            Long userId = session.user().id();
 
-            client.post().uri("/api/users/logout")
-                    .header("Authorization", bearer(accessToken))
+            RestTestClient.ResponseSpec response = client.post().uri("/api/users/logout")
+                    .header("Authorization", bearer(session.accessToken()))
                     .exchange()
-                    .expectStatus().isOk()
                     .expectCookie().maxAge("accessToken", Duration.ZERO)
-                    .expectCookie().maxAge("refreshToken", Duration.ZERO)
-                    .expectBody(new ParameterizedTypeReference<ApiResponse<Void>>() {})
-                    .value(body -> assertThat(body.resultCode()).isEqualTo("200-1"));
+                    .expectCookie().maxAge("refreshToken", Duration.ZERO);
+            expectResultCode(response, HttpStatus.OK, "200-1");
 
             User updated = userRepository.findById(userId).orElseThrow();
             assertThat(updated.getRefreshToken()).isNotBlank();
@@ -589,7 +517,7 @@ class UserControllerE2ETest {
             client.post().uri("/api/users/logout")
                     .exchange()
                     .expectStatus().isUnauthorized()
-                    .expectBody(new ParameterizedTypeReference<ApiResponse<Void>>() {})
+                    .expectBody(ApiResponse.VOID_BODY)
                     .value(body -> {
                         assertThat(body.resultCode()).isEqualTo("401-1");
                         assertThat(body.msg()).isEqualTo("로그인 후 이용해주세요.");
@@ -607,7 +535,7 @@ class UserControllerE2ETest {
                     .exchange()
                     .expectStatus().isUnauthorized()
                     .expectHeader().contentTypeCompatibleWith(MediaType.APPLICATION_JSON)
-                    .expectBody(new ParameterizedTypeReference<ApiResponse<Void>>() {})
+                    .expectBody(ApiResponse.VOID_BODY)
                     .value(body -> {
                         assertThat(body.resultCode()).isEqualTo("401-2");
                         assertThat(body.msg()).isEqualTo("Authorization 헤더가 Bearer 형식이 아닙니다.");
@@ -621,12 +549,11 @@ class UserControllerE2ETest {
         // 폴백시킨다. 최종적으로 SecurityConfig의 AuthenticationEntryPoint가 401-1을 응답하며,
         // ErrorCode.TOKEN_INVALID(401-4)는 사용되지 않는다. 상세: docs/user-e2e-known-issues.md #2
         void logout_malformedTokenString_returns401_1() {
-            client.post().uri("/api/users/logout")
+            RestTestClient.ResponseSpec response = client.post().uri("/api/users/logout")
                     .header("Authorization", "Bearer not-a-valid-jwt")
-                    .exchange()
-                    .expectStatus().isUnauthorized()
-                    .expectBody(new ParameterizedTypeReference<ApiResponse<Void>>() {})
-                    .value(body -> assertThat(body.resultCode()).isEqualTo("401-1"));
+                    .exchange();
+
+            expectResultCode(response, HttpStatus.UNAUTHORIZED, "401-1");
         }
     }
 
@@ -641,70 +568,51 @@ class UserControllerE2ETest {
         // 상세: docs/user-e2e-known-issues.md #6
         void deleteAccount_success_returns200_thenLoginFails_andReDeleteStillReturns200() {
             String email = uniqueEmail();
-            signUp(email, DEFAULT_PASSWORD, uniqueNickname());
-            ApiResponse<LoginResponse> loginResult = login(email, DEFAULT_PASSWORD);
-            String accessToken = loginResult.data().accessToken();
-            Long userId = loginResult.data().user().id();
+            LoginResponse session = createUserAndLogin(client, email, DEFAULT_PASSWORD, uniqueNickname());
+            String accessToken = session.accessToken();
+            Long userId = session.user().id();
 
-            deleteAccount(accessToken, DEFAULT_PASSWORD)
-                    .expectStatus().isOk()
+            RestTestClient.ResponseSpec response = deleteAccount(accessToken, DEFAULT_PASSWORD)
                     .expectCookie().maxAge("accessToken", Duration.ZERO)
-                    .expectCookie().maxAge("refreshToken", Duration.ZERO)
-                    .expectBody(new ParameterizedTypeReference<ApiResponse<Void>>() {})
-                    .value(body -> assertThat(body.resultCode()).isEqualTo("200-1"));
+                    .expectCookie().maxAge("refreshToken", Duration.ZERO);
+            expectResultCode(response, HttpStatus.OK, "200-1");
 
             User deleted = userRepository.findById(userId).orElseThrow();
             assertThat(deleted.getDeletedAt()).isNotNull();
 
-            client.post().uri("/api/users/login")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(new LoginRequest(email, DEFAULT_PASSWORD))
-                    .exchange()
-                    .expectStatus().isUnauthorized()
-                    .expectBody(new ParameterizedTypeReference<ApiResponse<Void>>() {})
-                    .value(body -> assertThat(body.resultCode()).isEqualTo("401-2"));
+            expectResultCode(
+                    loginRequest(client, email, DEFAULT_PASSWORD),
+                    HttpStatus.UNAUTHORIZED, "401-2");
 
             // Q8: 재탈퇴 — deletedAt이 이미 세팅된 계정인데도 200이 그대로 난다.
-            deleteAccount(accessToken, DEFAULT_PASSWORD)
-                    .expectStatus().isOk()
-                    .expectBody(new ParameterizedTypeReference<ApiResponse<Void>>() {})
-                    .value(body -> assertThat(body.resultCode()).isEqualTo("200-1"));
+            expectResultCode(deleteAccount(accessToken, DEFAULT_PASSWORD), HttpStatus.OK, "200-1");
         }
 
         @Test
         @DisplayName("2. 미인증이면 401-1을 반환한다")
         void deleteAccount_unauthenticated_returns401_1() {
-            client.method(HttpMethod.DELETE).uri("/api/users")
+            RestTestClient.ResponseSpec response = client.method(HttpMethod.DELETE).uri("/api/users")
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(new UserDeleteRequest(DEFAULT_PASSWORD))
-                    .exchange()
-                    .expectStatus().isUnauthorized()
-                    .expectBody(new ParameterizedTypeReference<ApiResponse<Void>>() {})
-                    .value(body -> assertThat(body.resultCode()).isEqualTo("401-1"));
+                    .exchange();
+
+            expectResultCode(response, HttpStatus.UNAUTHORIZED, "401-1");
         }
 
         @Test
         @DisplayName("3. 비밀번호가 일치하지 않으면 400-2를 반환한다")
         void deleteAccount_wrongPassword_returns400_2() {
-            String email = uniqueEmail();
-            String accessToken = createUserAndGetAccessToken(email, DEFAULT_PASSWORD, uniqueNickname());
+            String accessToken = createUserAndGetAccessToken(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname());
 
-            deleteAccount(accessToken, "wrong-password")
-                    .expectStatus().isBadRequest()
-                    .expectBody(new ParameterizedTypeReference<ApiResponse<Void>>() {})
-                    .value(body -> assertThat(body.resultCode()).isEqualTo("400-2"));
+            expectResultCode(deleteAccount(accessToken, "wrong-password"), HttpStatus.BAD_REQUEST, "400-2");
         }
 
         @Test
         @DisplayName("4. 비밀번호가 없으면 400-1을 반환한다")
         void deleteAccount_missingPassword_returns400_1() {
-            String email = uniqueEmail();
-            String accessToken = createUserAndGetAccessToken(email, DEFAULT_PASSWORD, uniqueNickname());
+            String accessToken = createUserAndGetAccessToken(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname());
 
-            deleteAccount(accessToken, null)
-                    .expectStatus().isBadRequest()
-                    .expectBody(new ParameterizedTypeReference<ApiResponse<Void>>() {})
-                    .value(body -> assertThat(body.resultCode()).isEqualTo("400-1"));
+            expectResultCode(deleteAccount(accessToken, null), HttpStatus.BAD_REQUEST, "400-1");
         }
     }
 
@@ -717,7 +625,7 @@ class UserControllerE2ETest {
         void getMe_success_returns200WithProfile() {
             String email = uniqueEmail();
             String nickname = uniqueNickname();
-            String accessToken = createUserAndGetAccessToken(email, DEFAULT_PASSWORD, nickname);
+            String accessToken = createUserAndGetAccessToken(client, email, DEFAULT_PASSWORD, nickname);
 
             getMe(accessToken)
                     .expectStatus().isOk()
@@ -734,11 +642,9 @@ class UserControllerE2ETest {
         @Test
         @DisplayName("2. 미인증이면 401-1을 반환한다")
         void getMe_unauthenticated_returns401_1() {
-            client.get().uri("/api/users/me")
-                    .exchange()
-                    .expectStatus().isUnauthorized()
-                    .expectBody(new ParameterizedTypeReference<ApiResponse<Void>>() {})
-                    .value(body -> assertThat(body.resultCode()).isEqualTo("401-1"));
+            expectResultCode(
+                    client.get().uri("/api/users/me").exchange(),
+                    HttpStatus.UNAUTHORIZED, "401-1");
         }
 
         @Test
@@ -749,15 +655,10 @@ class UserControllerE2ETest {
         void getMe_expiredAccessToken_returns401_1() {
             String email = uniqueEmail();
             String nickname = uniqueNickname();
-            ApiResponse<SignupResponse> signUpResult = signUp(email, DEFAULT_PASSWORD, nickname);
+            ApiResponse<SignupResponse> signUpResult = signUp(client, email, DEFAULT_PASSWORD, nickname);
             String expiredToken = expiredAccessToken(signUpResult.data().id(), email, nickname, UserRole.USER);
 
-            client.get().uri("/api/users/me")
-                    .header("Authorization", bearer(expiredToken))
-                    .exchange()
-                    .expectStatus().isUnauthorized()
-                    .expectBody(new ParameterizedTypeReference<ApiResponse<Void>>() {})
-                    .value(body -> assertThat(body.resultCode()).isEqualTo("401-1"));
+            expectResultCode(getMe(expiredToken), HttpStatus.UNAUTHORIZED, "401-1");
         }
     }
 
@@ -765,21 +666,16 @@ class UserControllerE2ETest {
     @DisplayName("PATCH /api/users/me — 내 정보 수정")
     class UpdateMe {
 
-        private static final byte[] TEST_IMAGE_BYTES = {(byte) 0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A};
-
         @Test
         @DisplayName("1. 성공하면 닉네임·소개글이 반영된 200을 반환한다 (request part 누락 시 500-1도 확인)")
         // FIXME: request part 자체를 빼고 보내면 MissingServletRequestPartException 전용 핸들러가
         // 없어서 400이 아니라 500-1로 응답된다. 상세: docs/user-e2e-known-issues.md #3
         void updateMe_success_updatesProfile_andMissingRequestPartReturns500() {
             String email = uniqueEmail();
-            String accessToken = createUserAndGetAccessToken(email, DEFAULT_PASSWORD, uniqueNickname());
+            String accessToken = createUserAndGetAccessToken(client, email, DEFAULT_PASSWORD, uniqueNickname());
 
             MultiValueMap<String, HttpEntity<?>> emptyBody = new LinkedMultiValueMap<>();
-            patchMe(accessToken, emptyBody)
-                    .expectStatus().is5xxServerError()
-                    .expectBody(new ParameterizedTypeReference<ApiResponse<Void>>() {})
-                    .value(body -> assertThat(body.resultCode()).isEqualTo("500-1"));
+            expectResultCode(patchMe(accessToken, emptyBody), HttpStatus.INTERNAL_SERVER_ERROR, "500-1");
 
             String newNickname = uniqueNickname();
             String newIntroduction = "e2e updated introduction";
@@ -801,14 +697,11 @@ class UserControllerE2ETest {
         @Test
         @DisplayName("2. 프로필 이미지를 함께 업로드하면 200과 profileImageUrl을 반환한다")
         void updateMe_successWithProfileImage_returns200WithImageUrl() {
-            String email = uniqueEmail();
-            String accessToken = createUserAndGetAccessToken(email, DEFAULT_PASSWORD, uniqueNickname());
+            String accessToken = createUserAndGetAccessToken(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname());
 
-            HttpHeaders requestPartHeaders = new HttpHeaders();
-            requestPartHeaders.setContentType(MediaType.APPLICATION_JSON);
             MultiValueMap<String, HttpEntity<?>> multipartBody = new LinkedMultiValueMap<>();
-            multipartBody.add("request", new HttpEntity<>(new UserUpdateRequest(null, "with image"), requestPartHeaders));
-            multipartBody.add("profileImage", filePart(TEST_IMAGE_BYTES, "profile.png", MediaType.IMAGE_PNG));
+            multipartBody.add("request", jsonPart(new UserUpdateRequest(null, "with image")));
+            multipartBody.add("profileImage", filePart(PNG_BYTES, "profile.png", MediaType.IMAGE_PNG));
 
             patchMe(accessToken, multipartBody)
                     .expectStatus().isOk()
@@ -822,60 +715,55 @@ class UserControllerE2ETest {
         @Test
         @DisplayName("3. 미인증이면 401-1을 반환한다")
         void updateMe_unauthenticated_returns401_1() {
-            client.patch().uri("/api/users/me")
+            RestTestClient.ResponseSpec response = client.patch().uri("/api/users/me")
                     .contentType(MediaType.MULTIPART_FORM_DATA)
                     .body(multipartRequestPart(uniqueNickname(), null))
-                    .exchange()
-                    .expectStatus().isUnauthorized()
-                    .expectBody(new ParameterizedTypeReference<ApiResponse<Void>>() {})
-                    .value(body -> assertThat(body.resultCode()).isEqualTo("401-1"));
+                    .exchange();
+
+            expectResultCode(response, HttpStatus.UNAUTHORIZED, "401-1");
         }
 
         @Test
         @DisplayName("4. 다른 유저의 닉네임으로 변경하면 409-3을 반환한다")
         void updateMe_duplicateNickname_returns409_3() {
             String takenNickname = uniqueNickname();
-            signUp(uniqueEmail(), DEFAULT_PASSWORD, takenNickname);
+            signUp(client, uniqueEmail(), DEFAULT_PASSWORD, takenNickname);
 
-            String accessToken = createUserAndGetAccessToken(uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname());
+            String accessToken = createUserAndGetAccessToken(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname());
 
-            patchMe(accessToken, multipartRequestPart(takenNickname, null))
-                    .expectStatus().isEqualTo(409)
-                    .expectBody(new ParameterizedTypeReference<ApiResponse<Void>>() {})
-                    .value(body -> assertThat(body.resultCode()).isEqualTo("409-3"));
+            expectResultCode(
+                    patchMe(accessToken, multipartRequestPart(takenNickname, null)),
+                    HttpStatus.CONFLICT, "409-3");
         }
 
         @Test
         @DisplayName("5. 닉네임이 2자 미만이면 400-1을 반환한다")
         void updateMe_nicknameTooShort_returns400_1() {
-            String accessToken = createUserAndGetAccessToken(uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname());
+            String accessToken = createUserAndGetAccessToken(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname());
 
-            patchMe(accessToken, multipartRequestPart("n", null))
-                    .expectStatus().isBadRequest()
-                    .expectBody(new ParameterizedTypeReference<ApiResponse<Void>>() {})
-                    .value(body -> assertThat(body.resultCode()).isEqualTo("400-1"));
+            expectResultCode(
+                    patchMe(accessToken, multipartRequestPart("n", null)),
+                    HttpStatus.BAD_REQUEST, "400-1");
         }
 
         @Test
         @DisplayName("6. 닉네임이 공백만으로 이루어지면 400-1을 반환한다")
         void updateMe_nicknameBlank_returns400_1() {
-            String accessToken = createUserAndGetAccessToken(uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname());
+            String accessToken = createUserAndGetAccessToken(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname());
 
-            patchMe(accessToken, multipartRequestPart("  ", null))
-                    .expectStatus().isBadRequest()
-                    .expectBody(new ParameterizedTypeReference<ApiResponse<Void>>() {})
-                    .value(body -> assertThat(body.resultCode()).isEqualTo("400-1"));
+            expectResultCode(
+                    patchMe(accessToken, multipartRequestPart("  ", null)),
+                    HttpStatus.BAD_REQUEST, "400-1");
         }
 
         @Test
         @DisplayName("7. 소개글이 101자면 400-1을 반환한다")
         void updateMe_introductionTooLong_returns400_1() {
-            String accessToken = createUserAndGetAccessToken(uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname());
+            String accessToken = createUserAndGetAccessToken(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname());
 
-            patchMe(accessToken, multipartRequestPart(null, "a".repeat(101)))
-                    .expectStatus().isBadRequest()
-                    .expectBody(new ParameterizedTypeReference<ApiResponse<Void>>() {})
-                    .value(body -> assertThat(body.resultCode()).isEqualTo("400-1"));
+            expectResultCode(
+                    patchMe(accessToken, multipartRequestPart(null, "a".repeat(101))),
+                    HttpStatus.BAD_REQUEST, "400-1");
         }
     }
 
@@ -887,7 +775,7 @@ class UserControllerE2ETest {
         @DisplayName("1. 성공하면 200과 새 토큰을 반환하고, 새 accessToken으로 GET /me가 200이 된다")
         void updatePassword_success_returns200WithNewTokens_andNewAccessTokenCanGetMe() {
             String email = uniqueEmail();
-            String accessToken = createUserAndGetAccessToken(email, DEFAULT_PASSWORD, uniqueNickname());
+            String accessToken = createUserAndGetAccessToken(client, email, DEFAULT_PASSWORD, uniqueNickname());
             String newPassword = "newpassword123";
 
             User beforeChange = userRepository.findByEmailAndDeletedAtIsNull(email).orElseThrow();
@@ -911,52 +799,51 @@ class UserControllerE2ETest {
             getMe(newAccessTokenHolder[0])
                     .expectStatus().isOk()
                     .expectBody(new ParameterizedTypeReference<ApiResponse<UserMeResponse>>() {})
-                    .value(body -> assertThat(body.resultCode()).isEqualTo("200-1"));
+                    .value(body -> {
+                        assertThat(body.resultCode()).isEqualTo("200-1");
+                        assertThat(body.data().email()).isEqualTo(email);
+                    });
         }
 
         @Test
         @DisplayName("2. 미인증이면 401-1을 반환한다")
         void updatePassword_unauthenticated_returns401_1() {
-            client.put().uri("/api/users/me/password")
+            RestTestClient.ResponseSpec response = client.put().uri("/api/users/me/password")
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(new UserPasswordUpdateRequest(DEFAULT_PASSWORD, "newpassword123"))
-                    .exchange()
-                    .expectStatus().isUnauthorized()
-                    .expectBody(new ParameterizedTypeReference<ApiResponse<Void>>() {})
-                    .value(body -> assertThat(body.resultCode()).isEqualTo("401-1"));
+                    .exchange();
+
+            expectResultCode(response, HttpStatus.UNAUTHORIZED, "401-1");
         }
 
         @Test
         @DisplayName("3. 현재 비밀번호가 일치하지 않으면 400-2를 반환한다")
         void updatePassword_wrongCurrentPassword_returns400_2() {
-            String accessToken = createUserAndGetAccessToken(uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname());
+            String accessToken = createUserAndGetAccessToken(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname());
 
-            updatePassword(accessToken, "wrong-password", "newpassword123")
-                    .expectStatus().isBadRequest()
-                    .expectBody(new ParameterizedTypeReference<ApiResponse<Void>>() {})
-                    .value(body -> assertThat(body.resultCode()).isEqualTo("400-2"));
+            expectResultCode(
+                    updatePassword(accessToken, "wrong-password", "newpassword123"),
+                    HttpStatus.BAD_REQUEST, "400-2");
         }
 
         @Test
         @DisplayName("4. 새 비밀번호가 6자 미만이면 400-1을 반환한다")
         void updatePassword_newPasswordTooShort_returns400_1() {
-            String accessToken = createUserAndGetAccessToken(uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname());
+            String accessToken = createUserAndGetAccessToken(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname());
 
-            updatePassword(accessToken, DEFAULT_PASSWORD, "123")
-                    .expectStatus().isBadRequest()
-                    .expectBody(new ParameterizedTypeReference<ApiResponse<Void>>() {})
-                    .value(body -> assertThat(body.resultCode()).isEqualTo("400-1"));
+            expectResultCode(
+                    updatePassword(accessToken, DEFAULT_PASSWORD, "123"),
+                    HttpStatus.BAD_REQUEST, "400-1");
         }
 
         @Test
         @DisplayName("5. 현재 비밀번호가 없으면 400-1을 반환한다")
         void updatePassword_missingCurrentPassword_returns400_1() {
-            String accessToken = createUserAndGetAccessToken(uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname());
+            String accessToken = createUserAndGetAccessToken(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname());
 
-            updatePassword(accessToken, null, "newpassword123")
-                    .expectStatus().isBadRequest()
-                    .expectBody(new ParameterizedTypeReference<ApiResponse<Void>>() {})
-                    .value(body -> assertThat(body.resultCode()).isEqualTo("400-1"));
+            expectResultCode(
+                    updatePassword(accessToken, null, "newpassword123"),
+                    HttpStatus.BAD_REQUEST, "400-1");
         }
     }
 
@@ -967,8 +854,7 @@ class UserControllerE2ETest {
         @Test
         @DisplayName("1. 성공(비로그인)이면 200과 followerCount·프로필을 반환한다")
         void getUserProfile_anonymous_returns200WithFollowerCountAndProfile() {
-            client.get().uri("/api/users/" + followerCountFixture.creatorId())
-                    .exchange()
+            getUserProfile(followerCountFixture.creatorId())
                     .expectStatus().isOk()
                     .expectBody(new ParameterizedTypeReference<ApiResponse<UserProfileResponse>>() {})
                     .value(body -> {
@@ -982,7 +868,7 @@ class UserControllerE2ETest {
         @Test
         @DisplayName("2. 성공(로그인 상태)이면 200을 반환한다")
         void getUserProfile_authenticated_returns200() {
-            String accessToken = createUserAndGetAccessToken(uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname());
+            String accessToken = createUserAndGetAccessToken(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname());
 
             client.get().uri("/api/users/" + followerCountFixture.creatorId())
                     .header("Authorization", bearer(accessToken))
@@ -995,29 +881,17 @@ class UserControllerE2ETest {
         @Test
         @DisplayName("3. 존재하지 않는 id면 404-2를 반환한다")
         void getUserProfile_nonExistentId_returns404_2() {
-            client.get().uri("/api/users/" + NON_EXISTENT_USER_ID)
-                    .exchange()
-                    .expectStatus().isNotFound()
-                    .expectBody(new ParameterizedTypeReference<ApiResponse<Void>>() {})
-                    .value(body -> assertThat(body.resultCode()).isEqualTo("404-2"));
+            expectResultCode(getUserProfile(NON_EXISTENT_USER_ID), HttpStatus.NOT_FOUND, "404-2");
         }
 
         @Test
         @DisplayName("4. 탈퇴한 유저 id면 404-2를 반환한다")
         void getUserProfile_softDeletedUserId_returns404_2() {
-            String email = uniqueEmail();
-            signUp(email, DEFAULT_PASSWORD, uniqueNickname());
-            ApiResponse<LoginResponse> loginResult = login(email, DEFAULT_PASSWORD);
-            String accessToken = loginResult.data().accessToken();
-            Long userId = loginResult.data().user().id();
+            LoginResponse session = createUserAndLogin(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname());
 
-            deleteAccount(accessToken, DEFAULT_PASSWORD).expectStatus().isOk();
+            deleteAccount(session.accessToken(), DEFAULT_PASSWORD).expectStatus().isOk();
 
-            client.get().uri("/api/users/" + userId)
-                    .exchange()
-                    .expectStatus().isNotFound()
-                    .expectBody(new ParameterizedTypeReference<ApiResponse<Void>>() {})
-                    .value(body -> assertThat(body.resultCode()).isEqualTo("404-2"));
+            expectResultCode(getUserProfile(session.user().id()), HttpStatus.NOT_FOUND, "404-2");
         }
 
         @Test
@@ -1027,11 +901,9 @@ class UserControllerE2ETest {
         // 존재하지 않는 리소스(404)나 타입 불일치(400)가 아니라 401이 응답된다.
         // 상세: docs/user-e2e-known-issues.md #4
         void getUserProfile_nonNumericId_unauthenticated_returns401_1() {
-            client.get().uri("/api/users/abc")
-                    .exchange()
-                    .expectStatus().isUnauthorized()
-                    .expectBody(new ParameterizedTypeReference<ApiResponse<Void>>() {})
-                    .value(body -> assertThat(body.resultCode()).isEqualTo("401-1"));
+            expectResultCode(
+                    client.get().uri("/api/users/abc").exchange(),
+                    HttpStatus.UNAUTHORIZED, "401-1");
         }
     }
 
@@ -1042,7 +914,7 @@ class UserControllerE2ETest {
         @Test
         @DisplayName("1. 성공하면 201과 업로드된 이미지 URL·mediaType을 반환한다")
         void uploadMedia_success_returns201WithUrlAndImageType() {
-            String accessToken = createUserAndGetAccessToken(uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname());
+            String accessToken = createUserAndGetAccessToken(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname());
 
             uploadMedia(accessToken, mediaFilePart(PNG_BYTES, "profile.png", MediaType.IMAGE_PNG))
                     .expectStatus().isCreated()
@@ -1058,35 +930,32 @@ class UserControllerE2ETest {
         @Test
         @DisplayName("2. 미인증이면 401-1을 반환한다")
         void uploadMedia_unauthenticated_returns401_1() {
-            client.post().uri("/api/users/me/medias")
+            RestTestClient.ResponseSpec response = client.post().uri("/api/users/me/medias")
                     .contentType(MediaType.MULTIPART_FORM_DATA)
                     .body(mediaFilePart(PNG_BYTES, "profile.png", MediaType.IMAGE_PNG))
-                    .exchange()
-                    .expectStatus().isUnauthorized()
-                    .expectBody(new ParameterizedTypeReference<ApiResponse<Void>>() {})
-                    .value(body -> assertThat(body.resultCode()).isEqualTo("401-1"));
+                    .exchange();
+
+            expectResultCode(response, HttpStatus.UNAUTHORIZED, "401-1");
         }
 
         @Test
         @DisplayName("3. 빈 파일이면 400-4를 반환한다")
         void uploadMedia_emptyFile_returns400_4() {
-            String accessToken = createUserAndGetAccessToken(uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname());
+            String accessToken = createUserAndGetAccessToken(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname());
 
-            uploadMedia(accessToken, mediaFilePart(new byte[0], "empty.png", MediaType.IMAGE_PNG))
-                    .expectStatus().isBadRequest()
-                    .expectBody(new ParameterizedTypeReference<ApiResponse<Void>>() {})
-                    .value(body -> assertThat(body.resultCode()).isEqualTo("400-4"));
+            expectResultCode(
+                    uploadMedia(accessToken, mediaFilePart(new byte[0], "empty.png", MediaType.IMAGE_PNG)),
+                    HttpStatus.BAD_REQUEST, "400-4");
         }
 
         @Test
         @DisplayName("4. text/plain 파일이면 415-1을 반환한다")
         void uploadMedia_unsupportedFileType_returns415_1() {
-            String accessToken = createUserAndGetAccessToken(uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname());
+            String accessToken = createUserAndGetAccessToken(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname());
 
-            uploadMedia(accessToken, mediaFilePart(PNG_BYTES, "file.txt", MediaType.TEXT_PLAIN))
-                    .expectStatus().isEqualTo(415)
-                    .expectBody(new ParameterizedTypeReference<ApiResponse<Void>>() {})
-                    .value(body -> assertThat(body.resultCode()).isEqualTo("415-1"));
+            expectResultCode(
+                    uploadMedia(accessToken, mediaFilePart(PNG_BYTES, "file.txt", MediaType.TEXT_PLAIN)),
+                    HttpStatus.UNSUPPORTED_MEDIA_TYPE, "415-1");
         }
     }
 
@@ -1097,13 +966,10 @@ class UserControllerE2ETest {
         @Test
         @DisplayName("1. 미디어가 있으면 200과 이미지 URL을 반환한다")
         void getMedia_withMedia_returns200WithUrl() {
-            String email = uniqueEmail();
-            signUp(email, DEFAULT_PASSWORD, uniqueNickname());
-            ApiResponse<LoginResponse> loginResult = login(email, DEFAULT_PASSWORD);
-            String accessToken = loginResult.data().accessToken();
-            Long userId = loginResult.data().user().id();
+            LoginResponse session = createUserAndLogin(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname());
+            Long userId = session.user().id();
 
-            uploadMedia(accessToken, mediaFilePart(PNG_BYTES, "profile.png", MediaType.IMAGE_PNG))
+            uploadMedia(session.accessToken(), mediaFilePart(PNG_BYTES, "profile.png", MediaType.IMAGE_PNG))
                     .expectStatus().isCreated();
 
             client.get().uri("/api/users/" + userId + "/medias")
@@ -1120,12 +986,9 @@ class UserControllerE2ETest {
         @Test
         @DisplayName("2. 미디어가 없으면 200과 data=null을 반환한다 (404 아님)")
         void getMedia_withoutMedia_returns200WithNullData() {
-            String email = uniqueEmail();
-            signUp(email, DEFAULT_PASSWORD, uniqueNickname());
-            ApiResponse<LoginResponse> loginResult = login(email, DEFAULT_PASSWORD);
-            Long userId = loginResult.data().user().id();
+            LoginResponse session = createUserAndLogin(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname());
 
-            client.get().uri("/api/users/" + userId + "/medias")
+            client.get().uri("/api/users/" + session.user().id() + "/medias")
                     .exchange()
                     .expectStatus().isOk()
                     .expectBody(new ParameterizedTypeReference<ApiResponse<UserMediaResponse>>() {})
@@ -1138,11 +1001,9 @@ class UserControllerE2ETest {
         @Test
         @DisplayName("3. 존재하지 않는 유저면 404-2를 반환한다")
         void getMedia_nonExistentUser_returns404_2() {
-            client.get().uri("/api/users/" + NON_EXISTENT_USER_ID + "/medias")
-                    .exchange()
-                    .expectStatus().isNotFound()
-                    .expectBody(new ParameterizedTypeReference<ApiResponse<Void>>() {})
-                    .value(body -> assertThat(body.resultCode()).isEqualTo("404-2"));
+            expectResultCode(
+                    client.get().uri("/api/users/" + NON_EXISTENT_USER_ID + "/medias").exchange(),
+                    HttpStatus.NOT_FOUND, "404-2");
         }
     }
 
@@ -1150,26 +1011,12 @@ class UserControllerE2ETest {
     @DisplayName("GET /api/users/search — 유저 검색")
     class SearchUsers {
 
-        private RestTestClient.ResponseSpec searchUsers(String keyword, Integer page, Integer size) {
-            UriComponentsBuilder builder = UriComponentsBuilder.fromPath("/api/users/search");
-            if (keyword != null) {
-                builder.queryParam("keyword", keyword);
-            }
-            if (page != null) {
-                builder.queryParam("page", page);
-            }
-            if (size != null) {
-                builder.queryParam("size", size);
-            }
-            return client.get().uri(builder.build().toUriString()).exchange();
-        }
-
         @Test
         @DisplayName("1. 키워드가 매칭되면 200과 기대 닉네임을 포함한 content를 반환한다")
         void searchUsers_matchingKeyword_returns200WithExpectedNicknames() {
             searchUsers(searchPagingFixture.nicknamePrefix(), null, null)
                     .expectStatus().isOk()
-                    .expectBody(new ParameterizedTypeReference<ApiResponse<PageResult<UserSearchResponse>>>() {})
+                    .expectBody(searchBody())
                     .value(body -> {
                         assertThat(body.resultCode()).isEqualTo("200-1");
                         assertThat(body.data().totalElements()).isEqualTo(searchPagingFixture.userIds().size());
@@ -1184,7 +1031,7 @@ class UserControllerE2ETest {
         void searchUsers_missingKeyword_returns200WithEmptyPage() {
             searchUsers(null, null, null)
                     .expectStatus().isOk()
-                    .expectBody(new ParameterizedTypeReference<ApiResponse<PageResult<UserSearchResponse>>>() {})
+                    .expectBody(searchBody())
                     .value(body -> {
                         assertThat(body.resultCode()).isEqualTo("200-1");
                         assertThat(body.data().content()).isEmpty();
@@ -1199,7 +1046,7 @@ class UserControllerE2ETest {
             // 계정과 겹치지 않으면서도 빈 결과가 나오도록 한다.
             searchUsers(searchPagingFixture.nicknamePrefix() + "-no-match-xyz", null, null)
                     .expectStatus().isOk()
-                    .expectBody(new ParameterizedTypeReference<ApiResponse<PageResult<UserSearchResponse>>>() {})
+                    .expectBody(searchBody())
                     .value(body -> {
                         assertThat(body.resultCode()).isEqualTo("200-1");
                         assertThat(body.data().content()).isEmpty();
@@ -1212,7 +1059,7 @@ class UserControllerE2ETest {
         void searchUsers_withPageAndSize_reflectsPaging() {
             searchUsers(searchPagingFixture.nicknamePrefix(), 0, 2)
                     .expectStatus().isOk()
-                    .expectBody(new ParameterizedTypeReference<ApiResponse<PageResult<UserSearchResponse>>>() {})
+                    .expectBody(searchBody())
                     .value(body -> {
                         assertThat(body.resultCode()).isEqualTo("200-1");
                         assertThat(body.data().content()).hasSize(2);
@@ -1236,36 +1083,157 @@ class UserControllerE2ETest {
         @Test
         @DisplayName("1. 성공하면 200을 반환한다")
         void deleteMedia_success_returns200() {
-            String accessToken = createUserAndGetAccessToken(uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname());
+            String accessToken = createUserAndGetAccessToken(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname());
 
             uploadMedia(accessToken, mediaFilePart(PNG_BYTES, "profile.png", MediaType.IMAGE_PNG))
                     .expectStatus().isCreated();
 
-            deleteMedia(accessToken)
-                    .expectStatus().isOk()
-                    .expectBody(new ParameterizedTypeReference<ApiResponse<Void>>() {})
-                    .value(body -> assertThat(body.resultCode()).isEqualTo("200-1"));
+            expectResultCode(deleteMedia(accessToken), HttpStatus.OK, "200-1");
         }
 
         @Test
         @DisplayName("2. 미인증이면 401-1을 반환한다")
         void deleteMedia_unauthenticated_returns401_1() {
-            client.method(HttpMethod.DELETE).uri("/api/users/me/medias")
-                    .exchange()
-                    .expectStatus().isUnauthorized()
-                    .expectBody(new ParameterizedTypeReference<ApiResponse<Void>>() {})
-                    .value(body -> assertThat(body.resultCode()).isEqualTo("401-1"));
+            expectResultCode(
+                    client.method(HttpMethod.DELETE).uri("/api/users/me/medias").exchange(),
+                    HttpStatus.UNAUTHORIZED, "401-1");
         }
 
         @Test
         @DisplayName("3. 미디어가 없으면 404-7을 반환한다 (404-2와 다름)")
         void deleteMedia_noMedia_returns404_7() {
-            String accessToken = createUserAndGetAccessToken(uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname());
+            String accessToken = createUserAndGetAccessToken(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname());
 
-            deleteMedia(accessToken)
-                    .expectStatus().isNotFound()
-                    .expectBody(new ParameterizedTypeReference<ApiResponse<Void>>() {})
-                    .value(body -> assertThat(body.resultCode()).isEqualTo("404-7"));
+            expectResultCode(deleteMedia(accessToken), HttpStatus.NOT_FOUND, "404-7");
+        }
+    }
+
+    @Nested
+    @DisplayName("시나리오 — 여러 API를 잇는 통합 흐름")
+    class Scenarios {
+
+        @Test
+        @DisplayName("1. 회원가입 → 로그인 → GET /me → PATCH /me → GET /{id}에 수정 내용이 반영된다")
+        void signUpLoginUpdateProfile_isReflectedInPublicProfile() {
+            String email = uniqueEmail();
+            String nickname = uniqueNickname();
+
+            LoginResponse session = createUserAndLogin(client, email, DEFAULT_PASSWORD, nickname);
+            Long userId = session.user().id();
+            String accessToken = session.accessToken();
+            assertThat(userId).isNotNull();
+
+            // 수정 전 상태를 GET /me로 확인한다.
+            getMe(accessToken)
+                    .expectStatus().isOk()
+                    .expectBody(new ParameterizedTypeReference<ApiResponse<UserMeResponse>>() {})
+                    .value(body -> {
+                        assertThat(body.resultCode()).isEqualTo("200-1");
+                        assertThat(body.data().id()).isEqualTo(userId);
+                        assertThat(body.data().email()).isEqualTo(email);
+                        assertThat(body.data().profile().nickname()).isEqualTo(nickname);
+                        assertThat(body.data().profile().introduction()).isNull();
+                    });
+
+            String newNickname = uniqueNickname();
+            String newIntroduction = "시나리오에서 바꾼 소개글";
+            patchMe(accessToken, multipartRequestPart(newNickname, newIntroduction))
+                    .expectStatus().isOk()
+                    .expectBody(new ParameterizedTypeReference<ApiResponse<UserUpdateResponse>>() {})
+                    .value(body -> {
+                        assertThat(body.resultCode()).isEqualTo("200-1");
+                        assertThat(body.data().id()).isEqualTo(userId);
+                        assertThat(body.data().profile().nickname()).isEqualTo(newNickname);
+                        assertThat(body.data().profile().introduction()).isEqualTo(newIntroduction);
+                    });
+
+            // 같은 토큰으로 다시 조회해도 바뀐 값이 보인다.
+            getMe(accessToken)
+                    .expectStatus().isOk()
+                    .expectBody(new ParameterizedTypeReference<ApiResponse<UserMeResponse>>() {})
+                    .value(body -> {
+                        assertThat(body.data().profile().nickname()).isEqualTo(newNickname);
+                        assertThat(body.data().profile().introduction()).isEqualTo(newIntroduction);
+                    });
+
+            // 공개 프로필(비로그인 조회)에도 같은 값이 반영된다.
+            getUserProfile(userId)
+                    .expectStatus().isOk()
+                    .expectBody(new ParameterizedTypeReference<ApiResponse<UserProfileResponse>>() {})
+                    .value(body -> {
+                        assertThat(body.resultCode()).isEqualTo("200-1");
+                        assertThat(body.data().id()).isEqualTo(userId);
+                        assertThat(body.data().profile().nickname()).isEqualTo(newNickname);
+                        assertThat(body.data().profile().introduction()).isEqualTo(newIntroduction);
+                    });
+        }
+
+        @Test
+        @DisplayName("2. 로그인 → 비밀번호 변경 후, 옛 비밀번호 로그인은 401-2가 되고 새 비밀번호 로그인은 성공한다")
+        void changePassword_invalidatesOldPassword_andNewPasswordWorks() {
+            String email = uniqueEmail();
+            String accessToken = createUserAndGetAccessToken(client, email, DEFAULT_PASSWORD, uniqueNickname());
+            String newPassword = "newpassword123";
+
+            expectResultCode(
+                    updatePassword(accessToken, DEFAULT_PASSWORD, newPassword),
+                    HttpStatus.OK, "200-1");
+
+            // 옛 비밀번호로는 더 이상 로그인할 수 없다.
+            expectResultCode(
+                    loginRequest(client, email, DEFAULT_PASSWORD),
+                    HttpStatus.UNAUTHORIZED, "401-2");
+
+            // 새 비밀번호로는 로그인되고, 그 토큰으로 GET /me도 통과한다.
+            ApiResponse<LoginResponse> reLogin = login(client, email, newPassword);
+            assertThat(reLogin.resultCode()).isEqualTo("200-1");
+            assertThat(reLogin.data().accessToken()).isNotBlank();
+            assertThat(reLogin.data().user().email()).isEqualTo(email);
+
+            getMe(reLogin.data().accessToken())
+                    .expectStatus().isOk()
+                    .expectBody(new ParameterizedTypeReference<ApiResponse<UserMeResponse>>() {})
+                    .value(body -> assertThat(body.data().email()).isEqualTo(email));
+        }
+
+        @Test
+        @DisplayName("3. 회원가입 → 탈퇴하면 로그인 401-2, GET /{id} 404-2, 검색 결과에서도 빠진다")
+        void deleteAccount_blocksLogin_hidesProfile_andExcludesFromSearch() {
+            String email = uniqueEmail();
+            // 이 시나리오에서만 만들어지는 닉네임이라, 그대로 검색 키워드로 쓰면
+            // 다른 테스트가 만든 계정과 겹치지 않는다.
+            String nickname = uniqueNickname();
+
+            LoginResponse session = createUserAndLogin(client, email, DEFAULT_PASSWORD, nickname);
+            Long userId = session.user().id();
+
+            // 탈퇴 전에는 프로필도 보이고 검색에도 잡힌다.
+            getUserProfile(userId).expectStatus().isOk();
+            searchUsers(nickname, null, null)
+                    .expectStatus().isOk()
+                    .expectBody(searchBody())
+                    .value(body -> {
+                        assertThat(body.data().totalElements()).isEqualTo(1);
+                        assertThat(body.data().content())
+                                .extracting(UserSearchResponse::id)
+                                .containsExactly(userId);
+                    });
+
+            deleteAccount(session.accessToken(), DEFAULT_PASSWORD).expectStatus().isOk();
+
+            expectResultCode(
+                    loginRequest(client, email, DEFAULT_PASSWORD),
+                    HttpStatus.UNAUTHORIZED, "401-2");
+            expectResultCode(getUserProfile(userId), HttpStatus.NOT_FOUND, "404-2");
+
+            searchUsers(nickname, null, null)
+                    .expectStatus().isOk()
+                    .expectBody(searchBody())
+                    .value(body -> {
+                        assertThat(body.resultCode()).isEqualTo("200-1");
+                        assertThat(body.data().content()).isEmpty();
+                        assertThat(body.data().totalElements()).isZero();
+                    });
         }
     }
 }
