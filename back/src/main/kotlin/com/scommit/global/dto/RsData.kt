@@ -14,7 +14,7 @@ data class RsData<T>(
     @JvmOverloads
     constructor(resultCode: String, msg: String, data: T? = null) : this(
         resultCode,
-        resultCode.split("-".toRegex(), limit = 2).toTypedArray()[0].toInt(),
+        resultCode.substringBefore('-').toInt(),
         msg,
         data,
     )
