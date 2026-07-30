@@ -26,11 +26,14 @@ import com.scommit.domain.user.user.dto.UserDeleteRequest;
 import com.scommit.domain.user.user.dto.UserMeResponse;
 import com.scommit.domain.user.user.dto.UserPasswordUpdateRequest;
 import com.scommit.domain.user.user.dto.UserPasswordUpdateResponse;
+import com.scommit.domain.user.user.dto.UserProfileResponse;
+import com.scommit.domain.user.user.dto.UserSearchResponse;
 import com.scommit.domain.user.user.dto.UserUpdateRequest;
 import com.scommit.domain.user.user.dto.UserUpdateResponse;
 import com.scommit.domain.user.user.entity.User;
 import com.scommit.domain.user.user.entity.UserRole;
 import com.scommit.domain.user.user.repository.UserRepository;
+import com.scommit.domain.user.usermedia.dto.UserMediaResponse;
 import com.scommit.global.security.jwt.AuthTokenProperties;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
@@ -57,6 +60,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.client.RestTestClient;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import javax.crypto.SecretKey;
 import java.io.IOException;
@@ -66,6 +70,7 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Comparator;
 import java.util.Date;
+import java.util.List;
 import java.util.UUID;
 import java.util.stream.Stream;
 
@@ -90,6 +95,14 @@ class UserControllerE2ETest {
     // 테스트에서만 쓰는 미러 레코드로 우회한다. docs/user-e2e-known-issues.md 참고.
     private record ApiResponse<T>(String resultCode, String msg, T data) {}
 
+    // GET /api/users/search가 Spring Data의 Page<T>를 그대로 직렬화하는데(9-4장 Q4 참고),
+    // Page는 인터페이스라 클라이언트에서 역직렬화할 구체 타입이 없다. Q4 결정대로
+    // content/totalElements/size/number 네 필드만 최소로 검증하는 미러 레코드로 받는다.
+    private record PageResult<T>(List<T> content, long totalElements, int size, int number) {}
+
+    private static final long NON_EXISTENT_USER_ID = 999_999_999L;
+    private static final byte[] PNG_BYTES = {(byte) 0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A};
+
     @LocalServerPort
     private int port;
 
@@ -103,6 +116,12 @@ class UserControllerE2ETest {
 
     @Autowired
     private AuthTokenProperties authTokenProperties;
+
+    @Autowired
+    private UserE2EFixtures.FollowerCountFixture followerCountFixture;
+
+    @Autowired
+    private UserE2EFixtures.SearchPagingFixture searchPagingFixture;
 
     @BeforeEach
     void setUpClient() {
@@ -217,6 +236,22 @@ class UserControllerE2ETest {
             }
         };
         return new HttpEntity<>(resource, headers);
+    }
+
+    // 6-9/6-10/6-12에서 공통으로 쓰는 프로필 이미지 업로드. UpdateMe에서 쓰는 것과 같은
+    // LinkedMultiValueMap<String, HttpEntity<?>> 조립 방식(filePart)을 그대로 재사용한다.
+    private MultiValueMap<String, HttpEntity<?>> mediaFilePart(byte[] content, String filename, MediaType contentType) {
+        MultiValueMap<String, HttpEntity<?>> body = new LinkedMultiValueMap<>();
+        body.add("file", filePart(content, filename, contentType));
+        return body;
+    }
+
+    private RestTestClient.ResponseSpec uploadMedia(String accessToken, MultiValueMap<String, HttpEntity<?>> multipartBody) {
+        return client.post().uri("/api/users/me/medias")
+                .header("Authorization", bearer(accessToken))
+                .contentType(MediaType.MULTIPART_FORM_DATA)
+                .body(multipartBody)
+                .exchange();
     }
 
     private RestTestClient.ResponseSpec updatePassword(String accessToken, String currentPassword, String newPassword) {
@@ -922,6 +957,315 @@ class UserControllerE2ETest {
                     .expectStatus().isBadRequest()
                     .expectBody(new ParameterizedTypeReference<ApiResponse<Void>>() {})
                     .value(body -> assertThat(body.resultCode()).isEqualTo("400-1"));
+        }
+    }
+
+    @Nested
+    @DisplayName("GET /api/users/{id} — 유저 프로필 조회")
+    class GetUserProfile {
+
+        @Test
+        @DisplayName("1. 성공(비로그인)이면 200과 followerCount·프로필을 반환한다")
+        void getUserProfile_anonymous_returns200WithFollowerCountAndProfile() {
+            client.get().uri("/api/users/" + followerCountFixture.creatorId())
+                    .exchange()
+                    .expectStatus().isOk()
+                    .expectBody(new ParameterizedTypeReference<ApiResponse<UserProfileResponse>>() {})
+                    .value(body -> {
+                        assertThat(body.resultCode()).isEqualTo("200-1");
+                        assertThat(body.data().id()).isEqualTo(followerCountFixture.creatorId());
+                        assertThat(body.data().followerCount()).isEqualTo(followerCountFixture.followerCount());
+                        assertThat(body.data().profile()).isNotNull();
+                    });
+        }
+
+        @Test
+        @DisplayName("2. 성공(로그인 상태)이면 200을 반환한다")
+        void getUserProfile_authenticated_returns200() {
+            String accessToken = createUserAndGetAccessToken(uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname());
+
+            client.get().uri("/api/users/" + followerCountFixture.creatorId())
+                    .header("Authorization", bearer(accessToken))
+                    .exchange()
+                    .expectStatus().isOk()
+                    .expectBody(new ParameterizedTypeReference<ApiResponse<UserProfileResponse>>() {})
+                    .value(body -> assertThat(body.resultCode()).isEqualTo("200-1"));
+        }
+
+        @Test
+        @DisplayName("3. 존재하지 않는 id면 404-2를 반환한다")
+        void getUserProfile_nonExistentId_returns404_2() {
+            client.get().uri("/api/users/" + NON_EXISTENT_USER_ID)
+                    .exchange()
+                    .expectStatus().isNotFound()
+                    .expectBody(new ParameterizedTypeReference<ApiResponse<Void>>() {})
+                    .value(body -> assertThat(body.resultCode()).isEqualTo("404-2"));
+        }
+
+        @Test
+        @DisplayName("4. 탈퇴한 유저 id면 404-2를 반환한다")
+        void getUserProfile_softDeletedUserId_returns404_2() {
+            String email = uniqueEmail();
+            signUp(email, DEFAULT_PASSWORD, uniqueNickname());
+            ApiResponse<LoginResponse> loginResult = login(email, DEFAULT_PASSWORD);
+            String accessToken = loginResult.data().accessToken();
+            Long userId = loginResult.data().user().id();
+
+            deleteAccount(accessToken, DEFAULT_PASSWORD).expectStatus().isOk();
+
+            client.get().uri("/api/users/" + userId)
+                    .exchange()
+                    .expectStatus().isNotFound()
+                    .expectBody(new ParameterizedTypeReference<ApiResponse<Void>>() {})
+                    .value(body -> assertThat(body.resultCode()).isEqualTo("404-2"));
+        }
+
+        @Test
+        @DisplayName("5. 비숫자 id를 비로그인으로 호출하면 401-1을 반환한다 (정규식 미매칭)")
+        // FIXME: SecurityConfig의 permitAll이 GET /api/users/{id:\d+}로 숫자 id만 허용해서,
+        // 비숫자 경로는 이 규칙에 매칭되지 않고 /api/** → authenticated 규칙으로 떨어진다.
+        // 존재하지 않는 리소스(404)나 타입 불일치(400)가 아니라 401이 응답된다.
+        // 상세: docs/user-e2e-known-issues.md #4
+        void getUserProfile_nonNumericId_unauthenticated_returns401_1() {
+            client.get().uri("/api/users/abc")
+                    .exchange()
+                    .expectStatus().isUnauthorized()
+                    .expectBody(new ParameterizedTypeReference<ApiResponse<Void>>() {})
+                    .value(body -> assertThat(body.resultCode()).isEqualTo("401-1"));
+        }
+    }
+
+    @Nested
+    @DisplayName("POST /api/users/me/medias — 프로필 이미지 생성")
+    class UploadMedia {
+
+        @Test
+        @DisplayName("1. 성공하면 201과 업로드된 이미지 URL·mediaType을 반환한다")
+        void uploadMedia_success_returns201WithUrlAndImageType() {
+            String accessToken = createUserAndGetAccessToken(uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname());
+
+            uploadMedia(accessToken, mediaFilePart(PNG_BYTES, "profile.png", MediaType.IMAGE_PNG))
+                    .expectStatus().isCreated()
+                    .expectBody(new ParameterizedTypeReference<ApiResponse<UserMediaResponse>>() {})
+                    .value(body -> {
+                        assertThat(body.resultCode()).isEqualTo("201-1");
+                        assertThat(body.data().url()).isNotBlank();
+                        assertThat(body.data().mediaType())
+                                .isEqualTo(com.scommit.domain.media.media.entity.MediaType.IMAGE);
+                    });
+        }
+
+        @Test
+        @DisplayName("2. 미인증이면 401-1을 반환한다")
+        void uploadMedia_unauthenticated_returns401_1() {
+            client.post().uri("/api/users/me/medias")
+                    .contentType(MediaType.MULTIPART_FORM_DATA)
+                    .body(mediaFilePart(PNG_BYTES, "profile.png", MediaType.IMAGE_PNG))
+                    .exchange()
+                    .expectStatus().isUnauthorized()
+                    .expectBody(new ParameterizedTypeReference<ApiResponse<Void>>() {})
+                    .value(body -> assertThat(body.resultCode()).isEqualTo("401-1"));
+        }
+
+        @Test
+        @DisplayName("3. 빈 파일이면 400-4를 반환한다")
+        void uploadMedia_emptyFile_returns400_4() {
+            String accessToken = createUserAndGetAccessToken(uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname());
+
+            uploadMedia(accessToken, mediaFilePart(new byte[0], "empty.png", MediaType.IMAGE_PNG))
+                    .expectStatus().isBadRequest()
+                    .expectBody(new ParameterizedTypeReference<ApiResponse<Void>>() {})
+                    .value(body -> assertThat(body.resultCode()).isEqualTo("400-4"));
+        }
+
+        @Test
+        @DisplayName("4. text/plain 파일이면 415-1을 반환한다")
+        void uploadMedia_unsupportedFileType_returns415_1() {
+            String accessToken = createUserAndGetAccessToken(uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname());
+
+            uploadMedia(accessToken, mediaFilePart(PNG_BYTES, "file.txt", MediaType.TEXT_PLAIN))
+                    .expectStatus().isEqualTo(415)
+                    .expectBody(new ParameterizedTypeReference<ApiResponse<Void>>() {})
+                    .value(body -> assertThat(body.resultCode()).isEqualTo("415-1"));
+        }
+    }
+
+    @Nested
+    @DisplayName("GET /api/users/{id}/medias — 프로필 이미지 조회")
+    class GetMedia {
+
+        @Test
+        @DisplayName("1. 미디어가 있으면 200과 이미지 URL을 반환한다")
+        void getMedia_withMedia_returns200WithUrl() {
+            String email = uniqueEmail();
+            signUp(email, DEFAULT_PASSWORD, uniqueNickname());
+            ApiResponse<LoginResponse> loginResult = login(email, DEFAULT_PASSWORD);
+            String accessToken = loginResult.data().accessToken();
+            Long userId = loginResult.data().user().id();
+
+            uploadMedia(accessToken, mediaFilePart(PNG_BYTES, "profile.png", MediaType.IMAGE_PNG))
+                    .expectStatus().isCreated();
+
+            client.get().uri("/api/users/" + userId + "/medias")
+                    .exchange()
+                    .expectStatus().isOk()
+                    .expectBody(new ParameterizedTypeReference<ApiResponse<UserMediaResponse>>() {})
+                    .value(body -> {
+                        assertThat(body.resultCode()).isEqualTo("200-1");
+                        assertThat(body.data().url()).isNotBlank();
+                        assertThat(body.data().userId()).isEqualTo(userId);
+                    });
+        }
+
+        @Test
+        @DisplayName("2. 미디어가 없으면 200과 data=null을 반환한다 (404 아님)")
+        void getMedia_withoutMedia_returns200WithNullData() {
+            String email = uniqueEmail();
+            signUp(email, DEFAULT_PASSWORD, uniqueNickname());
+            ApiResponse<LoginResponse> loginResult = login(email, DEFAULT_PASSWORD);
+            Long userId = loginResult.data().user().id();
+
+            client.get().uri("/api/users/" + userId + "/medias")
+                    .exchange()
+                    .expectStatus().isOk()
+                    .expectBody(new ParameterizedTypeReference<ApiResponse<UserMediaResponse>>() {})
+                    .value(body -> {
+                        assertThat(body.resultCode()).isEqualTo("200-1");
+                        assertThat(body.data()).isNull();
+                    });
+        }
+
+        @Test
+        @DisplayName("3. 존재하지 않는 유저면 404-2를 반환한다")
+        void getMedia_nonExistentUser_returns404_2() {
+            client.get().uri("/api/users/" + NON_EXISTENT_USER_ID + "/medias")
+                    .exchange()
+                    .expectStatus().isNotFound()
+                    .expectBody(new ParameterizedTypeReference<ApiResponse<Void>>() {})
+                    .value(body -> assertThat(body.resultCode()).isEqualTo("404-2"));
+        }
+    }
+
+    @Nested
+    @DisplayName("GET /api/users/search — 유저 검색")
+    class SearchUsers {
+
+        private RestTestClient.ResponseSpec searchUsers(String keyword, Integer page, Integer size) {
+            UriComponentsBuilder builder = UriComponentsBuilder.fromPath("/api/users/search");
+            if (keyword != null) {
+                builder.queryParam("keyword", keyword);
+            }
+            if (page != null) {
+                builder.queryParam("page", page);
+            }
+            if (size != null) {
+                builder.queryParam("size", size);
+            }
+            return client.get().uri(builder.build().toUriString()).exchange();
+        }
+
+        @Test
+        @DisplayName("1. 키워드가 매칭되면 200과 기대 닉네임을 포함한 content를 반환한다")
+        void searchUsers_matchingKeyword_returns200WithExpectedNicknames() {
+            searchUsers(searchPagingFixture.nicknamePrefix(), null, null)
+                    .expectStatus().isOk()
+                    .expectBody(new ParameterizedTypeReference<ApiResponse<PageResult<UserSearchResponse>>>() {})
+                    .value(body -> {
+                        assertThat(body.resultCode()).isEqualTo("200-1");
+                        assertThat(body.data().totalElements()).isEqualTo(searchPagingFixture.userIds().size());
+                        assertThat(body.data().content())
+                                .extracting(UserSearchResponse::nickname)
+                                .contains(searchPagingFixture.nicknamePrefix() + "1");
+                    });
+        }
+
+        @Test
+        @DisplayName("2. keyword를 지정하지 않으면 200과 빈 Page를 반환한다")
+        void searchUsers_missingKeyword_returns200WithEmptyPage() {
+            searchUsers(null, null, null)
+                    .expectStatus().isOk()
+                    .expectBody(new ParameterizedTypeReference<ApiResponse<PageResult<UserSearchResponse>>>() {})
+                    .value(body -> {
+                        assertThat(body.resultCode()).isEqualTo("200-1");
+                        assertThat(body.data().content()).isEmpty();
+                        assertThat(body.data().totalElements()).isZero();
+                    });
+        }
+
+        @Test
+        @DisplayName("3. 매칭되는 유저가 없는 키워드면 200과 빈 Page를 반환한다")
+        void searchUsers_noMatchKeyword_returns200WithEmptyPage() {
+            // 픽스처 접두사 자체에 존재하지 않는 접미사를 붙여, 다른 테스트가 회원가입으로 만든
+            // 계정과 겹치지 않으면서도 빈 결과가 나오도록 한다.
+            searchUsers(searchPagingFixture.nicknamePrefix() + "-no-match-xyz", null, null)
+                    .expectStatus().isOk()
+                    .expectBody(new ParameterizedTypeReference<ApiResponse<PageResult<UserSearchResponse>>>() {})
+                    .value(body -> {
+                        assertThat(body.resultCode()).isEqualTo("200-1");
+                        assertThat(body.data().content()).isEmpty();
+                        assertThat(body.data().totalElements()).isZero();
+                    });
+        }
+
+        @Test
+        @DisplayName("4. page·size를 지정하면 페이징이 반영된다")
+        void searchUsers_withPageAndSize_reflectsPaging() {
+            searchUsers(searchPagingFixture.nicknamePrefix(), 0, 2)
+                    .expectStatus().isOk()
+                    .expectBody(new ParameterizedTypeReference<ApiResponse<PageResult<UserSearchResponse>>>() {})
+                    .value(body -> {
+                        assertThat(body.resultCode()).isEqualTo("200-1");
+                        assertThat(body.data().content()).hasSize(2);
+                        assertThat(body.data().totalElements()).isEqualTo(searchPagingFixture.userIds().size());
+                        assertThat(body.data().size()).isEqualTo(2);
+                        assertThat(body.data().number()).isZero();
+                    });
+        }
+    }
+
+    @Nested
+    @DisplayName("DELETE /api/users/me/medias — 프로필 이미지 삭제")
+    class DeleteMedia {
+
+        private RestTestClient.ResponseSpec deleteMedia(String accessToken) {
+            return client.method(HttpMethod.DELETE).uri("/api/users/me/medias")
+                    .header("Authorization", bearer(accessToken))
+                    .exchange();
+        }
+
+        @Test
+        @DisplayName("1. 성공하면 200을 반환한다")
+        void deleteMedia_success_returns200() {
+            String accessToken = createUserAndGetAccessToken(uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname());
+
+            uploadMedia(accessToken, mediaFilePart(PNG_BYTES, "profile.png", MediaType.IMAGE_PNG))
+                    .expectStatus().isCreated();
+
+            deleteMedia(accessToken)
+                    .expectStatus().isOk()
+                    .expectBody(new ParameterizedTypeReference<ApiResponse<Void>>() {})
+                    .value(body -> assertThat(body.resultCode()).isEqualTo("200-1"));
+        }
+
+        @Test
+        @DisplayName("2. 미인증이면 401-1을 반환한다")
+        void deleteMedia_unauthenticated_returns401_1() {
+            client.method(HttpMethod.DELETE).uri("/api/users/me/medias")
+                    .exchange()
+                    .expectStatus().isUnauthorized()
+                    .expectBody(new ParameterizedTypeReference<ApiResponse<Void>>() {})
+                    .value(body -> assertThat(body.resultCode()).isEqualTo("401-1"));
+        }
+
+        @Test
+        @DisplayName("3. 미디어가 없으면 404-7을 반환한다 (404-2와 다름)")
+        void deleteMedia_noMedia_returns404_7() {
+            String accessToken = createUserAndGetAccessToken(uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname());
+
+            deleteMedia(accessToken)
+                    .expectStatus().isNotFound()
+                    .expectBody(new ParameterizedTypeReference<ApiResponse<Void>>() {})
+                    .value(body -> assertThat(body.resultCode()).isEqualTo("404-7"));
         }
     }
 }
