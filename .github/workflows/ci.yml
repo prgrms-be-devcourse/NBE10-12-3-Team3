@@ -2,9 +2,9 @@ name:  TripleS CI
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "dev" ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ "main", "dev" ]
 
 jobs:
   build:
@@ -81,12 +81,7 @@ jobs:
               const linesStatus = linesPercent >= 80 ? '✅' : '⚠️';
               const branchesStatus = branchesPercent >= 70 ? '✅' : '⚠️';
 
-              overallReport = `### ✅ 전체 커버리지 현황
-| 메트릭 | 커버리지 | 라인 수 | 상태 | 목표 |
-|--------|---------|--------|------|------|
-| **라인** | ${linesPercent}% | ${linesCovered}/${linesTotal} | ${linesStatus} | 80% |
-| **브랜치** | ${branchesPercent}% | ${branchesCovered}/${branchesTotal} | ${branchesStatus} | 70% |
-`;
+              overallReport = `### ✅ 전체 커버리지 현황\n| 메트릭 | 커버리지 | 라인 수 | 상태 | 목표 |\n|--------|---------|--------|------|------|\n| **라인** | ${linesPercent}% | ${linesCovered}/${linesTotal} | ${linesStatus} | 80% |\n| **브랜치** | ${branchesPercent}% | ${branchesCovered}/${branchesTotal} | ${branchesStatus} | 70% |\n`;
             }
 
             // 패키지별 커버리지 추출
@@ -123,14 +118,7 @@ jobs:
               });
             }
 
-            const comment = `## 📊 Jacoco 커버리지 리포트
-📌 **기준 커밋**: [\`${commitSha}\`](https://github.com/${{ github.repository }}/commit/${context.payload.pull_request.head.sha}) - ${commitMessage}
-
-${overallReport}
-
-${packageReport}
-
-💬 [상세 리포트 보기](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})`;
+            const comment = `## 📊 Jacoco 커버리지 리포트\n📌 **기준 커밋**: [\`${commitSha}\`](https://github.com/${{ github.repository }}/commit/${context.payload.pull_request.head.sha}) - ${commitMessage}\n\n${overallReport}\n\n${packageReport}\n\n💬 [상세 리포트 보기](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})`;
 
             // 기존 댓글 찾기
             const comments = await github.rest.issues.listComments({
