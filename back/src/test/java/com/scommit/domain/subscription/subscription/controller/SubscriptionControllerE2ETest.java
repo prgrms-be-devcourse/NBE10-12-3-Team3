@@ -61,28 +61,28 @@ class SubscriptionControllerE2ETest {
     @Test
     @DisplayName("예외: 자기 자신을 팔로우 (400-3)")
     void follow_Self() {
-        client.post().uri("/api/subscriptions/follow/{creatorId}", myId)
+        var response = client.post().uri("/api/subscriptions/follow/{creatorId}", myId)
                 .header("Authorization", "Bearer " + myToken)
-                .exchange()
-                .expectStatus().isBadRequest();
+                .exchange();
+        expectResultCode(response, HttpStatus.BAD_REQUEST, "400-3");
     }
     @Test
     @DisplayName("예외: 존재하지 않는 유저 팔로우 (404-2)")
     void follow_NotFound() {
-        client.post().uri("/api/subscriptions/follow/999")
+        var response = client.post().uri("/api/subscriptions/follow/999")
                 .header("Authorization", "Bearer " + myToken)
-                .exchange()
-                .expectStatus().isNotFound();
+                .exchange();
+        expectResultCode(response, HttpStatus.NOT_FOUND, "404-2");
     }
     @Test
-    @DisplayName("예외: 이미 팔로우 중인 창작자 팔로우 (409-5)")
+    @DisplayName("예외: 이미 팔로우 중인 창작자 팔로우 (409-2)")
     void follow_AlreadySubscribed() {
         client.post().uri("/api/subscriptions/follow/{creatorId}", creatorId).header("Authorization", "Bearer " + myToken).exchange();
 
-        client.post().uri("/api/subscriptions/follow/{creatorId}", creatorId)
+        var response = client.post().uri("/api/subscriptions/follow/{creatorId}", creatorId)
                 .header("Authorization", "Bearer " + myToken)
-                .exchange()
-                .expectStatus().isEqualTo(HttpStatus.CONFLICT);
+                .exchange();
+        expectResultCode(response, HttpStatus.CONFLICT, "409-2");
     }
     @Test
     @DisplayName("예외: creatorId 타입 불일치 (400)")
@@ -110,20 +110,20 @@ class SubscriptionControllerE2ETest {
                 .expectStatus().isUnauthorized();
     }
     @Test
-    @DisplayName("예외: 존재하지 않는 유저 언팔로우 (404-2)")
+    @DisplayName("예외: 존재하지 않는 유저 언팔로우 (404-4)")
     void unfollow_NotFound() {
-        client.delete().uri("/api/subscriptions/follow/999")
+        var response = client.delete().uri("/api/subscriptions/follow/999")
                 .header("Authorization", "Bearer " + myToken)
-                .exchange()
-                .expectStatus().isNotFound();
+                .exchange();
+        expectResultCode(response, HttpStatus.NOT_FOUND, "404-4");
     }
     @Test
-    @DisplayName("예외: 팔로우하지 않은 창작자 언팔로우 (404-5)")
+    @DisplayName("예외: 팔로우하지 않은 창작자 언팔로우 (404-4)")
     void unfollow_NotSubscribed() {
-        client.delete().uri("/api/subscriptions/follow/{creatorId}", creatorId)
+        var response = client.delete().uri("/api/subscriptions/follow/{creatorId}", creatorId)
                 .header("Authorization", "Bearer " + myToken)
-                .exchange()
-                .expectStatus().isNotFound();
+                .exchange();
+        expectResultCode(response, HttpStatus.NOT_FOUND, "404-4");
     }
     @Test
     @DisplayName("예외: creatorId 타입 불일치 (400)")
@@ -159,28 +159,28 @@ class SubscriptionControllerE2ETest {
     @Test
     @DisplayName("예외: 자기 자신 멤버십 가입 (400-3)")
     void joinMembership_Self() {
-        client.post().uri("/api/subscriptions/membership/{creatorId}", myId)
+        var response = client.post().uri("/api/subscriptions/membership/{creatorId}", myId)
                 .header("Authorization", "Bearer " + myToken)
-                .exchange()
-                .expectStatus().isBadRequest();
+                .exchange();
+        expectResultCode(response, HttpStatus.BAD_REQUEST, "400-3");
     }
     @Test
     @DisplayName("예외: 존재하지 않는 유저 멤버십 가입 (404-2)")
     void joinMembership_NotFound() {
-        client.post().uri("/api/subscriptions/membership/999")
+        var response = client.post().uri("/api/subscriptions/membership/999")
                 .header("Authorization", "Bearer " + myToken)
-                .exchange()
-                .expectStatus().isNotFound();
+                .exchange();
+        expectResultCode(response, HttpStatus.NOT_FOUND, "404-2");
     }
     @Test
-    @DisplayName("예외: 이미 가입한 멤버십 가입 (409-6)")
+    @DisplayName("예외: 이미 가입한 멤버십 가입 (409-5)")
     void joinMembership_AlreadyMembership() {
         client.post().uri("/api/subscriptions/membership/{creatorId}", creatorId).header("Authorization", "Bearer " + myToken).exchange();
 
-        client.post().uri("/api/subscriptions/membership/{creatorId}", creatorId)
+        var response = client.post().uri("/api/subscriptions/membership/{creatorId}", creatorId)
                 .header("Authorization", "Bearer " + myToken)
-                .exchange()
-                .expectStatus().isEqualTo(HttpStatus.CONFLICT);
+                .exchange();
+        expectResultCode(response, HttpStatus.CONFLICT, "409-5");
     }
     @Test
     @DisplayName("예외: creatorId 타입 불일치 (400)")
@@ -212,18 +212,18 @@ class SubscriptionControllerE2ETest {
     void cancelMembership_NotMembership() {
         client.post().uri("/api/subscriptions/follow/{creatorId}", creatorId).header("Authorization", "Bearer " + myToken).exchange();
 
-        client.delete().uri("/api/subscriptions/membership/{creatorId}", creatorId)
+        var response = client.delete().uri("/api/subscriptions/membership/{creatorId}", creatorId)
                 .header("Authorization", "Bearer " + myToken)
-                .exchange()
-                .expectStatus().isEqualTo(HttpStatus.CONFLICT);
+                .exchange();
+        expectResultCode(response, HttpStatus.CONFLICT, "409-6");
     }
     @Test
-    @DisplayName("예외: 존재하지 않는 유저 멤버십 취소 (404-2)")
+    @DisplayName("예외: 존재하지 않는 유저 멤버십 취소 (404-4)")
     void cancelMembership_NotFound() {
-        client.delete().uri("/api/subscriptions/membership/999")
+        var response = client.delete().uri("/api/subscriptions/membership/999")
                 .header("Authorization", "Bearer " + myToken)
-                .exchange()
-                .expectStatus().isNotFound();
+                .exchange();
+        expectResultCode(response, HttpStatus.NOT_FOUND, "404-4");
     }
     @Test
     @DisplayName("예외: creatorId 타입 불일치 (400)")
@@ -239,7 +239,8 @@ class SubscriptionControllerE2ETest {
         client.get().uri("/api/subscriptions", creatorId)
                 .header("Authorization", "Bearer " + myToken)
                 .exchange()
-                .expectStatus().isOk();
+                .expectStatus().isOk()
+                .expectBody().jsonPath("$.data.content").isArray();
     }
     @Test
     @DisplayName("성공: 구독 목록 조회 (page=0, size=1)")
@@ -270,7 +271,8 @@ class SubscriptionControllerE2ETest {
         client.get().uri("/api/subscriptions/count", creatorId)
                 .header("Authorization", "Bearer " + myToken)
                 .exchange()
-                .expectStatus().isOk();
+                .expectStatus().isOk()
+                .expectBody().jsonPath("$.data").isNumber();
     }
     @Test
     @DisplayName("예외: 인증되지 않은 사용자 (401)")
@@ -282,6 +284,7 @@ class SubscriptionControllerE2ETest {
     @Test
     @DisplayName("성공: 상태 조회 (FOLLOW)")
     void getStatus_Follow() {
+        client.post().uri("/api/subscriptions/follow/{creatorId}", creatorId).header("Authorization", "Bearer " + myToken).exchange();
         client.get().uri("/api/subscriptions/status/{creatorId}", creatorId)
                 .header("Authorization", "Bearer " + myToken)
                 .exchange()
@@ -290,6 +293,7 @@ class SubscriptionControllerE2ETest {
     @Test
     @DisplayName("성공: 상태 조회 (MEMBERSHIP)")
     void getStatus_Membership() {
+        client.post().uri("/api/subscriptions/membership/{creatorId}", creatorId).header("Authorization", "Bearer " + myToken).exchange();
         client.get().uri("/api/subscriptions/status/{creatorId}", creatorId)
                 .header("Authorization", "Bearer " + myToken)
                 .exchange()
@@ -316,7 +320,8 @@ class SubscriptionControllerE2ETest {
         client.get().uri("/api/subscriptions/status/999", creatorId)
                 .header("Authorization", "Bearer " + myToken)
                 .exchange()
-                .expectStatus().isOk();
+                .expectStatus().isOk()
+                .expectBody().jsonPath("$.data.status").isEqualTo("NONE");
     }
     @Test
     @DisplayName("예외: creatorId 타입 불일치 (400)")
@@ -344,9 +349,63 @@ class SubscriptionControllerE2ETest {
     @Test
     @DisplayName("시나리오: 팔로우 -> 멤버십 업그레이드 -> 다운그레이드 -> 언팔로우 흐름")
     void subscriptionLifecycleScenario() {
+        // 1. 상태 조회 (초기 NONE)
         client.get().uri("/api/subscriptions/status/{creatorId}", creatorId)
                 .header("Authorization", "Bearer " + myToken)
                 .exchange()
+                .expectStatus().isOk()
+                .expectBody().jsonPath("$.data.status").isEqualTo("NONE");
+        
+        // 2. 팔로우
+        client.post().uri("/api/subscriptions/follow/{creatorId}", creatorId)
+                .header("Authorization", "Bearer " + myToken)
+                .exchange()
                 .expectStatus().isOk();
+                
+        // 3. 상태 조회 (FOLLOW)
+        client.get().uri("/api/subscriptions/status/{creatorId}", creatorId)
+                .header("Authorization", "Bearer " + myToken)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody().jsonPath("$.data.status").isEqualTo("FOLLOW");
+
+        // 4. 멤버십 업그레이드
+        client.post().uri("/api/subscriptions/membership/{creatorId}", creatorId)
+                .header("Authorization", "Bearer " + myToken)
+                .exchange()
+                .expectStatus().isOk();
+
+        // 5. 상태 조회 (MEMBERSHIP)
+        client.get().uri("/api/subscriptions/status/{creatorId}", creatorId)
+                .header("Authorization", "Bearer " + myToken)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody().jsonPath("$.data.status").isEqualTo("MEMBERSHIP");
+
+        // 6. 멤버십 취소 (다운그레이드)
+        client.delete().uri("/api/subscriptions/membership/{creatorId}", creatorId)
+                .header("Authorization", "Bearer " + myToken)
+                .exchange()
+                .expectStatus().isOk();
+
+        // 7. 상태 조회 (FOLLOW)
+        client.get().uri("/api/subscriptions/status/{creatorId}", creatorId)
+                .header("Authorization", "Bearer " + myToken)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody().jsonPath("$.data.status").isEqualTo("FOLLOW");
+
+        // 8. 언팔로우
+        client.delete().uri("/api/subscriptions/follow/{creatorId}", creatorId)
+                .header("Authorization", "Bearer " + myToken)
+                .exchange()
+                .expectStatus().isOk();
+
+        // 9. 상태 조회 (NONE)
+        client.get().uri("/api/subscriptions/status/{creatorId}", creatorId)
+                .header("Authorization", "Bearer " + myToken)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody().jsonPath("$.data.status").isEqualTo("NONE");
     }
 }
