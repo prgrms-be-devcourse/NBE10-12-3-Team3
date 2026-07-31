@@ -44,7 +44,7 @@ class SubscriptionControllerE2ETest {
         creatorId = creator.user().id();
     }
     @Test
-    @DisplayName("?깃났: 李쎌옉???붾줈??(200)")
+    @DisplayName("성공: 창작자 팔로우 (200)")
     void follow_Success() {
         client.post().uri("/api/subscriptions/follow/{creatorId}", creatorId)
                 .header("Authorization", "Bearer " + myToken)
@@ -52,14 +52,14 @@ class SubscriptionControllerE2ETest {
                 .expectStatus().isOk();
     }
     @Test
-    @DisplayName("?덉쇅: ?몄쬆?섏? ?딆? ?ъ슜??(401)")
+    @DisplayName("예외: 인증되지 않은 사용자 (401)")
     void follow_Unauthorized() {
         client.post().uri("/api/subscriptions/follow/{creatorId}", creatorId)
                 .exchange()
                 .expectStatus().isUnauthorized();
     }
     @Test
-    @DisplayName("?덉쇅: ?먭린 ?먯떊???붾줈??(400-3)")
+    @DisplayName("예외: 자기 자신을 팔로우 (400-3)")
     void follow_Self() {
         client.post().uri("/api/subscriptions/follow/{creatorId}", myId)
                 .header("Authorization", "Bearer " + myToken)
@@ -67,7 +67,7 @@ class SubscriptionControllerE2ETest {
                 .expectStatus().isBadRequest();
     }
     @Test
-    @DisplayName("?덉쇅: 議댁옱?섏? ?딅뒗 ?좎? ?붾줈??(404-2)")
+    @DisplayName("예외: 존재하지 않는 유저 팔로우 (404-2)")
     void follow_NotFound() {
         client.post().uri("/api/subscriptions/follow/999")
                 .header("Authorization", "Bearer " + myToken)
@@ -75,7 +75,7 @@ class SubscriptionControllerE2ETest {
                 .expectStatus().isNotFound();
     }
     @Test
-    @DisplayName("?덉쇅: ?대? ?붾줈??以묒씤 李쎌옉???붾줈??(409-5)")
+    @DisplayName("예외: 이미 팔로우 중인 창작자 팔로우 (409-5)")
     void follow_AlreadySubscribed() {
         client.post().uri("/api/subscriptions/follow/{creatorId}", creatorId).header("Authorization", "Bearer " + myToken).exchange();
 
@@ -85,7 +85,7 @@ class SubscriptionControllerE2ETest {
                 .expectStatus().isEqualTo(HttpStatus.CONFLICT);
     }
     @Test
-    @DisplayName("?덉쇅: creatorId ???遺덉씪移?(400)")
+    @DisplayName("예외: creatorId 타입 불일치 (400)")
     void follow_TypeMismatch() {
         client.post().uri("/api/subscriptions/follow/abc")
                 .header("Authorization", "Bearer " + myToken)
@@ -93,7 +93,7 @@ class SubscriptionControllerE2ETest {
                 .expectStatus().isBadRequest();
     }
     @Test
-    @DisplayName("?깃났: 李쎌옉???명뙏濡쒖슦 (200)")
+    @DisplayName("성공: 창작자 언팔로우 (200)")
     void unfollow_Success() {
         client.post().uri("/api/subscriptions/follow/{creatorId}", creatorId).header("Authorization", "Bearer " + myToken).exchange();
 
@@ -103,14 +103,14 @@ class SubscriptionControllerE2ETest {
                 .expectStatus().isOk();
     }
     @Test
-    @DisplayName("?덉쇅: ?몄쬆?섏? ?딆? ?ъ슜??(401)")
+    @DisplayName("예외: 인증되지 않은 사용자 (401)")
     void unfollow_Unauthorized() {
         client.delete().uri("/api/subscriptions/follow/{creatorId}", creatorId)
                 .exchange()
                 .expectStatus().isUnauthorized();
     }
     @Test
-    @DisplayName("?덉쇅: 議댁옱?섏? ?딅뒗 ?좎? ?명뙏濡쒖슦 (404-2)")
+    @DisplayName("예외: 존재하지 않는 유저 언팔로우 (404-2)")
     void unfollow_NotFound() {
         client.delete().uri("/api/subscriptions/follow/999")
                 .header("Authorization", "Bearer " + myToken)
@@ -118,7 +118,7 @@ class SubscriptionControllerE2ETest {
                 .expectStatus().isNotFound();
     }
     @Test
-    @DisplayName("?덉쇅: ?붾줈?고븯吏 ?딆? 李쎌옉???명뙏濡쒖슦 (404-5)")
+    @DisplayName("예외: 팔로우하지 않은 창작자 언팔로우 (404-5)")
     void unfollow_NotSubscribed() {
         client.delete().uri("/api/subscriptions/follow/{creatorId}", creatorId)
                 .header("Authorization", "Bearer " + myToken)
@@ -126,7 +126,7 @@ class SubscriptionControllerE2ETest {
                 .expectStatus().isNotFound();
     }
     @Test
-    @DisplayName("?덉쇅: creatorId ???遺덉씪移?(400)")
+    @DisplayName("예외: creatorId 타입 불일치 (400)")
     void unfollow_TypeMismatch() {
         client.delete().uri("/api/subscriptions/follow/abc")
                 .header("Authorization", "Bearer " + myToken)
@@ -134,7 +134,7 @@ class SubscriptionControllerE2ETest {
                 .expectStatus().isBadRequest();
     }
     @Test
-    @DisplayName("?깃났: 硫ㅻ쾭??媛??(200)")
+    @DisplayName("성공: 멤버십 가입 (200)")
     void joinMembership_Success() {
         client.post().uri("/api/subscriptions/membership/{creatorId}", creatorId)
                 .header("Authorization", "Bearer " + myToken)
@@ -142,7 +142,7 @@ class SubscriptionControllerE2ETest {
                 .expectStatus().isOk();
     }
     @Test
-    @DisplayName("?깃났: ?붾줈???곹깭?먯꽌 硫ㅻ쾭??媛?????먮룞 ?낃렇?덉씠??(200)")
+    @DisplayName("성공: 팔로우 상태에서 멤버십 가입 시 자동 업그레이드 (200)")
     void joinMembership_UpgradeFromFollow() {
         client.post().uri("/api/subscriptions/membership/{creatorId}", creatorId)
                 .header("Authorization", "Bearer " + myToken)
@@ -150,14 +150,14 @@ class SubscriptionControllerE2ETest {
                 .expectStatus().isOk();
     }
     @Test
-    @DisplayName("?덉쇅: ?몄쬆?섏? ?딆? ?ъ슜??(401)")
+    @DisplayName("예외: 인증되지 않은 사용자 (401)")
     void joinMembership_Unauthorized() {
         client.post().uri("/api/subscriptions/membership/{creatorId}", creatorId)
                 .exchange()
                 .expectStatus().isUnauthorized();
     }
     @Test
-    @DisplayName("?덉쇅: ?먭린 ?먯떊 硫ㅻ쾭??媛??(400-3)")
+    @DisplayName("예외: 자기 자신 멤버십 가입 (400-3)")
     void joinMembership_Self() {
         client.post().uri("/api/subscriptions/membership/{creatorId}", myId)
                 .header("Authorization", "Bearer " + myToken)
@@ -165,7 +165,7 @@ class SubscriptionControllerE2ETest {
                 .expectStatus().isBadRequest();
     }
     @Test
-    @DisplayName("?덉쇅: 議댁옱?섏? ?딅뒗 ?좎? 硫ㅻ쾭??媛??(404-2)")
+    @DisplayName("예외: 존재하지 않는 유저 멤버십 가입 (404-2)")
     void joinMembership_NotFound() {
         client.post().uri("/api/subscriptions/membership/999")
                 .header("Authorization", "Bearer " + myToken)
@@ -183,7 +183,7 @@ class SubscriptionControllerE2ETest {
                 .expectStatus().isEqualTo(HttpStatus.CONFLICT);
     }
     @Test
-    @DisplayName("?덉쇅: creatorId ???遺덉씪移?(400)")
+    @DisplayName("예외: creatorId 타입 불일치 (400)")
     void joinMembership_TypeMismatch() {
         client.post().uri("/api/subscriptions/membership/abc")
                 .header("Authorization", "Bearer " + myToken)
@@ -191,7 +191,7 @@ class SubscriptionControllerE2ETest {
                 .expectStatus().isBadRequest();
     }
     @Test
-    @DisplayName("?깃났: 硫ㅻ쾭???댁? ???붾줈?곕줈 媛뺣벑 (200)")
+    @DisplayName("성공: 멤버십 취소 후 팔로우로 강등 (200)")
     void cancelMembership_Success() {
         client.post().uri("/api/subscriptions/membership/{creatorId}", creatorId).header("Authorization", "Bearer " + myToken).exchange();
 
@@ -201,7 +201,7 @@ class SubscriptionControllerE2ETest {
                 .expectStatus().isOk();
     }
     @Test
-    @DisplayName("?덉쇅: ?몄쬆?섏? ?딆? ?ъ슜??(401)")
+    @DisplayName("예외: 인증되지 않은 사용자 (401)")
     void cancelMembership_Unauthorized() {
         client.delete().uri("/api/subscriptions/membership/{creatorId}", creatorId)
                 .exchange()
@@ -218,7 +218,7 @@ class SubscriptionControllerE2ETest {
                 .expectStatus().isEqualTo(HttpStatus.CONFLICT);
     }
     @Test
-    @DisplayName("?덉쇅: 議댁옱?섏? ?딅뒗 ?좎? 硫ㅻ쾭???댁? (404-2)")
+    @DisplayName("예외: 존재하지 않는 유저 멤버십 취소 (404-2)")
     void cancelMembership_NotFound() {
         client.delete().uri("/api/subscriptions/membership/999")
                 .header("Authorization", "Bearer " + myToken)
@@ -226,7 +226,7 @@ class SubscriptionControllerE2ETest {
                 .expectStatus().isNotFound();
     }
     @Test
-    @DisplayName("?덉쇅: creatorId ???遺덉씪移?(400)")
+    @DisplayName("예외: creatorId 타입 불일치 (400)")
     void cancelMembership_TypeMismatch() {
         client.delete().uri("/api/subscriptions/membership/abc")
                 .header("Authorization", "Bearer " + myToken)
@@ -258,14 +258,14 @@ class SubscriptionControllerE2ETest {
                 .expectStatus().isOk();
     }
     @Test
-    @DisplayName("?덉쇅: ?몄쬆?섏? ?딆? ?ъ슜??(401)")
+    @DisplayName("예외: 인증되지 않은 사용자 (401)")
     void getMySubscriptions_Unauthorized() {
         client.get().uri("/api/subscriptions", creatorId)
                 .exchange()
                 .expectStatus().isUnauthorized();
     }
     @Test
-    @DisplayName("?깃났: 援щ룆 ??議고쉶")
+    @DisplayName("성공: 구독 수 조회")
     void getMySubscriptionCount_Success() {
         client.get().uri("/api/subscriptions/count", creatorId)
                 .header("Authorization", "Bearer " + myToken)
@@ -273,7 +273,7 @@ class SubscriptionControllerE2ETest {
                 .expectStatus().isOk();
     }
     @Test
-    @DisplayName("?덉쇅: ?몄쬆?섏? ?딆? ?ъ슜??(401)")
+    @DisplayName("예외: 인증되지 않은 사용자 (401)")
     void getMySubscriptionCount_Unauthorized() {
         client.get().uri("/api/subscriptions/count", creatorId)
                 .exchange()
@@ -327,7 +327,7 @@ class SubscriptionControllerE2ETest {
                 .expectStatus().isBadRequest();
     }
     @Test
-    @DisplayName("?깃났: ?붾줈?뚭? ?녿뒗 ?좎? 議고쉶 (0 諛섑솚)")
+    @DisplayName("성공: 팔로워 수 없는 유저 조회 (0 반환)")
     void getFollowerCount_Zero() {
         client.get().uri("/api/subscriptions/followers/count", creatorId)
                 .header("Authorization", "Bearer " + myToken)
@@ -335,14 +335,14 @@ class SubscriptionControllerE2ETest {
                 .expectStatus().isOk();
     }
     @Test
-    @DisplayName("?덉쇅: ?몄쬆?섏? ?딆? ?ъ슜??(401)")
+    @DisplayName("예외: 인증되지 않은 사용자 (401)")
     void getFollowerCount_Anonymous() {
         client.get().uri("/api/subscriptions/followers/count", creatorId)
                 .exchange()
                 .expectStatus().isUnauthorized();
     }
     @Test
-    @DisplayName("?쒕굹由ъ삤: ?붾줈??-> 硫ㅻ쾭???낃렇?덉씠??-> ?ㅼ슫洹몃젅?대뱶 -> ?명뙏濡쒖슦 ?먮쫫")
+    @DisplayName("시나리오: 팔로우 -> 멤버십 업그레이드 -> 다운그레이드 -> 언팔로우 흐름")
     void subscriptionLifecycleScenario() {
         client.get().uri("/api/subscriptions/status/{creatorId}", creatorId)
                 .header("Authorization", "Bearer " + myToken)
