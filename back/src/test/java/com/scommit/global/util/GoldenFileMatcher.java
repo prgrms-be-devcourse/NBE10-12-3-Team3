@@ -8,15 +8,19 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-public class  GoldenFileMatcher {
+public class GoldenFileMatcher {
+
+    private static final boolean RECORD_MODE = false;
 
     public static void assertEqualsWithGolden(String relativeFilePath, String actualJson) throws Exception {
         Path path = Paths.get("src/test/resources", relativeFilePath);
 
-        if (!Files.exists(path)) {
+        if (!Files.exists(path) || RECORD_MODE) {
             Files.createDirectories(path.getParent());
             Files.writeString(path, actualJson, StandardCharsets.UTF_8);
-            System.out.println("새로운 골든 파일이 생성되었습니다 :  " + path.toAbsolutePath());
+            if (!RECORD_MODE) {
+                System.out.println("새로운 골든 파일이 생성되었습니다 :  " + path.toAbsolutePath());
+            }
             return;
         }
 

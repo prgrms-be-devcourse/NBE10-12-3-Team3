@@ -1,3 +1,8 @@
+SET REFERENTIAL_INTEGRITY FALSE;
+TRUNCATE TABLE subscriptions;
+TRUNCATE TABLE users;
+SET REFERENTIAL_INTEGRITY TRUE;
+
 -- Users for testing
 INSERT INTO users (id, created_at, updated_at, email, password, nickname, role) 
 VALUES 
