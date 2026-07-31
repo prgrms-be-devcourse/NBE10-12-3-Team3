@@ -173,7 +173,7 @@ class SubscriptionControllerE2ETest {
                 .expectStatus().isNotFound();
     }
     @Test
-    @DisplayName("?덉쇅: ?대? 媛?낇븳 硫ㅻ쾭???ш???(409-6)")
+    @DisplayName("예외: 이미 가입한 멤버십 가입 (409-6)")
     void joinMembership_AlreadyMembership() {
         client.post().uri("/api/subscriptions/membership/{creatorId}", creatorId).header("Authorization", "Bearer " + myToken).exchange();
 
@@ -208,7 +208,7 @@ class SubscriptionControllerE2ETest {
                 .expectStatus().isUnauthorized();
     }
     @Test
-    @DisplayName("?덉쇅: 媛?낇븯吏 ?딆? 硫ㅻ쾭???댁? (409-6)")
+    @DisplayName("예외: 가입하지 않은 멤버십 취소 (409-6)")
     void cancelMembership_NotMembership() {
         client.post().uri("/api/subscriptions/follow/{creatorId}", creatorId).header("Authorization", "Bearer " + myToken).exchange();
 
@@ -234,7 +234,7 @@ class SubscriptionControllerE2ETest {
                 .expectStatus().isBadRequest();
     }
     @Test
-    @DisplayName("?깃났: 援щ룆 紐⑸줉 議고쉶 (湲곕낯 ?섏씠吏?")
+    @DisplayName("성공: 구독 목록 조회 (기본 페이징)")
     void getMySubscriptions_Success() {
         client.get().uri("/api/subscriptions", creatorId)
                 .header("Authorization", "Bearer " + myToken)
@@ -242,7 +242,7 @@ class SubscriptionControllerE2ETest {
                 .expectStatus().isOk();
     }
     @Test
-    @DisplayName("?깃났: 援щ룆 紐⑸줉 議고쉶 (page=0, size=1)")
+    @DisplayName("성공: 구독 목록 조회 (page=0, size=1)")
     void getMySubscriptions_Pagination_Small() {
         client.get().uri("/api/subscriptions?page=0&size=1", creatorId)
                 .header("Authorization", "Bearer " + myToken)
@@ -250,7 +250,7 @@ class SubscriptionControllerE2ETest {
                 .expectStatus().isOk();
     }
     @Test
-    @DisplayName("?깃났: 援щ룆 紐⑸줉 議고쉶 (?곗씠???녿뒗 鍮??섏씠吏)")
+    @DisplayName("성공: 구독 목록 조회 (데이터 없는 빈 페이지)")
     void getMySubscriptions_Pagination_Empty() {
         client.get().uri("/api/subscriptions?page=99&size=10", creatorId)
                 .header("Authorization", "Bearer " + myToken)
@@ -280,7 +280,7 @@ class SubscriptionControllerE2ETest {
                 .expectStatus().isUnauthorized();
     }
     @Test
-    @DisplayName("?깃났: ?곹깭 議고쉶 (FOLLOW)")
+    @DisplayName("성공: 상태 조회 (FOLLOW)")
     void getStatus_Follow() {
         client.get().uri("/api/subscriptions/status/{creatorId}", creatorId)
                 .header("Authorization", "Bearer " + myToken)
@@ -288,7 +288,7 @@ class SubscriptionControllerE2ETest {
                 .expectStatus().isOk();
     }
     @Test
-    @DisplayName("?깃났: ?곹깭 議고쉶 (MEMBERSHIP)")
+    @DisplayName("성공: 상태 조회 (MEMBERSHIP)")
     void getStatus_Membership() {
         client.get().uri("/api/subscriptions/status/{creatorId}", creatorId)
                 .header("Authorization", "Bearer " + myToken)
@@ -296,7 +296,7 @@ class SubscriptionControllerE2ETest {
                 .expectStatus().isOk();
     }
     @Test
-    @DisplayName("?깃났: ?곹깭 議고쉶 (NONE)")
+    @DisplayName("성공: 상태 조회 (NONE)")
     void getStatus_None() {
         client.get().uri("/api/subscriptions/status/{creatorId}", creatorId)
                 .header("Authorization", "Bearer " + myToken)
@@ -304,14 +304,14 @@ class SubscriptionControllerE2ETest {
                 .expectStatus().isOk();
     }
     @Test
-    @DisplayName("?덉쇅: ?몄쬆?섏? ?딆? ?ъ슜??(401)")
+    @DisplayName("예외: 인증되지 않은 사용자 (401)")
     void getStatus_Unauthorized() {
         client.get().uri("/api/subscriptions/status/{creatorId}", creatorId)
                 .exchange()
                 .expectStatus().isUnauthorized();
     }
     @Test
-    @DisplayName("?깃났: 議댁옱?섏? ?딅뒗 ?좎? 議고쉶 ?쒖뿉??NONE 諛섑솚 (200)")
+    @DisplayName("성공: 존재하지 않는 유저 조회 시에도 NONE 반환 (200)")
     void getStatus_NotFound() {
         client.get().uri("/api/subscriptions/status/999", creatorId)
                 .header("Authorization", "Bearer " + myToken)
@@ -319,7 +319,7 @@ class SubscriptionControllerE2ETest {
                 .expectStatus().isOk();
     }
     @Test
-    @DisplayName("?덉쇅: creatorId ???遺덉씪移?(400)")
+    @DisplayName("예외: creatorId 타입 불일치 (400)")
     void getStatus_TypeMismatch() {
         client.get().uri("/api/subscriptions/status/abc", creatorId)
                 .header("Authorization", "Bearer " + myToken)
