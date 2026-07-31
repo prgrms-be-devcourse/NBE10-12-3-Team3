@@ -20,7 +20,10 @@ import static com.scommit.global.e2e.E2ETestSupport.uniqueNickname;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @ActiveProfiles("test")
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = "spring.datasource.url=jdbc:h2:mem:subscription_e2edb;MODE=MySQL;DB_CLOSE_DELAY=-1")
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
+        "spring.datasource.url=jdbc:h2:mem:subscription_e2edb;MODE=MySQL;DB_CLOSE_DELAY=-1",
+        "spring.jpa.hibernate.ddl-auto=create-drop"
+})
 class SubscriptionControllerE2ETest {
 
     @LocalServerPort
@@ -144,6 +147,8 @@ class SubscriptionControllerE2ETest {
     @Test
     @DisplayName("성공: 팔로우 상태에서 멤버십 가입 시 자동 업그레이드 (200)")
     void joinMembership_UpgradeFromFollow() {
+        client.post().uri("/api/subscriptions/follow/{creatorId}", creatorId).header("Authorization", "Bearer " + myToken).exchange();
+
         client.post().uri("/api/subscriptions/membership/{creatorId}", creatorId)
                 .header("Authorization", "Bearer " + myToken)
                 .exchange()
@@ -337,7 +342,8 @@ class SubscriptionControllerE2ETest {
         client.get().uri("/api/subscriptions/followers/count", creatorId)
                 .header("Authorization", "Bearer " + myToken)
                 .exchange()
-                .expectStatus().isOk();
+                .expectStatus().isOk()
+                .expectBody().jsonPath("$.data").isEqualTo(0);
     }
     @Test
     @DisplayName("예외: 인증되지 않은 사용자 (401)")
