@@ -41,6 +41,7 @@ import org.springframework.test.web.servlet.client.RestTestClient;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 import static com.scommit.global.e2e.E2ETestSupport.bearer;
@@ -50,6 +51,7 @@ import static com.scommit.global.e2e.E2ETestSupport.expectResultCode;
 import static com.scommit.global.e2e.E2ETestSupport.uniqueEmail;
 import static com.scommit.global.e2e.E2ETestSupport.uniqueNickname;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
 
 @SpringBootTest(
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
@@ -551,7 +553,8 @@ class CommentControllerE2ETest {
 
             LocalDateTime createdUpdatedAt = created.updatedAt();
             LocalDateTime dbUpdatedAtBefore = findComment(created.id()).getUpdatedAt();
-            assertThat(dbUpdatedAtBefore).isEqualTo(createdUpdatedAt);
+            // DB는 나노초보다 낮은 정밀도(예: 마이크로초 반올림)로 저장하므로 완전 일치 대신 오차범위로 비교한다.
+            assertThat(dbUpdatedAtBefore).isCloseTo(createdUpdatedAt, within(1, ChronoUnit.MICROS));
 
             CommentResponse updated = updateCommentRequest(accessToken, postId, created.id(), "수정 후 본문")
                     .expectStatus().isOk()
@@ -561,7 +564,8 @@ class CommentControllerE2ETest {
                     .data();
 
             // 응답 값: 갱신되지 않은 옛 updatedAt 이 그대로 실려 온다.
-            assertThat(updated.updatedAt()).isEqualTo(createdUpdatedAt);
+            // updateComment 가 findById 로 DB에서 다시 읽어온 값이라 마이크로초로 반올림돼 있다.
+            assertThat(updated.updatedAt()).isCloseTo(createdUpdatedAt, within(1, ChronoUnit.MICROS));
 
             // DB 값: 실제로는 갱신되어 있다. 둘의 차이 자체를 고정해 둔다.
             LocalDateTime dbUpdatedAtAfter = findComment(created.id()).getUpdatedAt();
@@ -569,8 +573,8 @@ class CommentControllerE2ETest {
             assertThat(dbUpdatedAtAfter).isNotEqualTo(updated.updatedAt());
 
             // createdAt 은 응답/DB 모두 그대로다.
-            assertThat(updated.createdAt()).isEqualTo(created.createdAt());
-            assertThat(findComment(created.id()).getCreatedAt()).isEqualTo(created.createdAt());
+            assertThat(updated.createdAt()).isCloseTo(created.createdAt(), within(1, ChronoUnit.MICROS));
+            assertThat(findComment(created.id()).getCreatedAt()).isCloseTo(created.createdAt(), within(1, ChronoUnit.MICROS));
         }
 
         @Test
