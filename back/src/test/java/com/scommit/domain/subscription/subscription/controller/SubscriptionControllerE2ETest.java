@@ -241,11 +241,15 @@ class SubscriptionControllerE2ETest {
     @Test
     @DisplayName("성공: 구독 목록 조회 (기본 페이징)")
     void getMySubscriptions_Success() {
+        client.post().uri("/api/subscriptions/follow/{creatorId}", creatorId).header("Authorization", "Bearer " + myToken).exchange();
         client.get().uri("/api/subscriptions", creatorId)
                 .header("Authorization", "Bearer " + myToken)
                 .exchange()
                 .expectStatus().isOk()
-                .expectBody().jsonPath("$.data.content").isArray();
+                .expectBody()
+                .jsonPath("$.data.content").isArray()
+                .jsonPath("$.data.content.length()").isEqualTo(1)
+                .jsonPath("$.data.content[0].creatorId").isEqualTo(creatorId);
     }
     @Test
     @DisplayName("성공: 구독 목록 조회 (page=0, size=1)")
@@ -273,11 +277,12 @@ class SubscriptionControllerE2ETest {
     @Test
     @DisplayName("성공: 구독 수 조회")
     void getMySubscriptionCount_Success() {
+        client.post().uri("/api/subscriptions/follow/{creatorId}", creatorId).header("Authorization", "Bearer " + myToken).exchange();
         client.get().uri("/api/subscriptions/count", creatorId)
                 .header("Authorization", "Bearer " + myToken)
                 .exchange()
                 .expectStatus().isOk()
-                .expectBody().jsonPath("$.data").isNumber();
+                .expectBody().jsonPath("$.data").isEqualTo(1);
     }
     @Test
     @DisplayName("예외: 인증되지 않은 사용자 (401)")
@@ -293,7 +298,8 @@ class SubscriptionControllerE2ETest {
         client.get().uri("/api/subscriptions/status/{creatorId}", creatorId)
                 .header("Authorization", "Bearer " + myToken)
                 .exchange()
-                .expectStatus().isOk();
+                .expectStatus().isOk()
+                .expectBody().jsonPath("$.data.status").isEqualTo("FOLLOW");
     }
     @Test
     @DisplayName("성공: 상태 조회 (MEMBERSHIP)")
@@ -302,7 +308,8 @@ class SubscriptionControllerE2ETest {
         client.get().uri("/api/subscriptions/status/{creatorId}", creatorId)
                 .header("Authorization", "Bearer " + myToken)
                 .exchange()
-                .expectStatus().isOk();
+                .expectStatus().isOk()
+                .expectBody().jsonPath("$.data.status").isEqualTo("MEMBERSHIP");
     }
     @Test
     @DisplayName("성공: 상태 조회 (NONE)")
@@ -310,7 +317,8 @@ class SubscriptionControllerE2ETest {
         client.get().uri("/api/subscriptions/status/{creatorId}", creatorId)
                 .header("Authorization", "Bearer " + myToken)
                 .exchange()
-                .expectStatus().isOk();
+                .expectStatus().isOk()
+                .expectBody().jsonPath("$.data.status").isEqualTo("NONE");
     }
     @Test
     @DisplayName("예외: 인증되지 않은 사용자 (401)")
@@ -413,5 +421,39 @@ class SubscriptionControllerE2ETest {
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody().jsonPath("$.data.status").isEqualTo("NONE");
+
+        // 10. 재팔로우 (NONE -> FOLLOW)
+        client.post().uri("/api/subscriptions/follow/{creatorId}", creatorId)
+                .header("Authorization", "Bearer " + myToken)
+                .exchange()
+                .expectStatus().isOk();
+        client.get().uri("/api/subscriptions/status/{creatorId}", creatorId)
+                .header("Authorization", "Bearer " + myToken)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody().jsonPath("$.data.status").isEqualTo("FOLLOW");
+
+        // 11. 멤버십 가입 (FOLLOW -> MEMBERSHIP)
+        client.post().uri("/api/subscriptions/membership/{creatorId}", creatorId)
+                .header("Authorization", "Bearer " + myToken)
+                .exchange()
+                .expectStatus().isOk();
+
+        // 12. 멤버십 다시 취소 (MEMBERSHIP -> FOLLOW)
+        client.delete().uri("/api/subscriptions/membership/{creatorId}", creatorId)
+                .header("Authorization", "Bearer " + myToken)
+                .exchange()
+                .expectStatus().isOk();
+
+        // 13. 멤버십 재가입 (FOLLOW -> MEMBERSHIP)
+        client.post().uri("/api/subscriptions/membership/{creatorId}", creatorId)
+                .header("Authorization", "Bearer " + myToken)
+                .exchange()
+                .expectStatus().isOk();
+        client.get().uri("/api/subscriptions/status/{creatorId}", creatorId)
+                .header("Authorization", "Bearer " + myToken)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody().jsonPath("$.data.status").isEqualTo("MEMBERSHIP");
     }
 }

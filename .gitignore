@@ -4,7 +4,3 @@
 # Editor
 .vscode/
 .idea/
-
-# Logs
-log.txt
-*.log
