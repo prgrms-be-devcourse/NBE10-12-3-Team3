@@ -468,7 +468,7 @@ public class UserControllerTest {
         void getMe_Success() throws Exception {
             User actor = mockActor();
             given(securityHelper.getActor()).willReturn(actor);
-            given(userService.getUser(1L)).willReturn(java.util.Optional.of(actor));
+            given(userService.getUser(1L)).willReturn(actor);
             given(userMediaService.getMedia(1L)).willReturn(
                     new UserMediaResponse(1L, 1L, null, null)
             );
@@ -500,6 +500,7 @@ public class UserControllerTest {
     class UpdateMe {
 
         private static final String ME_URL = "/api/users/me";
+        private static final String EMAIL = "test@example.com";
         private static final String NEW_NICKNAME = "newnickname";
         private static final String NEW_INTRODUCTION = "수정된 소개글입니다.";
 
@@ -524,8 +525,10 @@ public class UserControllerTest {
 
             User updatedUser = mock(User.class);
             given(updatedUser.getId()).willReturn(1L);
+            given(updatedUser.getEmail()).willReturn(EMAIL);
             given(updatedUser.getNickname()).willReturn(NEW_NICKNAME);
             given(updatedUser.getIntroduction()).willReturn(NEW_INTRODUCTION);
+            given(updatedUser.getCreatedAt()).willReturn(LocalDateTime.now());
             given(userService.updateUser(1L, NEW_NICKNAME, NEW_INTRODUCTION)).willReturn(updatedUser);
 
             UserUpdateRequest request = new UserUpdateRequest(NEW_NICKNAME, NEW_INTRODUCTION);
@@ -547,8 +550,10 @@ public class UserControllerTest {
 
             User updatedUser = mock(User.class);
             given(updatedUser.getId()).willReturn(1L);
+            given(updatedUser.getEmail()).willReturn(EMAIL);
             given(updatedUser.getNickname()).willReturn(NEW_NICKNAME);
             given(updatedUser.getIntroduction()).willReturn(NEW_INTRODUCTION);
+            given(updatedUser.getCreatedAt()).willReturn(LocalDateTime.now());
             given(userService.updateUser(1L, NEW_NICKNAME, NEW_INTRODUCTION)).willReturn(updatedUser);
             given(userMediaService.getMedia(1L)).willReturn(
                     new UserMediaResponse(1L, 1L, "user/uuid.png", null)
@@ -653,7 +658,7 @@ public class UserControllerTest {
         void updatePassword_Success() throws Exception {
             User actor = mockActor();
             given(securityHelper.getActor()).willReturn(actor);
-            given(userService.getUser(1L)).willReturn(java.util.Optional.of(actor));
+            given(userService.getUser(1L)).willReturn(actor);
             given(jwtProvider.generateAccessToken(1L, EMAIL, NICKNAME, UserRole.USER))
                     .willReturn(MOCK_ACCESS_TOKEN);
 
@@ -739,7 +744,7 @@ public class UserControllerTest {
         @DisplayName("성공 (200) - 프로필 이미지가 있는 경우")
         void getUserProfile_Success() throws Exception {
             User targetUser = mockTargetUser();
-            given(userService.getUser(1L)).willReturn(java.util.Optional.of(targetUser));
+            given(userService.getUser(1L)).willReturn(targetUser);
             given(userMediaService.getMedia(1L)).willReturn(
                     new UserMediaResponse(1L, 1L, "user/uuid.png", com.scommit.domain.media.media.entity.MediaType.IMAGE)
             );
@@ -759,7 +764,7 @@ public class UserControllerTest {
         @DisplayName("성공 (200) - 프로필 이미지가 없는 경우")
         void getUserProfile_NoMedia() throws Exception {
             User targetUser = mockTargetUser();
-            given(userService.getUser(1L)).willReturn(java.util.Optional.of(targetUser));
+            given(userService.getUser(1L)).willReturn(targetUser);
             given(userMediaService.getMedia(1L)).willReturn(null);
             given(subscriptionService.getFollowerCount(1L)).willReturn(0L);
 
@@ -774,7 +779,7 @@ public class UserControllerTest {
         @DisplayName("성공 (200) - 팔로워가 없는 유저를 조회하면 followerCount가 0으로 응답된다")
         void getUserProfile_ZeroFollowers() throws Exception {
             User targetUser = mockTargetUser();
-            given(userService.getUser(1L)).willReturn(java.util.Optional.of(targetUser));
+            given(userService.getUser(1L)).willReturn(targetUser);
             given(userMediaService.getMedia(1L)).willReturn(null);
             given(subscriptionService.getFollowerCount(1L)).willReturn(0L);
 
@@ -786,7 +791,7 @@ public class UserControllerTest {
         @Test
         @DisplayName("존재하지 않는 유저 → 404 (팔로워 수는 조회하지 않는다)")
         void getUserProfile_UserNotFound() throws Exception {
-            given(userService.getUser(999L)).willReturn(java.util.Optional.empty());
+            given(userService.getUser(999L)).willReturn(null);
 
             mvc.perform(get("/api/users/999"))
                     .andExpect(status().isNotFound())

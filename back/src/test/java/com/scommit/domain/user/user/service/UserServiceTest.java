@@ -18,6 +18,7 @@
     import org.springframework.data.domain.PageRequest;
     import org.springframework.data.domain.Pageable;
     import org.springframework.security.crypto.password.PasswordEncoder;
+    import org.springframework.test.util.ReflectionTestUtils;
 
     import java.util.List;
     import java.util.Optional;
@@ -58,11 +59,7 @@
                 given(userRepository.existsByNickname(NICKNAME)).willReturn(false);
                 given(passwordEncoder.encode(PASSWORD)).willReturn("encodedPassword");
 
-                User savedUser = User.builder()
-                        .email(EMAIL)
-                        .password("encodedPassword")
-                        .nickname(NICKNAME)
-                        .build();
+                User savedUser = new User(EMAIL, "encodedPassword", NICKNAME, null, UserRole.USER);
                 given(userRepository.save(any(User.class))).willReturn(savedUser);
 
                 // When
@@ -150,12 +147,7 @@
             private static final String NICKNAME = "testuser";
 
             private User buildUser() {
-                return User.builder()
-                        .email(EMAIL)
-                        .password(ENCODED_PASSWORD)
-                        .nickname(NICKNAME)
-                        .role(UserRole.USER)
-                        .build();
+                return new User(EMAIL, ENCODED_PASSWORD, NICKNAME, null, UserRole.USER);
             }
 
             @Test
@@ -163,7 +155,7 @@
             void login_Success() {
                 // Given
                 User user = buildUser();
-                given(userRepository.findByEmailAndDeletedAtIsNull(EMAIL)).willReturn(Optional.of(user));
+                given(userRepository.findByEmailAndDeletedAtIsNull(EMAIL)).willReturn(user);
                 given(passwordEncoder.matches(PASSWORD, ENCODED_PASSWORD)).willReturn(true);
 
                 // When
@@ -177,7 +169,7 @@
             @DisplayName("실패: 존재하지 않는 이메일이면 INVALID_CREDENTIALS 예외를 던진다.")
             void login_EmailNotFound() {
                 // Given
-                given(userRepository.findByEmailAndDeletedAtIsNull(EMAIL)).willReturn(Optional.empty());
+                given(userRepository.findByEmailAndDeletedAtIsNull(EMAIL)).willReturn(null);
 
                 // When & Then
                 assertThatThrownBy(() -> userService.login(EMAIL, PASSWORD))
@@ -190,7 +182,7 @@
             void login_WrongPassword() {
                 // Given
                 User user = buildUser();
-                given(userRepository.findByEmailAndDeletedAtIsNull(EMAIL)).willReturn(Optional.of(user));
+                given(userRepository.findByEmailAndDeletedAtIsNull(EMAIL)).willReturn(user);
                 given(passwordEncoder.matches(WRONG_PASSWORD, ENCODED_PASSWORD)).willReturn(false);
 
                 // When & Then
@@ -210,12 +202,7 @@
             private static final String NEW_INTRODUCTION = "수정된 소개글입니다.";
 
             private User buildUser() {
-                return User.builder()
-                        .email("test@example.com")
-                        .password("encodedPassword")
-                        .nickname(NICKNAME)
-                        .role(UserRole.USER)
-                        .build();
+                return new User("test@example.com", "encodedPassword", NICKNAME, null, UserRole.USER);
             }
 
             @Test
@@ -223,7 +210,7 @@
             void updateUser_Success() {
                 // Given
                 User user = buildUser();
-                given(userRepository.findByIdAndDeletedAtIsNull(USER_ID)).willReturn(Optional.of(user));
+                given(userRepository.findByIdAndDeletedAtIsNull(USER_ID)).willReturn(user);
                 given(userRepository.existsByNickname(NEW_NICKNAME)).willReturn(false);
 
                 // When
@@ -239,7 +226,7 @@
             void updateUser_SameNicknameAsCurrent() {
                 // Given
                 User user = buildUser();
-                given(userRepository.findByIdAndDeletedAtIsNull(USER_ID)).willReturn(Optional.of(user));
+                given(userRepository.findByIdAndDeletedAtIsNull(USER_ID)).willReturn(user);
 
                 // When
                 User result = userService.updateUser(USER_ID, NICKNAME, NEW_INTRODUCTION);
@@ -255,7 +242,7 @@
             void updateUser_NicknameNull() {
                 // Given
                 User user = buildUser();
-                given(userRepository.findByIdAndDeletedAtIsNull(USER_ID)).willReturn(Optional.of(user));
+                given(userRepository.findByIdAndDeletedAtIsNull(USER_ID)).willReturn(user);
 
                 // When
                 User result = userService.updateUser(USER_ID, null, NEW_INTRODUCTION);
@@ -271,7 +258,7 @@
             void updateUser_DuplicateNickname() {
                 // Given
                 User user = buildUser();
-                given(userRepository.findByIdAndDeletedAtIsNull(USER_ID)).willReturn(Optional.of(user));
+                given(userRepository.findByIdAndDeletedAtIsNull(USER_ID)).willReturn(user);
                 given(userRepository.existsByNickname(NEW_NICKNAME)).willReturn(true);
 
                 // When & Then
@@ -286,7 +273,7 @@
             @DisplayName("실패: 존재하지 않는 유저면 USER_NOT_FOUND 예외를 던진다.")
             void updateUser_UserNotFound() {
                 // Given
-                given(userRepository.findByIdAndDeletedAtIsNull(USER_ID)).willReturn(Optional.empty());
+                given(userRepository.findByIdAndDeletedAtIsNull(USER_ID)).willReturn(null);
 
                 // When & Then
                 assertThatThrownBy(() -> userService.updateUser(USER_ID, NEW_NICKNAME, NEW_INTRODUCTION))
@@ -309,12 +296,7 @@
             private static final String ENCODED_NEW_PASSWORD = "encodedNewPassword";
 
             private User buildUser() {
-                return User.builder()
-                        .email("test@example.com")
-                        .password(ENCODED_CURRENT_PASSWORD)
-                        .nickname("testuser")
-                        .role(UserRole.USER)
-                        .build();
+                return new User("test@example.com", ENCODED_CURRENT_PASSWORD, "testuser", null, UserRole.USER);
             }
 
             @Test
@@ -322,7 +304,7 @@
             void updatePassword_Success() {
                 // Given
                 User user = buildUser();
-                given(userRepository.findByIdAndDeletedAtIsNull(USER_ID)).willReturn(Optional.of(user));
+                given(userRepository.findByIdAndDeletedAtIsNull(USER_ID)).willReturn(user);
                 given(passwordEncoder.matches(CURRENT_PASSWORD, ENCODED_CURRENT_PASSWORD)).willReturn(true);
                 given(passwordEncoder.encode(NEW_PASSWORD)).willReturn(ENCODED_NEW_PASSWORD);
 
@@ -339,7 +321,7 @@
             void updatePassword_WrongCurrentPassword() {
                 // Given
                 User user = buildUser();
-                given(userRepository.findByIdAndDeletedAtIsNull(USER_ID)).willReturn(Optional.of(user));
+                given(userRepository.findByIdAndDeletedAtIsNull(USER_ID)).willReturn(user);
                 given(passwordEncoder.matches(WRONG_PASSWORD, ENCODED_CURRENT_PASSWORD)).willReturn(false);
 
                 // When & Then
@@ -355,7 +337,7 @@
             @DisplayName("실패: 존재하지 않는 유저면 USER_NOT_FOUND 예외를 던진다.")
             void updatePassword_UserNotFound() {
                 // Given
-                given(userRepository.findByIdAndDeletedAtIsNull(USER_ID)).willReturn(Optional.empty());
+                given(userRepository.findByIdAndDeletedAtIsNull(USER_ID)).willReturn(null);
 
                 // When & Then
                 assertThatThrownBy(() -> userService.updatePassword(USER_ID, CURRENT_PASSWORD, NEW_PASSWORD))
@@ -374,12 +356,7 @@
             private static final String ENCODED_PASSWORD = "encodedPassword";
 
             private User buildUser() {
-                return User.builder()
-                        .email("test@example.com")
-                        .password(ENCODED_PASSWORD)
-                        .nickname("testuser")
-                        .role(UserRole.USER)
-                        .build();
+                return new User("test@example.com", ENCODED_PASSWORD, "testuser", null, UserRole.USER);
             }
 
             @Test
@@ -434,12 +411,7 @@
             private static final Long USER_ID = 1L;
 
             private User buildUser() {
-                User user = User.builder()
-                        .email("test@example.com")
-                        .password("encodedPassword")
-                        .nickname("testuser")
-                        .role(UserRole.USER)
-                        .build();
+                User user = new User("test@example.com", "encodedPassword", "testuser", null, UserRole.USER);
                 user.resetRefreshToken();
                 return user;
             }
@@ -482,7 +454,8 @@
         @DisplayName("성공: 닉네임 키워드로 유저 목록을 반환한다.")
         void searchUsers_Success() {
             Pageable pageable = PageRequest.of(0, 10);
-            User user = User.builder().email("a@a.com").nickname("발코드").role(UserRole.USER).build();
+            User user = new User("a@a.com", null, "발코드", null, UserRole.USER);
+            ReflectionTestUtils.setField(user, "id", 1L);
             Page<User> page = new PageImpl<>(List.of(user), pageable, 1);
 
             given(userRepository.findByNicknameContainingAndDeletedAtIsNull("발코드", pageable)).willReturn(page);
@@ -490,7 +463,7 @@
             Page<UserSearchResponse> result = userService.searchUsers("발코드", pageable);
 
             assertThat(result.getTotalElements()).isEqualTo(1);
-            assertThat(result.getContent().get(0).nickname()).isEqualTo("발코드");
+            assertThat(result.getContent().get(0).getNickname()).isEqualTo("발코드");
         }
 
         @Test
