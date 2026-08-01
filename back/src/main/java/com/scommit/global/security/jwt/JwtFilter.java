@@ -12,19 +12,15 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
-import tools.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 
 @Component
 public class JwtFilter extends OncePerRequestFilter { // 14183의 CustomAuthenticationFilter에 해당
@@ -122,12 +118,12 @@ public class JwtFilter extends OncePerRequestFilter { // 14183의 CustomAuthenti
 
         if (user == null) {
             // 인증 실패시 익명 요청으로 다음 필터(Spring Security 인가 규칙)에 맡긴다.
-            Optional<User> refreshedUser = userService.getUserByRefreshToken(refreshToken);
-            if (refreshedUser.isEmpty()) {
+            User refreshedUser = userService.getUserByRefreshToken(refreshToken);
+            if (refreshedUser == null) {
                 filterChain.doFilter(request, response);
                 return;
             }
-            user = refreshedUser.get();
+            user = refreshedUser;
         }
 
         if (isAccessTokenExists && !isAccessTokenValid) {

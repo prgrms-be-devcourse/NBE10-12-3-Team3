@@ -233,27 +233,20 @@ public class ProdInitDataService {
         LocalDate today = LocalDate.now();
 
         // Admin
-        userRepository.save(User.builder()
-                .email("admin@test.com").password(pw)
-                .nickname("관리자").introduction("사이트 관리자입니다.").role(UserRole.ADMIN)
-                .build());
+        userRepository.save(new User("admin@test.com", pw, "관리자", "사이트 관리자입니다.", UserRole.ADMIN));
 
         // Heavy users: user1@test.com ~ user10@test.com
         List<User> heavyUsers = new ArrayList<>();
         for (int i = 0; i < 10; i++) {
-            heavyUsers.add(userRepository.save(User.builder()
-                    .email("user" + (i + 1) + "@test.com").password(pw)
-                    .nickname(HEAVY_NICKNAMES[i]).introduction(HEAVY_INTROS[i])
-                    .role(UserRole.USER).build()));
+            heavyUsers.add(userRepository.save(
+                    new User("user" + (i + 1) + "@test.com", pw, HEAVY_NICKNAMES[i], HEAVY_INTROS[i], UserRole.USER)));
         }
 
         // General users (90명)
         List<User> generalUsers = new ArrayList<>();
         for (int i = 0; i < 90; i++) {
-            generalUsers.add(userRepository.save(User.builder()
-                    .email(GENERAL_EMAILS[i]).password(pw)
-                    .nickname(GENERAL_NICKNAMES[i]).introduction(GENERAL_INTROS[i % GENERAL_INTROS.length])
-                    .role(UserRole.USER).build()));
+            generalUsers.add(userRepository.save(
+                    new User(GENERAL_EMAILS[i], pw, GENERAL_NICKNAMES[i], GENERAL_INTROS[i % GENERAL_INTROS.length], UserRole.USER)));
         }
 
         List<User> allUsers = new ArrayList<>();

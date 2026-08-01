@@ -178,27 +178,20 @@ public class BaseInitData implements ApplicationRunner {
         LocalDate today = LocalDate.now();
 
         // Admin (no content)
-        userRepository.save(User.builder()
-                .email("admin@test.com").password(pw)
-                .nickname("관리자").introduction("사이트 관리자입니다.").role(UserRole.ADMIN)
-                .build());
+        userRepository.save(new User("admin@test.com", pw, "관리자", "사이트 관리자입니다.", UserRole.ADMIN));
 
         // Test users: user1@test.com ~ user10@test.com (heavy users)
         List<User> testUsers = new ArrayList<>();
         for (int i = 0; i < 10; i++) {
-            testUsers.add(userRepository.save(User.builder()
-                    .email("user" + (i + 1) + "@test.com").password(pw)
-                    .nickname(TEST_USER_NICKNAMES[i]).introduction(TEST_USER_INTROS[i])
-                    .role(UserRole.USER).build()));
+            testUsers.add(userRepository.save(
+                    new User("user" + (i + 1) + "@test.com", pw, TEST_USER_NICKNAMES[i], TEST_USER_INTROS[i], UserRole.USER)));
         }
 
         // General users (49명)
         List<User> generalUsers = new ArrayList<>();
         for (int i = 0; i < 49; i++) {
-            generalUsers.add(userRepository.save(User.builder()
-                    .email(USER_EMAILS[i]).password(pw)
-                    .nickname(USER_NICKNAMES[i]).introduction(USER_INTROS[i % USER_INTROS.length])
-                    .role(UserRole.USER).build()));
+            generalUsers.add(userRepository.save(
+                    new User(USER_EMAILS[i], pw, USER_NICKNAMES[i], USER_INTROS[i % USER_INTROS.length], UserRole.USER)));
         }
 
         List<User> allUsers = new ArrayList<>();
