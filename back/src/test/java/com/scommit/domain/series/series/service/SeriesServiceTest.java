@@ -49,11 +49,7 @@ class SeriesServiceTest {
 
     @BeforeEach
     void setUp() {
-        mockUser = User.builder()
-                .email("test@example.com")
-                .nickname("테스터")
-                .role(UserRole.USER)
-                .build();
+        mockUser = new User("test@example.com", null, "테스터", null, UserRole.USER);
         ReflectionTestUtils.setField(mockUser, "id", 1L);
     }
 

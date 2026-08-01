@@ -63,18 +63,10 @@ class CommentServiceTest {
     @BeforeEach
     void setUp() {
         // JPA가 없으므로 id는 ReflectionTestUtils로 직접 주입
-        mockUser = User.builder()
-                .email("test@example.com")
-                .nickname("테스터")
-                .role(UserRole.USER)
-                .build();
+        mockUser = new User("test@example.com", null, "테스터", null, UserRole.USER);
         ReflectionTestUtils.setField(mockUser, "id", 1L);
 
-        otherUser = User.builder()
-                .email("other@example.com")
-                .nickname("다른유저")
-                .role(UserRole.USER)
-                .build();
+        otherUser = new User("other@example.com", null, "다른유저", null, UserRole.USER);
         ReflectionTestUtils.setField(otherUser, "id", 2L);
 
         mockPost = Post.builder()

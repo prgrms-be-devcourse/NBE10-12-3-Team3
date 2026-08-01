@@ -56,11 +56,7 @@ class BookmarkServiceTest {
 
     @BeforeEach
     void setUp() {
-        actor = User.builder()
-                .email("actor@test.com")
-                .nickname("액터")
-                .role(UserRole.USER)
-                .build();
+        actor = new User("actor@test.com", null, "액터", null, UserRole.USER);
         ReflectionTestUtils.setField(actor, "id", 1L);
 
         post = Post.builder()
