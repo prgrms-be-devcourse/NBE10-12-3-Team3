@@ -33,7 +33,8 @@ class ProdInitData(
     // Cloudinary 업로드 1건 실패로 전체 시딩이 죽지 않도록 의도적으로 넓게 잡고 건너뛴다.
     @Suppress("TooGenericExceptionCaught")
     override fun run(args: ApplicationArguments) {
-        if (userRepository.count() > 0 || postRepository.count() > 0 || seriesRepository.count() > 0 || commentRepository.count() > 0 ||
+        if (userRepository.count() > 0 || postRepository.count() > 0 || seriesRepository.count() > 0 ||
+            commentRepository.count() > 0 ||
             subscriptionRepository.count() > 0
         ) {
             return

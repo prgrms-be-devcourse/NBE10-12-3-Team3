@@ -98,9 +98,7 @@ class ProdInitDataService(
             )
         }
 
-        val allUsers = mutableListOf<User>()
-        allUsers.addAll(heavyUsers)
-        allUsers.addAll(generalUsers)
+        val allUsers = (heavyUsers + generalUsers).toMutableList()
 
         // Heavy user series: 10 × 6 = 60 (SERIES_TITLES 0~59)
         val heavySeries = mutableListOf<Series>()
@@ -133,11 +131,14 @@ class ProdInitDataService(
             )
         }
 
-        // Posts
+        // Posts — globalIndex determines media and public/free override
+        // globalIndex 0~49: PUBLIC+FREE, no media
+        // globalIndex 50~99: PUBLIC+FREE, THUMBNAIL+BODY
+        // globalIndex 100+: random status/access, no media
         val allPosts = mutableListOf<Post>()
         var globalIndex = 0
 
-        // Heavy user posts: 10 × 40 = 400
+        // Heavy user posts: 10 × 40 = 400 (앞 32개 시리즈 소속, 뒤 8개 standalone)
         for (i in 0..9) {
             val mySeries = heavySeries.subList(i * 6, i * 6 + 6)
             for (j in 0..39) {
@@ -145,10 +146,10 @@ class ProdInitDataService(
                 val forcePublicFree = globalIndex < 100
                 val status = if (forcePublicFree) PublishStatus.PUBLIC else randomStatus(true)
                 val level =
-                    if (forcePublicFree) {
-                        PostAccessLevel.FREE
-                    } else {
-                        if (status == PublishStatus.PUBLIC) randomLevel(true) else PostAccessLevel.FREE
+                    when {
+                        forcePublicFree -> PostAccessLevel.FREE
+                        status == PublishStatus.PUBLIC -> randomLevel(true)
+                        else -> PostAccessLevel.FREE
                     }
                 val post =
                     postRepository.save(
@@ -190,7 +191,7 @@ class ProdInitDataService(
             }
         }
 
-        // Comments
+        // Comments (PUBLIC 포스트만, 헤비유저 포스트 5~15개, 일반유저 포스트 0~5개)
         val comments = mutableListOf<Comment>()
         for (p in allPosts.indices) {
             val post = allPosts[p]
@@ -198,8 +199,8 @@ class ProdInitDataService(
             val count = if (p < 400) 5 + RNG.nextInt(11) else RNG.nextInt(6)
             if (count == 0) continue
             val authorId = post.user.id
-            val pool = mutableListOf<User>().apply { addAll(allUsers) }
-            pool.removeIf { u -> u.id == authorId }
+            val pool = allUsers.toMutableList()
+            pool.removeIf { it.id == authorId }
             repeat(count) {
                 comments.add(
                     Comment(
@@ -212,7 +213,7 @@ class ProdInitDataService(
         }
         commentRepository.saveAll(comments)
 
-        // Likes
+        // Likes (PUBLIC 포스트만, 헤비유저 포스트 20~30%, 일반유저 포스트 5~15%)
         val likes = mutableListOf<Like>()
         for (p in allPosts.indices) {
             val post = allPosts[p]
@@ -224,7 +225,7 @@ class ProdInitDataService(
                     0.05 + RNG.nextDouble() * 0.10
                 }
             val likerCount = (allUsers.size * ratio).toInt()
-            val shuffled = mutableListOf<User>().apply { addAll(allUsers) }
+            val shuffled = allUsers.toMutableList()
             Collections.shuffle(shuffled, RNG)
             val authorId = post.user.id
             var added = 0
@@ -239,10 +240,10 @@ class ProdInitDataService(
         }
         likeRepository.saveAll(likes)
 
-        // Subscriptions
+        // Subscriptions: 일반유저 → 헤비유저 2~4명 (MEMBERSHIP 30%, FOLLOW 70%)
         val subs = mutableListOf<Subscription>()
         for (subscriber in generalUsers) {
-            val creators = mutableListOf<User>().apply { addAll(heavyUsers) }
+            val creators = heavyUsers.toMutableList()
             val creatorCount = 2 + RNG.nextInt(3)
             repeat(creatorCount) {
                 val creator = creators.removeAt(RNG.nextInt(creators.size))
@@ -275,19 +276,14 @@ class ProdInitDataService(
     ) {
         if (globalIndex < 50 || globalIndex >= 100) return
         val imgIdx = globalIndex - 50
-        val thumbUrl = thumbnailUrls[imgIdx]
-        val bodyUrl = bodyUrls[imgIdx]
-        if (thumbUrl != null) {
+
+        thumbnailUrls[imgIdx]?.let { thumbUrl ->
             val thumb = mediaRepository.save(Media(thumbUrl, MediaType.IMAGE))
-            postMediaRepository.save(
-                PostMedia(post, thumb, PostMediaType.THUMBNAIL),
-            )
+            postMediaRepository.save(PostMedia(post, thumb, PostMediaType.THUMBNAIL))
         }
-        if (bodyUrl != null) {
+        bodyUrls[imgIdx]?.let { bodyUrl ->
             val body = mediaRepository.save(Media(bodyUrl, MediaType.IMAGE))
-            postMediaRepository.save(
-                PostMedia(post, body, PostMediaType.BODY),
-            )
+            postMediaRepository.save(PostMedia(post, body, PostMediaType.BODY))
         }
     }
 
@@ -696,21 +692,11 @@ class ProdInitDataService(
 
         private fun randomStatus(isHeavy: Boolean): PublishStatus {
             val r = RNG.nextInt(10)
-            if (isHeavy) {
-                return if (r < 7) {
-                    PublishStatus.PUBLIC
-                } else if (r < 9) {
-                    PublishStatus.DRAFT
-                } else {
-                    PublishStatus.PRIVATE
-                }
-            }
-            return if (r < 5) {
-                PublishStatus.PUBLIC
-            } else if (r < 8) {
-                PublishStatus.DRAFT
-            } else {
-                PublishStatus.PRIVATE
+            val (publicBound, draftBound) = if (isHeavy) 7 to 9 else 5 to 8
+            return when {
+                r < publicBound -> PublishStatus.PUBLIC
+                r < draftBound -> PublishStatus.DRAFT
+                else -> PublishStatus.PRIVATE
             }
         }
 

@@ -45,7 +45,8 @@ class BaseInitData(
 ) : ApplicationRunner {
     @Transactional
     override fun run(args: ApplicationArguments) {
-        if (userRepository.count() > 0 || postRepository.count() > 0 || seriesRepository.count() > 0 || commentRepository.count() > 0 ||
+        if (userRepository.count() > 0 || postRepository.count() > 0 || seriesRepository.count() > 0 ||
+            commentRepository.count() > 0 ||
             subscriptionRepository.count() > 0
         ) {
             return
@@ -91,9 +92,7 @@ class BaseInitData(
             )
         }
 
-        val allUsers = mutableListOf<User>()
-        allUsers.addAll(testUsers)
-        allUsers.addAll(generalUsers)
+        val allUsers = (testUsers + generalUsers).toMutableList()
 
         // Series for test users (4 each = 40 total)
         val testSeriesList = mutableListOf<Series>()
@@ -128,6 +127,8 @@ class BaseInitData(
         }
 
         // Posts for test users (20 each = 200 total)
+        // 앞 16개는 시리즈 소속, 뒤 4개는 standalone
+        // PAID는 PUBLIC일 때만 설정 (DRAFT/PRIVATE 포스트는 항상 FREE)
         val allPosts = mutableListOf<Post>()
         for (i in 0..9) {
             val owner = testUsers[i]
@@ -174,7 +175,8 @@ class BaseInitData(
             }
         }
 
-        // Comments
+        // Comments: PUBLIC 포스트에만 달림 (DRAFT/PRIVATE는 다른 유저가 볼 수 없음)
+        // 헤비유저 PUBLIC 포스트는 3-10개, 일반 PUBLIC 포스트는 0-5개
         val comments = mutableListOf<Comment>()
         for (p in allPosts.indices) {
             val post = allPosts[p]
@@ -183,8 +185,8 @@ class BaseInitData(
             val count = if (isHeavyPost) 3 + RNG.nextInt(8) else RNG.nextInt(6)
             if (count == 0) continue
             val authorId = post.user.id
-            val pool = mutableListOf<User>().apply { addAll(allUsers) }
-            pool.removeIf { u -> u.id == authorId }
+            val pool = allUsers.toMutableList()
+            pool.removeIf { it.id == authorId }
             repeat(count) {
                 comments.add(
                     Comment(
@@ -197,10 +199,11 @@ class BaseInitData(
         }
         commentRepository.saveAll(comments)
 
-        // Subscriptions
+        // Subscriptions: general users → test users (2-4 creators each)
+        // FOLLOW는 최대 6개월 전부터, MEMBERSHIP은 아직 유효하도록 최근 28일 내 시작
         val subs = mutableListOf<Subscription>()
         for (subscriber in generalUsers) {
-            val creators = mutableListOf<User>().apply { addAll(testUsers) }
+            val creators = testUsers.toMutableList()
             val creatorCount = 2 + RNG.nextInt(3)
             repeat(creatorCount) {
                 val creator = creators.removeAt(RNG.nextInt(creators.size))
@@ -495,21 +498,11 @@ class BaseInitData(
 
         private fun randomStatus(isHeavy: Boolean): PublishStatus {
             val r = RNG.nextInt(10)
-            if (isHeavy) {
-                return if (r < 7) {
-                    PublishStatus.PUBLIC
-                } else if (r < 9) {
-                    PublishStatus.DRAFT
-                } else {
-                    PublishStatus.PRIVATE
-                }
-            }
-            return if (r < 5) {
-                PublishStatus.PUBLIC
-            } else if (r < 8) {
-                PublishStatus.DRAFT
-            } else {
-                PublishStatus.PRIVATE
+            val (publicBound, draftBound) = if (isHeavy) 7 to 9 else 5 to 8
+            return when {
+                r < publicBound -> PublishStatus.PUBLIC
+                r < draftBound -> PublishStatus.DRAFT
+                else -> PublishStatus.PRIVATE
             }
         }
 
