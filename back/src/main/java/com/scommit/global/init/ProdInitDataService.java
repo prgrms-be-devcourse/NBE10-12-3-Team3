@@ -400,11 +400,11 @@ public class ProdInitDataService {
         String thumbUrl = thumbnailUrls.get(imgIdx);
         String bodyUrl = bodyUrls.get(imgIdx);
         if (thumbUrl != null) {
-            Media thumb = mediaRepository.save(Media.builder().url(thumbUrl).type(MediaType.IMAGE).build());
+            Media thumb = mediaRepository.save(new Media(thumbUrl, MediaType.IMAGE));
             postMediaRepository.save(PostMedia.builder().post(post).media(thumb).type(PostMediaType.THUMBNAIL).build());
         }
         if (bodyUrl != null) {
-            Media body = mediaRepository.save(Media.builder().url(bodyUrl).type(MediaType.IMAGE).build());
+            Media body = mediaRepository.save(new Media(bodyUrl, MediaType.IMAGE));
             postMediaRepository.save(PostMedia.builder().post(post).media(body).type(PostMediaType.BODY).build());
         }
     }

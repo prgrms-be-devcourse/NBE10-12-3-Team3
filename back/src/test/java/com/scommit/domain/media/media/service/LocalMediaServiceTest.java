@@ -52,7 +52,7 @@ class LocalMediaServiceTest {
         @DisplayName("성공: 이미지 파일 업로드 시 MediaType.IMAGE로 저장하고 반환한다")
         void uploadMedia_Image_Success() {
             MockMultipartFile file = new MockMultipartFile("file", "test.png", "image/png", "content".getBytes());
-            Media savedMedia = Media.builder().url("post/uuid_test.png").type(MediaType.IMAGE).build();
+            Media savedMedia = new Media("post/uuid_test.png", MediaType.IMAGE);
             given(mediaRepository.save(any(Media.class))).willReturn(savedMedia);
 
             Media result = localMediaService.uploadMedia(file, "post");
@@ -66,7 +66,7 @@ class LocalMediaServiceTest {
         @DisplayName("성공: 비디오 파일 업로드 시 MediaType.VIDEO로 저장한다")
         void uploadMedia_Video_Success() {
             MockMultipartFile file = new MockMultipartFile("file", "test.mp4", "video/mp4", "content".getBytes());
-            Media savedMedia = Media.builder().url("post/uuid_test.mp4").type(MediaType.VIDEO).build();
+            Media savedMedia = new Media("post/uuid_test.mp4", MediaType.VIDEO);
             given(mediaRepository.save(any(Media.class))).willReturn(savedMedia);
 
             Media result = localMediaService.uploadMedia(file, "post");
@@ -140,7 +140,7 @@ class LocalMediaServiceTest {
             Files.write(filePath, "dummy".getBytes());
             assertThat(Files.exists(filePath)).isTrue();
 
-            Media media = Media.builder().url(fileName).type(MediaType.IMAGE).build();
+            Media media = new Media(fileName, MediaType.IMAGE);
             given(mediaRepository.findById(mediaId)).willReturn(Optional.of(media));
 
             localMediaService.deleteMedia(mediaId);
@@ -153,7 +153,7 @@ class LocalMediaServiceTest {
         @DisplayName("성공: 파일이 이미 없어도 예외 없이 정상 처리된다")
         void deleteMedia_FileAlreadyGone_Success() {
             Long mediaId = 1L;
-            Media media = Media.builder().url("post/already-gone.png").type(MediaType.IMAGE).build();
+            Media media = new Media("post/already-gone.png", MediaType.IMAGE);
             given(mediaRepository.findById(mediaId)).willReturn(Optional.of(media));
 
             localMediaService.deleteMedia(mediaId);
