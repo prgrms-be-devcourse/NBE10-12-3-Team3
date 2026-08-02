@@ -1,0 +1,25 @@
+package com.scommit.domain.post.comment.dto
+
+import com.scommit.domain.post.comment.entity.Comment
+import java.time.LocalDateTime
+
+@JvmRecord
+data class CommentResponse(
+    val id: Long,
+    val postId: Long,
+    val userId: Long,
+    val nickname: String,
+    val body: String?,
+    val createdAt: LocalDateTime?,
+    val updatedAt: LocalDateTime?,
+) {
+    constructor(comment: Comment) : this(
+        comment.id,
+        comment.post.id,
+        comment.user.id,
+        comment.user.nickname,
+        comment.body,
+        comment.createdAt,
+        comment.updatedAt,
+    )
+}
