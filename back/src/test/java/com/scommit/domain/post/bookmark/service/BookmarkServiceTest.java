@@ -132,7 +132,7 @@ class BookmarkServiceTest {
             ReflectionTestUtils.setField(post, "bookmarkCount", 1L);
             Bookmark bookmark = new Bookmark(post, actor);
             given(postRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(Optional.of(post));
-            given(bookmarkRepository.findByPostIdAndUserId(10L, 1L)).willReturn(Optional.of(bookmark));
+            given(bookmarkRepository.findByPostIdAndUserId(10L, 1L)).willReturn(bookmark);
 
             // when
             bookmarkService.deleteBookmark(10L, actor);
@@ -147,7 +147,7 @@ class BookmarkServiceTest {
         void deleteBookmark_bookmarkNotFound() {
             // given
             given(postRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(Optional.of(post));
-            given(bookmarkRepository.findByPostIdAndUserId(10L, 1L)).willReturn(Optional.empty());
+            given(bookmarkRepository.findByPostIdAndUserId(10L, 1L)).willReturn(null);
 
             // when & then
             assertThatThrownBy(() -> bookmarkService.deleteBookmark(10L, actor))

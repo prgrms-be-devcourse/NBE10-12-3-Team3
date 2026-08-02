@@ -153,7 +153,7 @@ class BookmarkControllerE2ETest {
 
     /** 응답에 드러나지 않는 부작용(행 생성/삭제)을 DB에서 직접 되짚기 위한 조회. */
     private Optional<Bookmark> findBookmark(Long postId, Long userId) {
-        return bookmarkRepository.findByPostIdAndUserId(postId, userId);
+        return Optional.ofNullable(bookmarkRepository.findByPostIdAndUserId(postId, userId));
     }
 
     private long bookmarkCountOf(Long postId) {
