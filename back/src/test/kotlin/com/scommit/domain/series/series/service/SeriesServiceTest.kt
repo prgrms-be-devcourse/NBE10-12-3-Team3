@@ -241,7 +241,7 @@ class SeriesServiceTest {
         @DisplayName("성공: 삭제되지 않은 시리즈인 경우 데이터를 올바르게 반환한다.")
         fun findById_Success() {
             val series = buildSeries(1L, "제목1", "내용1")
-            given(seriesRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(Optional.of(series))
+            given(seriesRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(series)
 
             val result = seriesService.getSeries(1L)
 
@@ -253,7 +253,7 @@ class SeriesServiceTest {
         @Test
         @DisplayName("실패: 존재하지 않는 시리즈 ID인 경우 SERIES_NOT_FOUND 예외를 던진다.")
         fun findById_NotFound() {
-            given(seriesRepository.findByIdAndDeletedAtIsNull(999L)).willReturn(Optional.empty())
+            given(seriesRepository.findByIdAndDeletedAtIsNull(999L)).willReturn(null)
 
             assertThatThrownBy { seriesService.getSeries(999L) }
                 .isInstanceOf(BusinessException::class.java)
@@ -263,7 +263,7 @@ class SeriesServiceTest {
         @Test
         @DisplayName("실패: 삭제된 시리즈인 경우 SERIES_NOT_FOUND 예외를 던진다.")
         fun findById_SoftDeleted() {
-            given(seriesRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(Optional.empty())
+            given(seriesRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(null)
 
             assertThatThrownBy { seriesService.getSeries(1L) }
                 .isInstanceOf(BusinessException::class.java)
@@ -278,7 +278,7 @@ class SeriesServiceTest {
         @DisplayName("성공: 활성 상태의 시리즈인 경우 제목과 본문을 업데이트한다.")
         fun update_Success() {
             val series = buildSeries(1L, "기존 제목", "기존 설명")
-            given(seriesRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(Optional.of(series))
+            given(seriesRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(series)
 
             val result = seriesService.updateSeries(1L, "수정된 제목", "수정된 설명", 1L, UserRole.USER)
 
@@ -289,7 +289,7 @@ class SeriesServiceTest {
         @Test
         @DisplayName("실패: 이미 삭제된 시리즈를 수정하려고 시도하면 SERIES_NOT_FOUND 예외를 던진다.")
         fun update_SoftDeleted() {
-            given(seriesRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(Optional.empty())
+            given(seriesRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(null)
 
             assertThatThrownBy { seriesService.updateSeries(1L, "수정된 제목", "수정된 설명", 1L, UserRole.USER) }
                 .isInstanceOf(BusinessException::class.java)
@@ -300,7 +300,7 @@ class SeriesServiceTest {
         @DisplayName("실패: 다른 유저의 시리즈를 수정하려 하면 ACCESS_DENIED 예외를 던진다.")
         fun update_Forbidden() {
             val series = buildSeries(1L, "기존 제목", "기존 설명")
-            given(seriesRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(Optional.of(series))
+            given(seriesRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(series)
 
             assertThatThrownBy { seriesService.updateSeries(1L, "수정된 제목", "수정된 설명", 99L, UserRole.USER) }
                 .isInstanceOf(BusinessException::class.java)
@@ -311,7 +311,7 @@ class SeriesServiceTest {
         @DisplayName("성공: 어드민은 타인 시리즈도 수정할 수 있다.")
         fun update_AdminCanUpdateOthers() {
             val series = buildSeries(1L, "기존 제목", "기존 설명")
-            given(seriesRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(Optional.of(series))
+            given(seriesRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(series)
 
             val result = seriesService.updateSeries(1L, "수정된 제목", "수정된 설명", 99L, UserRole.ADMIN)
 
@@ -326,7 +326,7 @@ class SeriesServiceTest {
         @DisplayName("성공: 활성 상태의 시리즈인 경우 deletedAt 필드를 세팅해 삭제 처리하고, 포스트의 시리즈 참조를 제거한다.")
         fun delete_Success() {
             val series = buildSeries(1L, "시리즈 제목", "시리즈 설명")
-            given(seriesRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(Optional.of(series))
+            given(seriesRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(series)
             given(postRepository.findBySeriesIdAndDeletedAtIsNull(1L)).willReturn(listOf())
 
             seriesService.deleteSeries(1L, 1L, UserRole.USER)
@@ -338,7 +338,7 @@ class SeriesServiceTest {
         @Test
         @DisplayName("실패: 이미 삭제된 시리즈를 삭제하려고 시도하면 SERIES_NOT_FOUND 예외를 던진다.")
         fun delete_AlreadyDeleted() {
-            given(seriesRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(Optional.empty())
+            given(seriesRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(null)
 
             assertThatThrownBy { seriesService.deleteSeries(1L, 1L, UserRole.USER) }
                 .isInstanceOf(BusinessException::class.java)
@@ -349,7 +349,7 @@ class SeriesServiceTest {
         @DisplayName("실패: 다른 유저의 시리즈를 삭제하려 하면 ACCESS_DENIED 예외를 던진다.")
         fun delete_Forbidden() {
             val series = buildSeries(1L, "시리즈 제목", "시리즈 설명")
-            given(seriesRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(Optional.of(series))
+            given(seriesRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(series)
 
             assertThatThrownBy { seriesService.deleteSeries(1L, 99L, UserRole.USER) }
                 .isInstanceOf(BusinessException::class.java)
@@ -360,7 +360,7 @@ class SeriesServiceTest {
         @DisplayName("성공: 어드민은 타인 시리즈도 삭제할 수 있다.")
         fun delete_AdminCanDeleteOthers() {
             val series = buildSeries(1L, "시리즈 제목", "시리즈 설명")
-            given(seriesRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(Optional.of(series))
+            given(seriesRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(series)
 
             seriesService.deleteSeries(1L, 99L, UserRole.ADMIN)
 

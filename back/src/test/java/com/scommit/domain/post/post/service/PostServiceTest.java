@@ -632,7 +632,7 @@ class PostServiceTest {
             Post post = buildPost(10L, mockUser, null);
 
             when(postRepository.findByIdAndDeletedAtIsNull(10L)).thenReturn(Optional.of(post));
-            when(seriesRepository.findByIdAndDeletedAtIsNull(5L)).thenReturn(Optional.of(series));
+            when(seriesRepository.findByIdAndDeletedAtIsNull(5L)).thenReturn(series);
 
             postService.addPostToSeries(10L, 5L, mockUser);
 
@@ -671,7 +671,7 @@ class PostServiceTest {
         void add_SeriesNotFound() {
             Post post = buildPost(10L, mockUser, null);
             when(postRepository.findByIdAndDeletedAtIsNull(10L)).thenReturn(Optional.of(post));
-            when(seriesRepository.findByIdAndDeletedAtIsNull(999L)).thenReturn(Optional.empty());
+            when(seriesRepository.findByIdAndDeletedAtIsNull(999L)).thenReturn(null);
 
             assertThatThrownBy(() -> postService.addPostToSeries(10L, 999L, mockUser))
                     .isInstanceOf(BusinessException.class)
@@ -685,7 +685,7 @@ class PostServiceTest {
             Post post = buildPost(10L, mockUser, null);
 
             when(postRepository.findByIdAndDeletedAtIsNull(10L)).thenReturn(Optional.of(post));
-            when(seriesRepository.findByIdAndDeletedAtIsNull(5L)).thenReturn(Optional.of(series));
+            when(seriesRepository.findByIdAndDeletedAtIsNull(5L)).thenReturn(series);
 
             assertThatThrownBy(() -> postService.addPostToSeries(10L, 5L, mockUser))
                     .isInstanceOf(BusinessException.class)

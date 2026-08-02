@@ -12,6 +12,7 @@ import com.scommit.global.exception.ErrorCode
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.data.domain.Slice
+import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -28,9 +29,8 @@ class SeriesService(
         userId: Long,
     ): SeriesResponse {
         val user =
-            userRepository
-                .findById(userId)
-                .orElseThrow { BusinessException(ErrorCode.USER_NOT_FOUND) }
+            userRepository.findByIdOrNull(userId)
+                ?: throw BusinessException(ErrorCode.USER_NOT_FOUND)
 
         val series =
             Series(
@@ -65,9 +65,8 @@ class SeriesService(
     @Transactional(readOnly = true)
     fun getSeries(id: Long): SeriesResponse {
         val series =
-            seriesRepository
-                .findByIdAndDeletedAtIsNull(id)
-                .orElseThrow { BusinessException(ErrorCode.SERIES_NOT_FOUND) }
+            seriesRepository.findByIdAndDeletedAtIsNull(id)
+                ?: throw BusinessException(ErrorCode.SERIES_NOT_FOUND)
 
         return SeriesResponse(series)
     }
@@ -81,9 +80,8 @@ class SeriesService(
         actorRole: UserRole,
     ): SeriesResponse {
         val series =
-            seriesRepository
-                .findByIdAndDeletedAtIsNull(id)
-                .orElseThrow { BusinessException(ErrorCode.SERIES_NOT_FOUND) }
+            seriesRepository.findByIdAndDeletedAtIsNull(id)
+                ?: throw BusinessException(ErrorCode.SERIES_NOT_FOUND)
 
         if (actorRole != UserRole.ADMIN && series.user.id != actorId) {
             throw BusinessException(ErrorCode.ACCESS_DENIED)
@@ -101,9 +99,8 @@ class SeriesService(
         actorRole: UserRole,
     ) {
         val series =
-            seriesRepository
-                .findByIdAndDeletedAtIsNull(id)
-                .orElseThrow { BusinessException(ErrorCode.SERIES_NOT_FOUND) }
+            seriesRepository.findByIdAndDeletedAtIsNull(id)
+                ?: throw BusinessException(ErrorCode.SERIES_NOT_FOUND)
 
         if (actorRole != UserRole.ADMIN && series.user.id != actorId) {
             throw BusinessException(ErrorCode.ACCESS_DENIED)
