@@ -86,13 +86,7 @@ class SeriesServiceTest {
         title: String,
         body: String,
     ): Series {
-        val series =
-            Series
-                .builder()
-                .user(mockUser)
-                .title(title)
-                .body(body)
-                .build()
+        val series = Series(user = mockUser, title = title, body = body)
         ReflectionTestUtils.setField(series, "id", id)
         return series
     }

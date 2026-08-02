@@ -40,28 +40,4 @@ class Series(
         this.title = title
         this.body = body
     }
-
-    companion object {
-        @JvmStatic
-        fun builder() = SeriesBuilder()
-    }
-
-    class SeriesBuilder {
-        private var user: User? = null
-        private var title: String? = null
-        private var body: String? = null
-
-        fun user(user: User) = apply { this.user = user }
-
-        fun title(title: String) = apply { this.title = title }
-
-        fun body(body: String?) = apply { this.body = body }
-
-        fun build() =
-            Series(
-                user = checkNotNull(user) { "user는 필수입니다." },
-                title = checkNotNull(title) { "title은 필수입니다." },
-                body = body,
-            )
-    }
 }

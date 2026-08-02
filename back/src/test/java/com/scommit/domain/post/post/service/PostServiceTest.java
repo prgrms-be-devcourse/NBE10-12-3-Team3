@@ -107,11 +107,7 @@ class PostServiceTest {
     }
 
     private Series buildSeries(Long id, User owner) {
-        Series series = Series.builder()
-                .user(owner)
-                .title("시리즈")
-                .body("설명")
-                .build();
+        Series series = new Series(owner, "시리즈", "설명");
         ReflectionTestUtils.setField(series, "id", id);
         return series;
     }

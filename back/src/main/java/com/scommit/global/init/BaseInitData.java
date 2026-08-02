@@ -211,22 +211,16 @@ public class BaseInitData implements ApplicationRunner {
             User owner = testUsers.get(i);
             for (int j = 0; j < 4; j++) {
                 int idx = i * 4 + j;
-                testSeriesList.add(seriesRepository.save(Series.builder()
-                        .user(owner)
-                        .title(SERIES_TITLES[idx])
-                        .body(SERIES_BODIES[idx % SERIES_BODIES.length])
-                        .build()));
+                testSeriesList.add(seriesRepository.save(
+                        new Series(owner, SERIES_TITLES[idx], SERIES_BODIES[idx % SERIES_BODIES.length])));
             }
         }
 
         // Series for first 20 general users (1 each = 20 total)
         List<Series> generalSeriesList = new ArrayList<>();
         for (int i = 0; i < 20; i++) {
-            generalSeriesList.add(seriesRepository.save(Series.builder()
-                    .user(generalUsers.get(i))
-                    .title(SERIES_TITLES[40 + i])
-                    .body(SERIES_BODIES[(40 + i) % SERIES_BODIES.length])
-                    .build()));
+            generalSeriesList.add(seriesRepository.save(
+                    new Series(generalUsers.get(i), SERIES_TITLES[40 + i], SERIES_BODIES[(40 + i) % SERIES_BODIES.length])));
         }
 
         // Posts for test users (20 each = 200 total)

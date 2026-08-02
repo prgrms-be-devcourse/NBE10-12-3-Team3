@@ -265,22 +265,16 @@ public class ProdInitDataService {
         for (int i = 0; i < 10; i++) {
             for (int j = 0; j < 6; j++) {
                 int idx = i * 6 + j;
-                heavySeries.add(seriesRepository.save(Series.builder()
-                        .user(heavyUsers.get(i))
-                        .title(SERIES_TITLES[idx])
-                        .body(SERIES_BODIES[idx % SERIES_BODIES.length])
-                        .build()));
+                heavySeries.add(seriesRepository.save(
+                        new Series(heavyUsers.get(i), SERIES_TITLES[idx], SERIES_BODIES[idx % SERIES_BODIES.length])));
             }
         }
 
         // General user series: first 40 users × 1 = 40 (SERIES_TITLES 60~99)
         List<Series> generalSeries = new ArrayList<>();
         for (int i = 0; i < 40; i++) {
-            generalSeries.add(seriesRepository.save(Series.builder()
-                    .user(generalUsers.get(i))
-                    .title(SERIES_TITLES[60 + i])
-                    .body(SERIES_BODIES[(60 + i) % SERIES_BODIES.length])
-                    .build()));
+            generalSeries.add(seriesRepository.save(
+                    new Series(generalUsers.get(i), SERIES_TITLES[60 + i], SERIES_BODIES[(60 + i) % SERIES_BODIES.length])));
         }
 
         // Posts — globalIndex determines media and public/free override
