@@ -24,6 +24,7 @@ class Series(
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     var user: User,
+    @Column(nullable = false)
     var title: String,
     var body: String? = null,
 ) : BaseEntity() {
