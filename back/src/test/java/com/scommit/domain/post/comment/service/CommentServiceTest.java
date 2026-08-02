@@ -89,11 +89,7 @@ class CommentServiceTest {
 
     // 테스트용 Comment 빌더 헬퍼 - 매 테스트마다 반복 코드를 줄이기 위해 사용
     private Comment buildComment(Long id, User user, Post post) {
-        Comment comment = Comment.builder()
-                .user(user)
-                .post(post)
-                .body("댓글 내용")
-                .build();
+        Comment comment = new Comment(post, user, "댓글 내용");
         ReflectionTestUtils.setField(comment, "id", id);
         return comment;
     }

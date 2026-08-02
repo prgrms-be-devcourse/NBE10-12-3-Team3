@@ -284,11 +284,10 @@ public class BaseInitData implements ApplicationRunner {
             List<User> pool = new ArrayList<>(allUsers);
             pool.removeIf(u -> u.getId().equals(authorId));
             for (int k = 0; k < count; k++) {
-                comments.add(Comment.builder()
-                        .post(post)
-                        .user(pool.get(RNG.nextInt(pool.size())))
-                        .body(COMMENT_BODIES[RNG.nextInt(COMMENT_BODIES.length)])
-                        .build());
+                comments.add(new Comment(
+                        post,
+                        pool.get(RNG.nextInt(pool.size())),
+                        COMMENT_BODIES[RNG.nextInt(COMMENT_BODIES.length)]));
             }
         }
         commentRepository.saveAll(comments);
