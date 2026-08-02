@@ -120,7 +120,7 @@ class LikeServiceTest {
             ReflectionTestUtils.setField(post, "likeCount", 1L);
             Like like = new Like(post, actor);
             given(postRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(Optional.of(post));
-            given(likeRepository.findByPostIdAndUserId(10L, 1L)).willReturn(Optional.of(like));
+            given(likeRepository.findByPostIdAndUserId(10L, 1L)).willReturn(like);
 
             // when
             likeService.deleteLike(10L, actor);
@@ -135,7 +135,7 @@ class LikeServiceTest {
         void deleteLike_likeNotFound() {
             // given
             given(postRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(Optional.of(post));
-            given(likeRepository.findByPostIdAndUserId(10L, 1L)).willReturn(Optional.empty());
+            given(likeRepository.findByPostIdAndUserId(10L, 1L)).willReturn(null);
 
             // when & then
             assertThatThrownBy(() -> likeService.deleteLike(10L, actor))

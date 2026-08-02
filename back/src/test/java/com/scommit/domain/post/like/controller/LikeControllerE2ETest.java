@@ -123,7 +123,7 @@ class LikeControllerE2ETest {
 
     /** 응답에 드러나지 않는 부작용(행 생성/삭제)을 DB에서 직접 되짚기 위한 조회. */
     private Optional<Like> findLike(Long postId, Long userId) {
-        return likeRepository.findByPostIdAndUserId(postId, userId);
+        return Optional.ofNullable(likeRepository.findByPostIdAndUserId(postId, userId));
     }
 
     private long likeCountOf(Long postId) {
