@@ -1,17 +1,17 @@
 package com.scommit.domain.post.post.controller;
 
 // Post 컨트롤러 E2E — CRUD, 목록/검색, 접근 제어(PRIVATE/PAID), 미디어
-// 규약: docs/e2e-test-convention.md
+// 컨벤션: User/Comment/Like/Bookmark E2E 선례를 따른다(문서화된 규약 파일은 아직 없음).
 //
-// 결정사항 (변경 금지 — 규약 문서의 요약)
+// 결정사항 (변경 금지)
 // - @SpringBootTest(RANDOM_PORT) + RestTestClient(spring-test, 서블릿 계열).
 //   Mock / MockMvc / @MockitoBean / webflux 의존성 일절 사용 금지, 실제 HTTP 요청만.
 // - DB: 이 클래스 전용 H2 in-memory(postE2edb). 다른 @SpringBootTest 와 datasource.url을
-//   공유하면 같은 JVM 안에서 create-drop이 서로의 스키마를 침범할 수 있다(규약 4장).
+//   공유하면 같은 JVM 안에서 create-drop이 서로의 스키마를 침범할 수 있다.
 // - 픽스처: 전량 실제 API 조립. @TestConfiguration을 만들지 않는다.
-// - 응답 본문은 RsData가 아니라 ApiResponse 미러 레코드로 받는다(규약 3장).
+// - 응답 본문은 RsData가 아니라 ApiResponse 미러 레코드로 받는다.
 // - 미인증(401-1)은 AuthenticationEntryPoint와 컨트롤러의 BusinessException(UNAUTHORIZED)이
-//   같은 코드를 쓰므로 msg까지 검증한다(규약 6장). SecurityConfig가 먼저 잘라내므로
+//   같은 코드를 쓰므로 msg까지 검증한다. SecurityConfig가 먼저 잘라내므로
 //   언제나 EntryPoint의 "로그인 후 이용해주세요."가 나온다.
 // - Like/Bookmark는 별도 컨트롤러(LikeControllerE2ETest/BookmarkControllerE2ETest, likedb/bookmarkdb)
 //   담당이라 이 클래스에서 다루지 않는다.
@@ -316,7 +316,7 @@ class PostControllerE2ETest {
         // title을 직접 검사하지 않는다. Post 엔티티의 title 컬럼이 @Column(nullable = false)라
         // null title은 요청 단계가 아니라 INSERT 시점에 DB NOT NULL 제약 위반으로 걸리고,
         // 이 프로젝트엔 그 제약 위반 예외 전용 핸들러가 없어 GlobalExceptionHandler의 포괄
-        // Exception 핸들러로 떨어져 400이 아니라 500-1이 된다. 상세: docs/post-e2e-known-issues.md #1
+        // Exception 핸들러로 떨어져 400이 아니라 500-1이 된다.
         void createPost_nullTitle_actualBehaviorReturns500_1() {
             String accessToken = newUserToken();
 
@@ -674,7 +674,7 @@ class PostControllerE2ETest {
         // 안 하는 이 지점이 원인이다.
         // 남은 Media를 개별 DELETE API로 정리하는 것도 불가능하다 — PostMediaService.deleteMedia()가
         // post.getDeletedAt() != null이면 POST_NOT_FOUND(404-3)를 던져서, 삭제된 게시글에 딸린
-        // 미디어는 API로 정리할 방법 자체가 없다. 상세: docs/post-e2e-known-issues.md #2
+        // 미디어는 API로 정리할 방법 자체가 없다.
         void deletePost_doesNotCleanUpThumbnailRowsOrFile() {
             String accessToken = newUserToken();
             Long postId = createPost(accessToken, "썸네일 있는 글", PublishStatus.PUBLIC, PostAccessLevel.FREE);
@@ -773,7 +773,7 @@ class PostControllerE2ETest {
         @Test
         @DisplayName("2. PRIVATE/DRAFT 게시글도 실제 동작을 그대로 고정한다 — 그대로 노출된다")
         // FIXME(#3): PostRepository.findByUserAndDeletedAtIsNull()에 publishStatus 필터가 없어
-        // 다른 유저의 PRIVATE/DRAFT 게시글까지 그대로 노출된다. 상세: docs/post-e2e-known-issues.md #3
+        // 다른 유저의 PRIVATE/DRAFT 게시글까지 그대로 노출된다.
         void getUserPosts_privateAndDraft_actualBehaviorExposesThem() {
             LoginResponseHolder owner = signUpAndLoginHolder();
             createPost(owner.accessToken(), "공개 글", PublishStatus.PUBLIC, PostAccessLevel.FREE);
@@ -816,7 +816,7 @@ class PostControllerE2ETest {
         @Test
         @DisplayName("2. creatorId 필터링도 PRIVATE/DRAFT를 실제 동작 그대로 노출한다")
         // FIXME(#3): PostRepository.findSliceByUserAndDeletedAtIsNull()에도 publishStatus 필터가 없다.
-        // 바로 위 GetUserPosts#2와 같은 근본 원인. 상세: docs/post-e2e-known-issues.md #3
+        // 바로 위 GetUserPosts#2와 같은 근본 원인.
         void getPosts_filterByCreatorId_actualBehaviorExposesPrivateAndDraft() {
             LoginResponseHolder owner = signUpAndLoginHolder();
             createPost(owner.accessToken(), "공개 글", PublishStatus.PUBLIC, PostAccessLevel.FREE);
@@ -835,10 +835,8 @@ class PostControllerE2ETest {
         @DisplayName("3. 존재하지 않는 정렬 프로퍼티를 쓰면 실제 동작을 그대로 고정한다 — 500-1이 난다")
         // FIXME(#5): 이 프로젝트에 Pageable 정렬 예외(PropertyReferenceException) 전용 핸들러가 없어
         // GlobalExceptionHandler의 포괄 Exception 핸들러로 떨어져 500-1이 된다.
-        // 같은 근본 원인(클라이언트가 잘못 준 정렬/파라미터가 500으로 응답됨)이 이미 각 도메인의
-        // 자체 known-issues 문서에도 등재돼 있다 — BookmarkControllerE2ETest.java(docs/like-bookmark-
-        // notification-e2e-known-issues.md #5)와 SeriesControllerE2ETest.java(docs/series-e2e-known-
-        // issues.md #4). 상세: docs/post-e2e-known-issues.md #5
+        // 같은 근본 원인(클라이언트가 잘못 준 정렬/파라미터가 500으로 응답됨)이 BookmarkControllerE2ETest.java,
+        // SeriesControllerE2ETest.java에도 각각 별도 케이스로 나타난다.
         void getPosts_invalidSortProperty_actualBehaviorReturns500_1() {
             String accessToken = newUserToken();
 
@@ -1039,8 +1037,7 @@ class PostControllerE2ETest {
         @DisplayName("8. 게시글에 썸네일이 없으면 실제 동작을 그대로 고정한다 — 200 + data:null")
         // FIXME(#4): PostMediaService.getThumbnail()이 orElse(null)로 끝내고 컨트롤러가 그 null을
         // 그대로 RsData에 담아 반환한다. 404가 아니라 200으로 응답한다.
-        // SeriesControllerE2ETest의 series-e2e-known-issues.md #3(SeriesMediaService.getMedia())과
-        // 동일 패턴. 상세: docs/post-e2e-known-issues.md #4
+        // SeriesControllerE2ETest의 SeriesMediaService.getMedia()와 동일 패턴.
         void getThumbnail_noThumbnail_actualBehaviorReturns200WithNullData() {
             String accessToken = newUserToken();
             Long postId = createPost(accessToken, "썸네일 없는 글", PublishStatus.PUBLIC, PostAccessLevel.FREE);
