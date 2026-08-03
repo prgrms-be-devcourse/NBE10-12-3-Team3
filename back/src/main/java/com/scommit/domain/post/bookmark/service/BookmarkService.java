@@ -25,8 +25,10 @@ public class BookmarkService {
 
     @Transactional
     public void createBookmark(Long postId, User actor) {
-        Post post = postRepository.findByIdAndDeletedAtIsNull(postId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.POST_NOT_FOUND));
+        Post post = postRepository.findByIdAndDeletedAtIsNull(postId);
+        if (post == null) {
+            throw new BusinessException(ErrorCode.POST_NOT_FOUND);
+        }
 
         try {
             bookmarkRepository.save(new Bookmark(post, actor));
@@ -48,8 +50,10 @@ public class BookmarkService {
 
     @Transactional
     public void deleteBookmark(Long postId, User actor) {
-        Post post = postRepository.findByIdAndDeletedAtIsNull(postId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.POST_NOT_FOUND));
+        Post post = postRepository.findByIdAndDeletedAtIsNull(postId);
+        if (post == null) {
+            throw new BusinessException(ErrorCode.POST_NOT_FOUND);
+        }
 
         Bookmark bookmark = bookmarkRepository.findByPostIdAndUserId(postId, actor.getId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.BOOKMARK_NOT_FOUND));

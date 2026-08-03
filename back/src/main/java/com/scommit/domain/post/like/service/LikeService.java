@@ -20,8 +20,10 @@ public class LikeService {
 
     @Transactional
     public void createLike(Long postId, User actor) {
-        Post post = postRepository.findByIdAndDeletedAtIsNull(postId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.POST_NOT_FOUND));
+        Post post = postRepository.findByIdAndDeletedAtIsNull(postId);
+        if (post == null) {
+            throw new BusinessException(ErrorCode.POST_NOT_FOUND);
+        }
 
         try {
             likeRepository.save(new Like(post, actor));
@@ -33,8 +35,10 @@ public class LikeService {
 
     @Transactional
     public void deleteLike(Long postId, User actor) {
-        Post post = postRepository.findByIdAndDeletedAtIsNull(postId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.POST_NOT_FOUND));
+        Post post = postRepository.findByIdAndDeletedAtIsNull(postId);
+        if (post == null) {
+            throw new BusinessException(ErrorCode.POST_NOT_FOUND);
+        }
 
         Like like = likeRepository.findByPostIdAndUserId(postId, actor.getId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.LIKE_NOT_FOUND));

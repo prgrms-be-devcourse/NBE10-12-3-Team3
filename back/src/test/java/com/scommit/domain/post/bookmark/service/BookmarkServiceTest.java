@@ -75,7 +75,7 @@ class BookmarkServiceTest {
         @DisplayName("성공: 북마크가 추가되고 bookmarkCount가 증가한다")
         void createBookmark_success() {
             // given
-            given(postRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(Optional.of(post));
+            given(postRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(post);
 
             // when
             bookmarkService.createBookmark(10L, actor);
@@ -89,7 +89,7 @@ class BookmarkServiceTest {
         @DisplayName("실패: 이미 북마크한 경우 DataIntegrityViolationException이 발생하면 ALREADY_BOOKMARKED 예외를 던진다")
         void createBookmark_alreadyBookmarked() {
             // given
-            given(postRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(Optional.of(post));
+            given(postRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(post);
             given(bookmarkRepository.save(any(Bookmark.class)))
                     .willThrow(new org.springframework.dao.DataIntegrityViolationException("Duplicate entry"));
 
@@ -103,7 +103,7 @@ class BookmarkServiceTest {
         @DisplayName("실패: 존재하지 않는 게시글이면 POST_NOT_FOUND 예외를 던진다")
         void createBookmark_postNotFound() {
             // given
-            given(postRepository.findByIdAndDeletedAtIsNull(999L)).willReturn(Optional.empty());
+            given(postRepository.findByIdAndDeletedAtIsNull(999L)).willReturn(null);
 
             // when & then
             assertThatThrownBy(() -> bookmarkService.createBookmark(999L, actor))
@@ -125,7 +125,7 @@ class BookmarkServiceTest {
             // given
             ReflectionTestUtils.setField(post, "bookmarkCount", 1L);
             Bookmark bookmark = new Bookmark(post, actor);
-            given(postRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(Optional.of(post));
+            given(postRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(post);
             given(bookmarkRepository.findByPostIdAndUserId(10L, 1L)).willReturn(Optional.of(bookmark));
 
             // when
@@ -140,7 +140,7 @@ class BookmarkServiceTest {
         @DisplayName("실패: 북마크가 없는 경우 BOOKMARK_NOT_FOUND 예외를 던진다")
         void deleteBookmark_bookmarkNotFound() {
             // given
-            given(postRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(Optional.of(post));
+            given(postRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(post);
             given(bookmarkRepository.findByPostIdAndUserId(10L, 1L)).willReturn(Optional.empty());
 
             // when & then
@@ -155,7 +155,7 @@ class BookmarkServiceTest {
         @DisplayName("실패: 존재하지 않는 게시글이면 POST_NOT_FOUND 예외를 던진다")
         void deleteBookmark_postNotFound() {
             // given
-            given(postRepository.findByIdAndDeletedAtIsNull(999L)).willReturn(Optional.empty());
+            given(postRepository.findByIdAndDeletedAtIsNull(999L)).willReturn(null);
 
             // when & then
             assertThatThrownBy(() -> bookmarkService.deleteBookmark(999L, actor))
