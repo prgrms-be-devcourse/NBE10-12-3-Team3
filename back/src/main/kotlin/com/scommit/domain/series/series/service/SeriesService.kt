@@ -77,7 +77,7 @@ class SeriesService(
         title: String,
         body: String?,
         actorId: Long,
-        actorRole: UserRole,
+        actorRole: UserRole?,
     ): SeriesResponse {
         val series =
             seriesRepository.findByIdAndDeletedAtIsNull(id)
@@ -96,7 +96,7 @@ class SeriesService(
     fun deleteSeries(
         id: Long,
         actorId: Long,
-        actorRole: UserRole,
+        actorRole: UserRole?,
     ) {
         val series =
             seriesRepository.findByIdAndDeletedAtIsNull(id)
