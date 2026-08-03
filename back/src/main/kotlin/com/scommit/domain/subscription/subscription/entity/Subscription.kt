@@ -19,18 +19,17 @@ import java.time.LocalDate
     uniqueConstraints = [
         UniqueConstraint(
             name = "uk_subscription_user_creator",
-            columnNames = ["user_id", "creator_id"]
-        )
-    ]
+            columnNames = ["user_id", "creator_id"],
+        ),
+    ],
 )
 class Subscription(
     user: User,
     creator: User,
     tier: SubscriptionTier,
     startedAt: LocalDate? = null,
-    expiredAt: LocalDate? = null
+    expiredAt: LocalDate? = null,
 ) : BaseEntity() {
-
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     var user: User = user

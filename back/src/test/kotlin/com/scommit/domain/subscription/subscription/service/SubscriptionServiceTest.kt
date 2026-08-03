@@ -33,7 +33,6 @@ import java.util.Optional
 
 @ExtendWith(MockitoExtension::class)
 class SubscriptionServiceTest {
-
     @Mock
     private lateinit var userRepository: UserRepository
 
@@ -53,13 +52,14 @@ class SubscriptionServiceTest {
         private val subscriberId = 1L
         private val creatorId = 2L
 
-        private fun buildSubscriber(): User =
-            User(subscriberId, "sub@test.com", "Subscriber", UserRole.USER)
+        private fun buildSubscriber(): User = User(subscriberId, "sub@test.com", "Subscriber", UserRole.USER)
 
-        private fun buildCreator(): User =
-            User(creatorId, "creator@test.com", "Creator", UserRole.USER)
+        private fun buildCreator(): User = User(creatorId, "creator@test.com", "Creator", UserRole.USER)
 
-        private fun buildFollowSubscription(subscriber: User, creator: User): Subscription =
+        private fun buildFollowSubscription(
+            subscriber: User,
+            creator: User,
+        ): Subscription =
             Subscription(user = subscriber, creator = creator, tier = SubscriptionTier.FOLLOW).apply {
                 ReflectionTestUtils.setField(this, "id", 100L)
             }
@@ -91,7 +91,7 @@ class SubscriptionServiceTest {
                 .isInstanceOf(BusinessException::class.java)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.SELF_SUBSCRIPTION_NOT_ALLOWED)
-                
+
             verify(subscriptionRepository, never()).save(any(Subscription::class.java))
         }
 

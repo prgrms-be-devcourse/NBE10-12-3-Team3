@@ -10,19 +10,18 @@ data class SubscriptionResponse(
     val tier: SubscriptionTier,
     val startedAt: LocalDate?,
     val expiredAt: LocalDate?,
-    val followerCount: Long
+    val followerCount: Long,
 ) {
     companion object {
-        fun from(info: SubscriptionInfo): SubscriptionResponse {
-            return SubscriptionResponse(
+        fun from(info: SubscriptionInfo): SubscriptionResponse =
+            SubscriptionResponse(
                 creatorId = info.creatorId,
                 nickname = info.nickname,
                 creatorProfileImage = info.creatorProfileImage,
                 tier = info.tier,
                 startedAt = info.startedAt,
                 expiredAt = info.expiredAt,
-                followerCount = info.followerCount
+                followerCount = info.followerCount,
             )
-        }
     }
 }

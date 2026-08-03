@@ -22,14 +22,13 @@ import org.springframework.web.bind.annotation.RestController
 @RestController
 @RequestMapping("/api/subscriptions")
 class SubscriptionController(
-    private val subscriptionService: SubscriptionService
+    private val subscriptionService: SubscriptionService,
 ) {
-
     @Operation(summary = "창작자 팔로우", description = "특정 창작자를 팔로우합니다.")
     @PostMapping("/follow/{creatorId}")
     fun follow(
         @PathVariable("creatorId") creatorId: Long,
-        @AuthenticationPrincipal user: SecurityUser
+        @AuthenticationPrincipal user: SecurityUser,
     ): RsData<Void> {
         subscriptionService.follow(user.id, creatorId)
         return RsData("200-1", "팔로우 성공")
@@ -39,7 +38,7 @@ class SubscriptionController(
     @DeleteMapping("/follow/{creatorId}")
     fun unfollow(
         @PathVariable("creatorId") creatorId: Long,
-        @AuthenticationPrincipal user: SecurityUser
+        @AuthenticationPrincipal user: SecurityUser,
     ): RsData<Void> {
         subscriptionService.unfollow(user.id, creatorId)
         return RsData("200-1", "언팔로우 성공")
@@ -49,7 +48,7 @@ class SubscriptionController(
     @PostMapping("/membership/{creatorId}")
     fun joinMembership(
         @PathVariable("creatorId") creatorId: Long,
-        @AuthenticationPrincipal user: SecurityUser
+        @AuthenticationPrincipal user: SecurityUser,
     ): RsData<Void> {
         subscriptionService.joinMembership(user.id, creatorId)
         return RsData("200-1", "멤버십 가입 성공")
@@ -59,7 +58,7 @@ class SubscriptionController(
     @DeleteMapping("/membership/{creatorId}")
     fun cancelMembership(
         @PathVariable("creatorId") creatorId: Long,
-        @AuthenticationPrincipal user: SecurityUser
+        @AuthenticationPrincipal user: SecurityUser,
     ): RsData<Void> {
         subscriptionService.cancelMembership(user.id, creatorId)
         return RsData("200-1", "멤버십 해지 성공")
@@ -69,7 +68,7 @@ class SubscriptionController(
     @GetMapping
     fun getMySubscriptions(
         @AuthenticationPrincipal user: SecurityUser,
-        @PageableDefault(size = 10) pageable: Pageable
+        @PageableDefault(size = 10) pageable: Pageable,
     ): RsData<PageResponse<SubscriptionResponse>> {
         val infoPage = subscriptionService.getMySubscriptions(user.id, pageable)
         val responsePage = infoPage.map { SubscriptionResponse.from(it) }
@@ -79,7 +78,7 @@ class SubscriptionController(
     @Operation(summary = "내 구독 총 수 조회", description = "내가 현재 구독(팔로우/멤버십) 중인 총 창작자 수를 반환합니다.")
     @GetMapping("/count")
     fun getMySubscriptionCount(
-        @AuthenticationPrincipal user: SecurityUser
+        @AuthenticationPrincipal user: SecurityUser,
     ): RsData<Long> {
         val count = subscriptionService.getMySubscriptionCount(user.id)
         return RsData("200-1", "구독 수 조회 성공", count)
@@ -89,7 +88,7 @@ class SubscriptionController(
     @GetMapping("/status/{creatorId}")
     fun getSubscriptionStatus(
         @PathVariable("creatorId") creatorId: Long,
-        @AuthenticationPrincipal user: SecurityUser
+        @AuthenticationPrincipal user: SecurityUser,
     ): RsData<SubscriptionStatusResponse> {
         val status = subscriptionService.getSubscriptionStatus(user.id, creatorId)
         return RsData("200-1", "구독 상태 조회 성공", SubscriptionStatusResponse(status))
@@ -98,7 +97,7 @@ class SubscriptionController(
     @Operation(summary = "내 팔로워 수 조회", description = "나를 팔로우(멤버십 포함)하고 있는 유저의 총 숫자를 조회합니다.")
     @GetMapping("/followers/count")
     fun getMyFollowerCount(
-        @AuthenticationPrincipal user: SecurityUser
+        @AuthenticationPrincipal user: SecurityUser,
     ): RsData<Long> {
         val followerCount = subscriptionService.getFollowerCount(user.id)
         return RsData("200-1", "팔로워 수 조회 성공", followerCount)
