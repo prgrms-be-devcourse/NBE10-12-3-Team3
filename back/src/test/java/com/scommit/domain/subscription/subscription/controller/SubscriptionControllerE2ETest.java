@@ -57,7 +57,7 @@ class SubscriptionControllerE2ETest {
                 .expectStatus().isOk();
     }
     @Test
-    @DisplayName("예외: 인증되지 않은 사용자 (401)")
+    @DisplayName("예외: 인증되지 않은 사용자 - 팔로우 (401)")
     void follow_Unauthorized() {
         client.post().uri("/api/subscriptions/follow/{creatorId}", creatorId)
                 .exchange()
@@ -108,7 +108,7 @@ class SubscriptionControllerE2ETest {
                 .expectStatus().isOk();
     }
     @Test
-    @DisplayName("예외: 인증되지 않은 사용자 (401)")
+    @DisplayName("예외: 인증되지 않은 사용자 - 언팔로우 (401)")
     void unfollow_Unauthorized() {
         client.delete().uri("/api/subscriptions/follow/{creatorId}", creatorId)
                 .exchange()
@@ -155,9 +155,15 @@ class SubscriptionControllerE2ETest {
                 .header("Authorization", "Bearer " + myToken)
                 .exchange()
                 .expectStatus().isOk();
+
+        client.get().uri("/api/subscriptions/status/{creatorId}", creatorId)
+                .header("Authorization", "Bearer " + myToken)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody().jsonPath("$.data.status").isEqualTo("MEMBERSHIP");
     }
     @Test
-    @DisplayName("예외: 인증되지 않은 사용자 (401)")
+    @DisplayName("예외: 인증되지 않은 사용자 - 멤버십 가입 (401)")
     void joinMembership_Unauthorized() {
         client.post().uri("/api/subscriptions/membership/{creatorId}", creatorId)
                 .exchange()
@@ -206,9 +212,15 @@ class SubscriptionControllerE2ETest {
                 .header("Authorization", "Bearer " + myToken)
                 .exchange()
                 .expectStatus().isOk();
+
+        client.get().uri("/api/subscriptions/status/{creatorId}", creatorId)
+                .header("Authorization", "Bearer " + myToken)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody().jsonPath("$.data.status").isEqualTo("FOLLOW");
     }
     @Test
-    @DisplayName("예외: 인증되지 않은 사용자 (401)")
+    @DisplayName("예외: 인증되지 않은 사용자 - 멤버십 취소 (401)")
     void cancelMembership_Unauthorized() {
         client.delete().uri("/api/subscriptions/membership/{creatorId}", creatorId)
                 .exchange()
@@ -270,7 +282,7 @@ class SubscriptionControllerE2ETest {
                 .expectStatus().isOk();
     }
     @Test
-    @DisplayName("예외: 인증되지 않은 사용자 (401)")
+    @DisplayName("예외: 인증되지 않은 사용자 - 구독 목록 조회 (401)")
     void getMySubscriptions_Unauthorized() {
         client.get().uri("/api/subscriptions")
                 .exchange()
@@ -287,7 +299,7 @@ class SubscriptionControllerE2ETest {
                 .expectBody().jsonPath("$.data").isEqualTo(1);
     }
     @Test
-    @DisplayName("예외: 인증되지 않은 사용자 (401)")
+    @DisplayName("예외: 인증되지 않은 사용자 - 구독 수 조회 (401)")
     void getMySubscriptionCount_Unauthorized() {
         client.get().uri("/api/subscriptions/count")
                 .exchange()
@@ -323,7 +335,7 @@ class SubscriptionControllerE2ETest {
                 .expectBody().jsonPath("$.data.status").isEqualTo("NONE");
     }
     @Test
-    @DisplayName("예외: 인증되지 않은 사용자 (401)")
+    @DisplayName("예외: 인증되지 않은 사용자 - 상태 조회 (401)")
     void getStatus_Unauthorized() {
         client.get().uri("/api/subscriptions/status/{creatorId}", creatorId)
                 .exchange()
@@ -356,7 +368,7 @@ class SubscriptionControllerE2ETest {
                 .expectBody().jsonPath("$.data").isEqualTo(0);
     }
     @Test
-    @DisplayName("예외: 인증되지 않은 사용자 (401)")
+    @DisplayName("예외: 인증되지 않은 사용자 - 팔로워 수 조회 (401)")
     void getFollowerCount_Anonymous() {
         client.get().uri("/api/subscriptions/followers/count")
                 .exchange()
