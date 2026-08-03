@@ -702,8 +702,8 @@ class UserControllerE2ETest {
                     .expectBody(mediaBody())
                     .value(body -> {
                         assertThat(body.data()).isNotNull();
-                        assertThat(body.data().url()).isEqualTo(uploadedUrlHolder[0]);
-                        assertThat(body.data().userId()).isEqualTo(userId);
+                        assertThat(body.data().getUrl()).isEqualTo(uploadedUrlHolder[0]);
+                        assertThat(body.data().getUserId()).isEqualTo(userId);
                     });
 
             // 내 정보 조회에도 같은 URL이 실린다.
@@ -932,11 +932,11 @@ class UserControllerE2ETest {
                     .expectBody(mediaBody())
                     .value(body -> {
                         assertThat(body.resultCode()).isEqualTo("201-1");
-                        assertThat(body.data().url()).isNotBlank();
-                        assertThat(body.data().userId()).isEqualTo(userId);
-                        assertThat(body.data().mediaType())
+                        assertThat(body.data().getUrl()).isNotBlank();
+                        assertThat(body.data().getUserId()).isEqualTo(userId);
+                        assertThat(body.data().getMediaType())
                                 .isEqualTo(com.scommit.domain.media.media.entity.MediaType.IMAGE);
-                        uploadedUrlHolder[0] = body.data().url();
+                        uploadedUrlHolder[0] = body.data().getUrl();
                     });
 
             // 응답만 그럴듯한 게 아니라 실제로 저장되었는지 조회로 확인한다.
@@ -945,7 +945,7 @@ class UserControllerE2ETest {
                     .expectBody(mediaBody())
                     .value(body -> {
                         assertThat(body.data()).isNotNull();
-                        assertThat(body.data().url()).isEqualTo(uploadedUrlHolder[0]);
+                        assertThat(body.data().getUrl()).isEqualTo(uploadedUrlHolder[0]);
                     });
         }
 
@@ -999,8 +999,8 @@ class UserControllerE2ETest {
                     .expectBody(mediaBody())
                     .value(body -> {
                         assertThat(body.resultCode()).isEqualTo("200-1");
-                        assertThat(body.data().url()).isNotBlank();
-                        assertThat(body.data().userId()).isEqualTo(userId);
+                        assertThat(body.data().getUrl()).isNotBlank();
+                        assertThat(body.data().getUserId()).isEqualTo(userId);
                     });
         }
 

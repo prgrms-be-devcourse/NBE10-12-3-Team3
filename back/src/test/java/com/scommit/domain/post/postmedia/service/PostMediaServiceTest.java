@@ -27,6 +27,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.*;
 
@@ -62,6 +63,7 @@ class PostMediaServiceTest {
             given(postMediaRepository.save(any(PostMedia.class))).willReturn(postMedia);
             given(postMedia.getPost()).willReturn(post);
             given(postMedia.getMedia()).willReturn(media);
+            given(postMedia.getType()).willReturn(PostMediaType.BODY);
             given(media.getUrl()).willReturn("post/uuid_test.png");
             given(media.getType()).willReturn(MediaType.IMAGE);
 
@@ -81,18 +83,19 @@ class PostMediaServiceTest {
 
             given(postRepository.findById(postId)).willReturn(Optional.of(post));
             given(post.getDeletedAt()).willReturn(null);
-            given(postMediaRepository.findByPostAndType(post, PostMediaType.THUMBNAIL)).willReturn(Optional.empty());
+            given(postMediaRepository.findByPostAndType(post, PostMediaType.THUMBNAIL)).willReturn(null);
             given(mediaService.uploadMedia(file, "post")).willReturn(media);
             given(postMediaRepository.save(any(PostMedia.class))).willReturn(postMedia);
             given(postMedia.getPost()).willReturn(post);
             given(postMedia.getMedia()).willReturn(media);
+            given(postMedia.getType()).willReturn(PostMediaType.THUMBNAIL);
             given(media.getUrl()).willReturn("post/uuid_test.png");
             given(media.getType()).willReturn(MediaType.IMAGE);
 
             postMediaService.uploadMedia(postId, file, PostMediaType.THUMBNAIL);
 
             verify(postMediaRepository, never()).delete(any(PostMedia.class));
-            verify(mediaService, never()).deleteMedia(any());
+            verify(mediaService, never()).deleteMedia(anyLong());
         }
 
         @Test
@@ -114,12 +117,12 @@ class PostMediaServiceTest {
 
             given(postRepository.findById(postId)).willReturn(Optional.of(post));
             given(post.getDeletedAt()).willReturn(null);
-            given(postMediaRepository.findByPostAndType(post, PostMediaType.THUMBNAIL)).willReturn(Optional.of(existingPostMedia));
+            given(postMediaRepository.findByPostAndType(post, PostMediaType.THUMBNAIL)).willReturn(existingPostMedia);
             given(mediaService.uploadMedia(file, "post")).willReturn(newMedia);
 
             postMediaService.uploadMedia(postId, file, PostMediaType.THUMBNAIL);
 
-            verify(existingPostMedia).updateMedia(newMedia);
+            verify(existingPostMedia).setMedia(newMedia);
             verify(mediaService).deleteMedia(10L);
             verify(postMediaRepository, never()).delete(any());
             verify(postMediaRepository, never()).save(any());
@@ -237,7 +240,7 @@ class PostMediaServiceTest {
 
             given(postRepository.findById(postId)).willReturn(Optional.of(post));
             given(post.getDeletedAt()).willReturn(null);
-            given(postMediaRepository.findByPostAndType(post, PostMediaType.THUMBNAIL)).willReturn(Optional.of(postMedia));
+            given(postMediaRepository.findByPostAndType(post, PostMediaType.THUMBNAIL)).willReturn(postMedia);
             given(postMedia.getPost()).willReturn(post);
             given(postMedia.getMedia()).willReturn(media);
             given(postMedia.getType()).willReturn(PostMediaType.THUMBNAIL);
@@ -247,7 +250,7 @@ class PostMediaServiceTest {
             PostMediaResponse result = postMediaService.getThumbnail(postId);
 
             assertThat(result).isNotNull();
-            assertThat(result.url()).isEqualTo("post/uuid_thumb.png");
+            assertThat(result.getUrl()).isEqualTo("post/uuid_thumb.png");
         }
 
         @Test
@@ -267,7 +270,7 @@ class PostMediaServiceTest {
 
             given(postRepository.findById(postId)).willReturn(Optional.of(post));
             given(post.getDeletedAt()).willReturn(null);
-            given(postMediaRepository.findByPostAndType(post, PostMediaType.THUMBNAIL)).willReturn(Optional.empty());
+            given(postMediaRepository.findByPostAndType(post, PostMediaType.THUMBNAIL)).willReturn(null);
 
             PostMediaResponse result = postMediaService.getThumbnail(postId);
             assertThat(result).isNull();
@@ -344,7 +347,7 @@ class PostMediaServiceTest {
                     .isInstanceOf(BusinessException.class);
 
             verify(postMediaRepository, never()).delete(any());
-            verify(mediaService, never()).deleteMedia(any());
+            verify(mediaService, never()).deleteMedia(anyLong());
         }
 
         @Test
@@ -365,7 +368,7 @@ class PostMediaServiceTest {
                     .isInstanceOf(BusinessException.class);
 
             verify(postMediaRepository, never()).delete(any());
-            verify(mediaService, never()).deleteMedia(any());
+            verify(mediaService, never()).deleteMedia(anyLong());
         }
     }
 }

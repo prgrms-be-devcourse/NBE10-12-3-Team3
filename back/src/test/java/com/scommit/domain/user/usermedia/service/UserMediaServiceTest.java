@@ -23,6 +23,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.*;
 
@@ -53,7 +54,7 @@ class UserMediaServiceTest {
             UserMedia userMedia = mock(UserMedia.class);
 
             given(userRepository.findById(userId)).willReturn(Optional.of(user));
-            given(userMediaRepository.findByUser(user)).willReturn(Optional.empty());
+            given(userMediaRepository.findByUser(user)).willReturn(null);
             given(mediaService.uploadMedia(file, "user")).willReturn(media);
             given(userMediaRepository.save(any(UserMedia.class))).willReturn(userMedia);
             given(userMedia.getUser()).willReturn(user);
@@ -65,7 +66,7 @@ class UserMediaServiceTest {
 
             assertThat(result).isNotNull();
             verify(userMediaRepository, never()).delete(any());
-            verify(mediaService, never()).deleteMedia(any());
+            verify(mediaService, never()).deleteMedia(anyLong());
         }
 
         @Test
@@ -85,12 +86,12 @@ class UserMediaServiceTest {
             Media newMedia = mock(Media.class);
 
             given(userRepository.findById(userId)).willReturn(Optional.of(user));
-            given(userMediaRepository.findByUser(user)).willReturn(Optional.of(existingUserMedia));
+            given(userMediaRepository.findByUser(user)).willReturn(existingUserMedia);
             given(mediaService.uploadMedia(file, "user")).willReturn(newMedia);
 
             userMediaService.uploadMedia(userId, file);
 
-            verify(existingUserMedia).updateMedia(newMedia);
+            verify(existingUserMedia).setMedia(newMedia);
             verify(mediaService).deleteMedia(10L);
             verify(userMediaRepository, never()).delete(any());
             verify(userMediaRepository, never()).save(any());
@@ -121,7 +122,7 @@ class UserMediaServiceTest {
             UserMedia userMedia = mock(UserMedia.class);
 
             given(userRepository.findById(userId)).willReturn(Optional.of(user));
-            given(userMediaRepository.findByUser(user)).willReturn(Optional.of(userMedia));
+            given(userMediaRepository.findByUser(user)).willReturn(userMedia);
             given(userMedia.getUser()).willReturn(user);
             given(userMedia.getMedia()).willReturn(media);
             given(media.getUrl()).willReturn("user/uuid_profile.png");
@@ -130,7 +131,7 @@ class UserMediaServiceTest {
             UserMediaResponse result = userMediaService.getMedia(userId);
 
             assertThat(result).isNotNull();
-            assertThat(result.url()).isEqualTo("user/uuid_profile.png");
+            assertThat(result.getUrl()).isEqualTo("user/uuid_profile.png");
         }
 
         @Test
@@ -149,7 +150,7 @@ class UserMediaServiceTest {
             User user = mock(User.class);
 
             given(userRepository.findById(userId)).willReturn(Optional.of(user));
-            given(userMediaRepository.findByUser(user)).willReturn(Optional.empty());
+            given(userMediaRepository.findByUser(user)).willReturn(null);
 
             UserMediaResponse result = userMediaService.getMedia(userId);
             assertThat(result).isNull();
@@ -172,7 +173,7 @@ class UserMediaServiceTest {
             given(userMedia.getMedia()).willReturn(media);
 
             given(userRepository.findById(userId)).willReturn(Optional.of(user));
-            given(userMediaRepository.findByUser(user)).willReturn(Optional.of(userMedia));
+            given(userMediaRepository.findByUser(user)).willReturn(userMedia);
 
             userMediaService.deleteMedia(userId);
 
@@ -198,7 +199,7 @@ class UserMediaServiceTest {
             User user = mock(User.class);
 
             given(userRepository.findById(userId)).willReturn(Optional.of(user));
-            given(userMediaRepository.findByUser(user)).willReturn(Optional.empty());
+            given(userMediaRepository.findByUser(user)).willReturn(null);
 
             assertThatThrownBy(() -> userMediaService.deleteMedia(userId))
                     .isInstanceOf(BusinessException.class);

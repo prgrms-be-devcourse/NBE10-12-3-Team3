@@ -401,11 +401,11 @@ public class ProdInitDataService {
         String bodyUrl = bodyUrls.get(imgIdx);
         if (thumbUrl != null) {
             Media thumb = mediaRepository.save(new Media(thumbUrl, MediaType.IMAGE));
-            postMediaRepository.save(PostMedia.builder().post(post).media(thumb).type(PostMediaType.THUMBNAIL).build());
+            postMediaRepository.save(new PostMedia(post, thumb, PostMediaType.THUMBNAIL));
         }
         if (bodyUrl != null) {
             Media body = mediaRepository.save(new Media(bodyUrl, MediaType.IMAGE));
-            postMediaRepository.save(PostMedia.builder().post(post).media(body).type(PostMediaType.BODY).build());
+            postMediaRepository.save(new PostMedia(post, body, PostMediaType.BODY));
         }
     }
 }

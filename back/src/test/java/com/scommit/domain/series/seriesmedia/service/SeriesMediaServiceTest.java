@@ -26,6 +26,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.*;
 
@@ -59,7 +60,7 @@ class SeriesMediaServiceTest {
             given(seriesRepository.findByIdAndDeletedAtIsNull(seriesId)).willReturn(Optional.of(series));
             given(series.getUser()).willReturn(owner);
             given(owner.getId()).willReturn(1L);
-            given(seriesMediaRepository.findBySeries(series)).willReturn(Optional.empty());
+            given(seriesMediaRepository.findBySeries(series)).willReturn(null);
             given(mediaService.uploadMedia(file, "series")).willReturn(media);
             given(seriesMediaRepository.save(any(SeriesMedia.class))).willReturn(seriesMedia);
             given(seriesMedia.getSeries()).willReturn(series);
@@ -71,7 +72,7 @@ class SeriesMediaServiceTest {
 
             assertThat(result).isNotNull();
             verify(seriesMediaRepository, never()).delete(any());
-            verify(mediaService, never()).deleteMedia(any());
+            verify(mediaService, never()).deleteMedia(anyLong());
         }
 
         @Test
@@ -94,12 +95,12 @@ class SeriesMediaServiceTest {
             given(seriesRepository.findByIdAndDeletedAtIsNull(seriesId)).willReturn(Optional.of(series));
             given(series.getUser()).willReturn(owner);
             given(owner.getId()).willReturn(1L);
-            given(seriesMediaRepository.findBySeries(series)).willReturn(Optional.of(existingSeriesMedia));
+            given(seriesMediaRepository.findBySeries(series)).willReturn(existingSeriesMedia);
             given(mediaService.uploadMedia(file, "series")).willReturn(newMedia);
 
             seriesMediaService.uploadMedia(seriesId, file, 1L, UserRole.USER);
 
-            verify(existingSeriesMedia).updateMedia(newMedia);
+            verify(existingSeriesMedia).setMedia(newMedia);
             verify(mediaService).deleteMedia(10L);
             verify(seriesMediaRepository, never()).delete(any());
             verify(seriesMediaRepository, never()).save(any());
@@ -154,7 +155,7 @@ class SeriesMediaServiceTest {
             SeriesMedia seriesMedia = mock(SeriesMedia.class);
 
             given(seriesRepository.findByIdAndDeletedAtIsNull(seriesId)).willReturn(Optional.of(series));
-            given(seriesMediaRepository.findBySeries(series)).willReturn(Optional.empty());
+            given(seriesMediaRepository.findBySeries(series)).willReturn(null);
             given(mediaService.uploadMedia(file, "series")).willReturn(media);
             given(seriesMediaRepository.save(any(SeriesMedia.class))).willReturn(seriesMedia);
             given(seriesMedia.getSeries()).willReturn(series);
@@ -181,7 +182,7 @@ class SeriesMediaServiceTest {
             SeriesMedia seriesMedia = mock(SeriesMedia.class);
 
             given(seriesRepository.findByIdAndDeletedAtIsNull(seriesId)).willReturn(Optional.of(series));
-            given(seriesMediaRepository.findBySeries(series)).willReturn(Optional.of(seriesMedia));
+            given(seriesMediaRepository.findBySeries(series)).willReturn(seriesMedia);
             given(seriesMedia.getSeries()).willReturn(series);
             given(seriesMedia.getMedia()).willReturn(media);
             given(media.getUrl()).willReturn("series/uuid_thumbnail.png");
@@ -190,7 +191,7 @@ class SeriesMediaServiceTest {
             SeriesMediaResponse result = seriesMediaService.getMedia(seriesId);
 
             assertThat(result).isNotNull();
-            assertThat(result.url()).isEqualTo("series/uuid_thumbnail.png");
+            assertThat(result.getUrl()).isEqualTo("series/uuid_thumbnail.png");
         }
 
         @Test
@@ -209,7 +210,7 @@ class SeriesMediaServiceTest {
             Series series = mock(Series.class);
 
             given(seriesRepository.findByIdAndDeletedAtIsNull(seriesId)).willReturn(Optional.of(series));
-            given(seriesMediaRepository.findBySeries(series)).willReturn(Optional.empty());
+            given(seriesMediaRepository.findBySeries(series)).willReturn(null);
 
             SeriesMediaResponse result = seriesMediaService.getMedia(seriesId);
             assertThat(result).isNull();
@@ -235,7 +236,7 @@ class SeriesMediaServiceTest {
             given(seriesRepository.findByIdAndDeletedAtIsNull(seriesId)).willReturn(Optional.of(series));
             given(series.getUser()).willReturn(owner);
             given(owner.getId()).willReturn(1L);
-            given(seriesMediaRepository.findBySeries(series)).willReturn(Optional.of(seriesMedia));
+            given(seriesMediaRepository.findBySeries(series)).willReturn(seriesMedia);
 
             seriesMediaService.deleteMedia(seriesId, 1L, UserRole.USER);
 
@@ -282,7 +283,7 @@ class SeriesMediaServiceTest {
             given(seriesRepository.findByIdAndDeletedAtIsNull(seriesId)).willReturn(Optional.of(series));
             given(series.getUser()).willReturn(owner);
             given(owner.getId()).willReturn(1L);
-            given(seriesMediaRepository.findBySeries(series)).willReturn(Optional.empty());
+            given(seriesMediaRepository.findBySeries(series)).willReturn(null);
 
             assertThatThrownBy(() -> seriesMediaService.deleteMedia(seriesId, 1L, UserRole.USER))
                     .isInstanceOf(BusinessException.class);
@@ -312,7 +313,7 @@ class SeriesMediaServiceTest {
             given(media.getId()).willReturn(10L);
             given(seriesMedia.getMedia()).willReturn(media);
             given(seriesRepository.findByIdAndDeletedAtIsNull(seriesId)).willReturn(Optional.of(series));
-            given(seriesMediaRepository.findBySeries(series)).willReturn(Optional.of(seriesMedia));
+            given(seriesMediaRepository.findBySeries(series)).willReturn(seriesMedia);
 
             seriesMediaService.deleteMedia(seriesId, 99L, UserRole.ADMIN);
 

@@ -111,7 +111,7 @@ public class UserController {
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
         UserMediaResponse media = userMediaService.getMedia(actor.getId());
-        String profileImageUrl = media != null ? media.url() : null;
+        String profileImageUrl = media != null ? media.getUrl() : null;
 
         return new RsData<>(
                 "200-1",
@@ -134,10 +134,10 @@ public class UserController {
         User updatedUser = userService.updateUser(actor.getId(), request.nickname(), request.introduction());
         String profileImageUrl;
         if (profileImage != null) {
-            profileImageUrl = userMediaService.uploadMedia(actor.getId(), profileImage).url();
+            profileImageUrl = userMediaService.uploadMedia(actor.getId(), profileImage).getUrl();
         } else {
             UserMediaResponse media = userMediaService.getMedia(actor.getId());
-            profileImageUrl = media != null ? media.url() : null;
+            profileImageUrl = media != null ? media.getUrl() : null;
         }
 
         return new RsData<>(
@@ -179,7 +179,7 @@ public class UserController {
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
         UserMediaResponse media = userMediaService.getMedia(id);
         int followerCount = (int) subscriptionService.getFollowerCount(id);
-        String profileImageUrl = media != null ? media.url() : null;
+        String profileImageUrl = media != null ? media.getUrl() : null;
         return new RsData<>(
                 "200-1",
                 "유저 정보를 조회하였습니다.",

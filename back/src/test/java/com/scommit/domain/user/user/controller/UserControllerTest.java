@@ -470,7 +470,7 @@ public class UserControllerTest {
             given(securityHelper.getActor()).willReturn(actor);
             given(userService.getUser(1L)).willReturn(java.util.Optional.of(actor));
             given(userMediaService.getMedia(1L)).willReturn(
-                    new UserMediaResponse(1L, 1L, null, null)
+                    new UserMediaResponse(1L, 1L, null, com.scommit.domain.media.media.entity.MediaType.IMAGE)
             );
 
             mvc.perform(get(ME_URL))
@@ -551,7 +551,7 @@ public class UserControllerTest {
             given(updatedUser.getIntroduction()).willReturn(NEW_INTRODUCTION);
             given(userService.updateUser(1L, NEW_NICKNAME, NEW_INTRODUCTION)).willReturn(updatedUser);
             given(userMediaService.getMedia(1L)).willReturn(
-                    new UserMediaResponse(1L, 1L, "user/uuid.png", null)
+                    new UserMediaResponse(1L, 1L, "user/uuid.png", com.scommit.domain.media.media.entity.MediaType.IMAGE)
             );
 
             UserUpdateRequest request = new UserUpdateRequest(NEW_NICKNAME, NEW_INTRODUCTION);
