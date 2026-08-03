@@ -53,7 +53,7 @@ class SeriesController(
         @RequestBody @Valid request: SeriesCreateRequest,
     ): RsData<SeriesResponse> {
         val actor = securityHelper.actor ?: throw BusinessException(ErrorCode.UNAUTHORIZED)
-        val response = seriesService.createSeries(request.title, request.body, actor.id)
+        val response = seriesService.createSeries(checkNotNull(request.title), request.body, actor.id)
         return RsData("201-1", "시리즈를 생성하였습니다.", response)
     }
 
@@ -144,7 +144,7 @@ class SeriesController(
         @RequestBody @Valid request: SeriesUpdateRequest,
     ): RsData<SeriesResponse> {
         val actor = securityHelper.actor ?: throw BusinessException(ErrorCode.UNAUTHORIZED)
-        val response = seriesService.updateSeries(id, request.title, request.body, actor.id, actor.role)
+        val response = seriesService.updateSeries(id, checkNotNull(request.title), request.body, actor.id, actor.role)
         return RsData("200-1", "시리즈를 수정하였습니다.", response)
     }
 
