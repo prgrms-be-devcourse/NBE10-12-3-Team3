@@ -35,10 +35,11 @@ class GlobalExceptionHandler {
         log.warn("MethodArgumentNotValidException: {}", errorMessage)
 
         val errorCode = ErrorCode.INVALID_INPUT_VALUE
-        val rsData: RsData<Void> = RsData(
-            errorCode.code,
-            errorMessage ?: errorCode.message,
-        )
+        val rsData: RsData<Void> =
+            RsData(
+                errorCode.code,
+                errorMessage ?: errorCode.message,
+            )
         return ResponseEntity(rsData, errorCode.httpStatus)
     }
 
@@ -51,10 +52,11 @@ class GlobalExceptionHandler {
         log.warn("BindException: {}", errorMessage)
 
         val errorCode = ErrorCode.INVALID_INPUT_VALUE
-        val rsData: RsData<Void> = RsData(
-            errorCode.code,
-            errorMessage ?: errorCode.message,
-        )
+        val rsData: RsData<Void> =
+            RsData(
+                errorCode.code,
+                errorMessage ?: errorCode.message,
+            )
         return ResponseEntity(rsData, errorCode.httpStatus)
     }
 
