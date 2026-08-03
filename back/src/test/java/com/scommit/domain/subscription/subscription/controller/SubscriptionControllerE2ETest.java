@@ -139,6 +139,16 @@ class SubscriptionControllerE2ETest {
                 .expectStatus().isBadRequest();
     }
     @Test
+    @DisplayName("예외: 멤버십 가입 중인 창작자 언팔로우 (409-4)")
+    void unfollow_MembershipActive() {
+        client.post().uri("/api/subscriptions/membership/{creatorId}", creatorId).header("Authorization", "Bearer " + myToken).exchange().expectStatus().isOk();
+
+        var response = client.delete().uri("/api/subscriptions/follow/{creatorId}", creatorId)
+                .header("Authorization", "Bearer " + myToken)
+                .exchange();
+        expectResultCode(response, HttpStatus.CONFLICT, "409-4");
+    }
+    @Test
     @DisplayName("성공: 멤버십 가입 (200)")
     void joinMembership_Success() {
         client.post().uri("/api/subscriptions/membership/{creatorId}", creatorId)
@@ -366,6 +376,21 @@ class SubscriptionControllerE2ETest {
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody().jsonPath("$.data").isEqualTo(0);
+    }
+    @Test
+    @DisplayName("성공: 팔로워 있는 유저 조회 (1 반환)")
+    void getFollowerCount_Success() {
+        LoginResponse follower = createUserAndLogin(client, uniqueEmail(), "123456", uniqueNickname());
+        client.post().uri("/api/subscriptions/follow/{creatorId}", myId)
+                .header("Authorization", "Bearer " + follower.accessToken())
+                .exchange()
+                .expectStatus().isOk();
+
+        client.get().uri("/api/subscriptions/followers/count")
+                .header("Authorization", "Bearer " + myToken)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody().jsonPath("$.data").isEqualTo(1);
     }
     @Test
     @DisplayName("예외: 인증되지 않은 사용자 - 팔로워 수 조회 (401)")
