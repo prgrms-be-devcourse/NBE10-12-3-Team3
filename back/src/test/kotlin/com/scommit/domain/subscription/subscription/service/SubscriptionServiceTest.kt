@@ -40,6 +40,7 @@ class SubscriptionServiceTest {
     @Mock
     private lateinit var subscriptionRepository: SubscriptionRepository
 
+    @Suppress("UnusedPrivateProperty")
     @Mock
     private lateinit var sseEmitterRepository: SseEmitterRepository
 
@@ -72,7 +73,8 @@ class SubscriptionServiceTest {
             given(userRepository.findById(subscriberId)).willReturn(Optional.of(subscriber))
             given(userRepository.findById(creatorId)).willReturn(Optional.of(creator))
             given(subscriptionRepository.findByUserIdAndCreatorId(subscriberId, creatorId)).willReturn(null)
-            given(subscriptionRepository.save(any(Subscription::class.java))).willAnswer { it.getArgument<Subscription>(0) }
+            given(subscriptionRepository.save(any(Subscription::class.java)))
+                .willAnswer { it.getArgument<Subscription>(0) }
 
             // when
             subscriptionService.follow(subscriberId, creatorId)
@@ -102,7 +104,8 @@ class SubscriptionServiceTest {
             val followSubscription = buildFollowSubscription(subscriber, creator)
             given(userRepository.findById(subscriberId)).willReturn(Optional.of(subscriber))
             given(userRepository.findById(creatorId)).willReturn(Optional.of(creator))
-            given(subscriptionRepository.findByUserIdAndCreatorId(subscriberId, creatorId)).willReturn(followSubscription)
+            given(subscriptionRepository.findByUserIdAndCreatorId(subscriberId, creatorId))
+                .willReturn(followSubscription)
 
             // when & then
             assertThatThrownBy { subscriptionService.follow(subscriberId, creatorId) }
@@ -121,7 +124,9 @@ class SubscriptionServiceTest {
         private fun buildFollowSubscription(): Subscription {
             val subscriber = User(subscriberId, "sub@test.com", "Subscriber", UserRole.USER)
             val creator = User(creatorId, "creator@test.com", "Creator", UserRole.USER)
-            return Subscription(user = subscriber, creator = creator, tier = SubscriptionTier.FOLLOW).apply { ReflectionTestUtils.setField(this, "id", 100L) }
+            return Subscription(user = subscriber, creator = creator, tier = SubscriptionTier.FOLLOW).apply {
+                ReflectionTestUtils.setField(this, "id", 100L)
+            }
         }
 
         @Test
@@ -129,7 +134,8 @@ class SubscriptionServiceTest {
         fun unfollowSuccess() {
             // given
             val followSubscription = buildFollowSubscription()
-            given(subscriptionRepository.findByUserIdAndCreatorId(subscriberId, creatorId)).willReturn(followSubscription)
+            given(subscriptionRepository.findByUserIdAndCreatorId(subscriberId, creatorId))
+                .willReturn(followSubscription)
 
             // when
             subscriptionService.unfollow(subscriberId, creatorId)
@@ -144,7 +150,8 @@ class SubscriptionServiceTest {
             // given
             val followSubscription = buildFollowSubscription()
             followSubscription.upgradeToMembership()
-            given(subscriptionRepository.findByUserIdAndCreatorId(subscriberId, creatorId)).willReturn(followSubscription)
+            given(subscriptionRepository.findByUserIdAndCreatorId(subscriberId, creatorId))
+                .willReturn(followSubscription)
 
             // when & then
             assertThatThrownBy { subscriptionService.unfollow(subscriberId, creatorId) }
@@ -163,7 +170,9 @@ class SubscriptionServiceTest {
         private fun buildFollowSubscription(): Subscription {
             val subscriber = User(subscriberId, "sub@test.com", "Subscriber", UserRole.USER)
             val creator = User(creatorId, "creator@test.com", "Creator", UserRole.USER)
-            return Subscription(user = subscriber, creator = creator, tier = SubscriptionTier.FOLLOW).apply { ReflectionTestUtils.setField(this, "id", 100L) }
+            return Subscription(user = subscriber, creator = creator, tier = SubscriptionTier.FOLLOW).apply {
+                ReflectionTestUtils.setField(this, "id", 100L)
+            }
         }
 
         @Test
@@ -171,7 +180,8 @@ class SubscriptionServiceTest {
         fun joinMembershipSuccess() {
             // given
             val followSubscription = buildFollowSubscription()
-            given(subscriptionRepository.findByUserIdAndCreatorId(subscriberId, creatorId)).willReturn(followSubscription)
+            given(subscriptionRepository.findByUserIdAndCreatorId(subscriberId, creatorId))
+                .willReturn(followSubscription)
 
             // when
             subscriptionService.joinMembership(subscriberId, creatorId)
@@ -189,7 +199,8 @@ class SubscriptionServiceTest {
             given(userRepository.findById(subscriberId)).willReturn(Optional.of(followSubscription.user))
             given(userRepository.findById(creatorId)).willReturn(Optional.of(followSubscription.creator))
             given(subscriptionRepository.findByUserIdAndCreatorId(subscriberId, creatorId)).willReturn(null)
-            given(subscriptionRepository.save(any(Subscription::class.java))).willAnswer { it.getArgument<Subscription>(0) }
+            given(subscriptionRepository.save(any(Subscription::class.java)))
+                .willAnswer { it.getArgument<Subscription>(0) }
 
             // when
             subscriptionService.joinMembership(subscriberId, creatorId)
@@ -204,7 +215,8 @@ class SubscriptionServiceTest {
             // given
             val followSubscription = buildFollowSubscription()
             followSubscription.upgradeToMembership()
-            given(subscriptionRepository.findByUserIdAndCreatorId(subscriberId, creatorId)).willReturn(followSubscription)
+            given(subscriptionRepository.findByUserIdAndCreatorId(subscriberId, creatorId))
+                .willReturn(followSubscription)
 
             // when
             subscriptionService.cancelMembership(subscriberId, creatorId)
@@ -224,7 +236,9 @@ class SubscriptionServiceTest {
         private fun buildFollowSubscription(): Subscription {
             val subscriber = User(subscriberId, "sub@test.com", "Subscriber", UserRole.USER)
             val creator = User(creatorId, "creator@test.com", "Creator", UserRole.USER)
-            return Subscription(user = subscriber, creator = creator, tier = SubscriptionTier.FOLLOW).apply { ReflectionTestUtils.setField(this, "id", 100L) }
+            return Subscription(user = subscriber, creator = creator, tier = SubscriptionTier.FOLLOW).apply {
+                ReflectionTestUtils.setField(this, "id", 100L)
+            }
         }
 
         @Test
@@ -276,7 +290,9 @@ class SubscriptionServiceTest {
         private fun buildFollowSubscription(): Subscription {
             val subscriber = User(subscriberId, "sub@test.com", "Subscriber", UserRole.USER)
             val creator = User(creatorId, "creator@test.com", "Creator", UserRole.USER)
-            return Subscription(user = subscriber, creator = creator, tier = SubscriptionTier.FOLLOW).apply { ReflectionTestUtils.setField(this, "id", 100L) }
+            return Subscription(user = subscriber, creator = creator, tier = SubscriptionTier.FOLLOW).apply {
+                ReflectionTestUtils.setField(this, "id", 100L)
+            }
         }
 
         @Test
@@ -297,7 +313,8 @@ class SubscriptionServiceTest {
         fun returnFollowWhenFollowing() {
             // given
             val followSubscription = buildFollowSubscription()
-            given(subscriptionRepository.findByUserIdAndCreatorId(subscriberId, creatorId)).willReturn(followSubscription)
+            given(subscriptionRepository.findByUserIdAndCreatorId(subscriberId, creatorId))
+                .willReturn(followSubscription)
 
             // when
             val status = subscriptionService.getSubscriptionStatus(subscriberId, creatorId)
@@ -312,7 +329,8 @@ class SubscriptionServiceTest {
             // given
             val followSubscription = buildFollowSubscription()
             followSubscription.upgradeToMembership()
-            given(subscriptionRepository.findByUserIdAndCreatorId(subscriberId, creatorId)).willReturn(followSubscription)
+            given(subscriptionRepository.findByUserIdAndCreatorId(subscriberId, creatorId))
+                .willReturn(followSubscription)
 
             // when
             val status = subscriptionService.getSubscriptionStatus(subscriberId, creatorId)

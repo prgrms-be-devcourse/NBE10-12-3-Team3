@@ -16,9 +16,9 @@ data class SubscriptionInfo(
     companion object {
         fun from(subscription: Subscription, followerCount: Long): SubscriptionInfo {
             return SubscriptionInfo(
-                creatorId = subscription.creator.id ?: throw IllegalStateException("Creator ID cannot be null"),
+                creatorId = subscription.creator.id ?: error("Creator ID cannot be null"),
                 nickname = subscription.creator.nickname,
-                // TODO: UserMedia 분리 후 수정 필요
+                // UserMedia 분리 후 수정 필요
                 creatorProfileImage = "",
                 tier = subscription.tier,
                 startedAt = subscription.startedAt,

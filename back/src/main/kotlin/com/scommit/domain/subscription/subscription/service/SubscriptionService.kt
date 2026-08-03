@@ -26,21 +26,21 @@ class SubscriptionService(
     private val sseEmitterRepository: SseEmitterRepository
 ) {
 
+    private fun fail(errorCode: ErrorCode): Nothing {
+        throw BusinessException(errorCode)
+    }
+
     @Transactional
     fun follow(userId: Long, creatorId: Long) {
-        if (userId == creatorId) {
-            throw BusinessException(ErrorCode.SELF_SUBSCRIPTION_NOT_ALLOWED)
-        }
+        if (userId == creatorId) fail(ErrorCode.SELF_SUBSCRIPTION_NOT_ALLOWED)
 
-        val user = userRepository.findByIdOrNull(userId) ?: throw BusinessException(ErrorCode.USER_NOT_FOUND)
-        val creator = userRepository.findByIdOrNull(creatorId) ?: throw BusinessException(ErrorCode.USER_NOT_FOUND)
+        val user = userRepository.findByIdOrNull(userId) ?: fail(ErrorCode.USER_NOT_FOUND)
+        val creator = userRepository.findByIdOrNull(creatorId) ?: fail(ErrorCode.USER_NOT_FOUND)
 
         val existingSubscription = subscriptionRepository.findByUserIdAndCreatorId(userId, creatorId)
 
         if (existingSubscription != null) {
-            if (existingSubscription.deletedAt == null) {
-                throw BusinessException(ErrorCode.ALREADY_SUBSCRIBED)
-            }
+            if (existingSubscription.deletedAt == null) fail(ErrorCode.ALREADY_SUBSCRIBED)
             existingSubscription.restoreSubscription()
         } else {
             val newSubscription = Subscription(
@@ -65,24 +65,17 @@ class SubscriptionService(
     @Transactional
     fun unfollow(userId: Long, creatorId: Long) {
         val subscription = subscriptionRepository.findByUserIdAndCreatorId(userId, creatorId)
-            ?: throw BusinessException(ErrorCode.SUBSCRIPTION_NOT_FOUND)
+            ?: fail(ErrorCode.SUBSCRIPTION_NOT_FOUND)
 
-        if (subscription.deletedAt != null) {
-            throw BusinessException(ErrorCode.SUBSCRIPTION_NOT_FOUND)
-        }
-
-        if (subscription.tier == SubscriptionTier.MEMBERSHIP) {
-            throw BusinessException(ErrorCode.MEMBERSHIP_ACTIVE_CANCEL_REQUIRED)
-        }
+        if (subscription.deletedAt != null) fail(ErrorCode.SUBSCRIPTION_NOT_FOUND)
+        if (subscription.tier == SubscriptionTier.MEMBERSHIP) fail(ErrorCode.MEMBERSHIP_ACTIVE_CANCEL_REQUIRED)
 
         subscription.softDelete()
     }
 
     @Transactional
     fun joinMembership(userId: Long, creatorId: Long) {
-        if (userId == creatorId) {
-            throw BusinessException(ErrorCode.SELF_SUBSCRIPTION_NOT_ALLOWED)
-        }
+        if (userId == creatorId) fail(ErrorCode.SELF_SUBSCRIPTION_NOT_ALLOWED)
 
         val subscription = subscriptionRepository.findByUserIdAndCreatorId(userId, creatorId)
 
@@ -91,7 +84,7 @@ class SubscriptionService(
                 subscription.restoreSubscription()
                 subscription.upgradeToMembership()
             } else if (subscription.tier == SubscriptionTier.MEMBERSHIP) {
-                throw BusinessException(ErrorCode.ALREADY_JOINED_MEMBERSHIP)
+                fail(ErrorCode.ALREADY_JOINED_MEMBERSHIP)
             } else {
                 subscription.upgradeToMembership()
             }
@@ -104,8 +97,8 @@ class SubscriptionService(
                 )
             )
         } else {
-            val user = userRepository.findByIdOrNull(userId) ?: throw BusinessException(ErrorCode.USER_NOT_FOUND)
-            val creator = userRepository.findByIdOrNull(creatorId) ?: throw BusinessException(ErrorCode.USER_NOT_FOUND)
+            val user = userRepository.findByIdOrNull(userId) ?: fail(ErrorCode.USER_NOT_FOUND)
+            val creator = userRepository.findByIdOrNull(creatorId) ?: fail(ErrorCode.USER_NOT_FOUND)
 
             val newSubscription = Subscription(
                 user = user,
@@ -129,15 +122,10 @@ class SubscriptionService(
     @Transactional
     fun cancelMembership(userId: Long, creatorId: Long) {
         val subscription = subscriptionRepository.findByUserIdAndCreatorId(userId, creatorId)
-            ?: throw BusinessException(ErrorCode.SUBSCRIPTION_NOT_FOUND)
+            ?: fail(ErrorCode.SUBSCRIPTION_NOT_FOUND)
 
-        if (subscription.deletedAt != null) {
-            throw BusinessException(ErrorCode.SUBSCRIPTION_NOT_FOUND)
-        }
-
-        if (subscription.tier != SubscriptionTier.MEMBERSHIP) {
-            throw BusinessException(ErrorCode.NOT_MEMBERSHIP_SUBSCRIBER)
-        }
+        if (subscription.deletedAt != null) fail(ErrorCode.SUBSCRIPTION_NOT_FOUND)
+        if (subscription.tier != SubscriptionTier.MEMBERSHIP) fail(ErrorCode.NOT_MEMBERSHIP_SUBSCRIBER)
 
         subscription.downgradeToFollow()
     }

@@ -27,7 +27,11 @@ interface SubscriptionRepository : JpaRepository<Subscription, Long> {
     fun findByCreatorIdAndTierAndDeletedAtIsNull(creatorId: Long, tier: SubscriptionTier): List<Subscription>
 
     // 6. N+1 방지: 여러 창작자의 팔로워 수를 한 번에 조회
-    @Query("SELECT s.creator.id, COUNT(s) FROM Subscription s WHERE s.creator.id IN :creatorIds AND s.deletedAt IS NULL GROUP BY s.creator.id")
+    @Query(
+        "SELECT s.creator.id, COUNT(s) FROM Subscription s " +
+        "WHERE s.creator.id IN :creatorIds AND s.deletedAt IS NULL " +
+        "GROUP BY s.creator.id"
+    )
     fun countFollowersGroupedByCreatorIds(@Param("creatorIds") creatorIds: List<Long>): List<Array<Any>>
 
     // 7. 내 구독 총 수 조회 API용
