@@ -48,16 +48,15 @@ class JwtFilterTest {
     @BeforeEach
     void setUp() {
         jwtProvider = new JwtProvider(authTokenProperties(SECRET, EXPIRATION));
-        jwtFilter = new JwtFilter(jwtProvider, securityHelper, userService);
+        JsonUtility jsonUtility = new JsonUtility(new tools.jackson.databind.ObjectMapper());
+        jwtFilter = new JwtFilter(jwtProvider, securityHelper, userService, jsonUtility);
         SecurityContextHolder.clearContext();
-        // JsonUtility.objectMapper는 스프링 DI로 채워지는 static 필드라 순수 단위테스트에서는 직접 채워줘야 한다.
-        new JsonUtility(new tools.jackson.databind.ObjectMapper());
     }
 
     private static AuthTokenProperties authTokenProperties(String secretKey, Duration expiration) {
         return new AuthTokenProperties(
-                new AuthTokenProperties.AccessToken(secretKey, expiration, null),
-                null
+                new AuthTokenProperties.AccessToken(secretKey, expiration, Duration.ofMinutes(30)),
+                new AuthTokenProperties.RefreshToken(Duration.ofDays(30))
         );
     }
 
@@ -107,7 +106,7 @@ class JwtFilterTest {
         JwtProvider expiredProvider = new JwtProvider(authTokenProperties(SECRET, Duration.ofMillis(-1)));
         String expiredAccessToken = expiredProvider.generateAccessToken(1L, "user@test.com", "nickname", UserRole.USER);
         String refreshToken = "valid-refresh-token";
-        User user = new User("user@test.com", null, "nickname", null, UserRole.USER);
+        User user = new User(1L, "user@test.com", "nickname", UserRole.USER);
         given(securityHelper.getHeader("Authorization", "")).willReturn("Bearer " + refreshToken + " " + expiredAccessToken);
         given(userService.getUserByRefreshToken(refreshToken)).willReturn(user);
         MockHttpServletRequest request = new MockHttpServletRequest();

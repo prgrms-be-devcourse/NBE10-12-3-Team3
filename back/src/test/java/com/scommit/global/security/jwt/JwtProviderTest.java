@@ -27,8 +27,8 @@ class JwtProviderTest {
 
     private static AuthTokenProperties authTokenProperties(String secretKey, Duration expiration) {
         return new AuthTokenProperties(
-                new AuthTokenProperties.AccessToken(secretKey, expiration, null),
-                null
+                new AuthTokenProperties.AccessToken(secretKey, expiration, Duration.ofMinutes(30)),
+                new AuthTokenProperties.RefreshToken(Duration.ofDays(30))
         );
     }
 

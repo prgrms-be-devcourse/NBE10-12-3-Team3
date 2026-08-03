@@ -39,8 +39,8 @@ class SecurityConfigTest {
 
     private String expiredToken() {
         AuthTokenProperties properties = new AuthTokenProperties(
-                new AuthTokenProperties.AccessToken(secretKey, Duration.ofMillis(-1), null),
-                null
+                new AuthTokenProperties.AccessToken(secretKey, Duration.ofMillis(-1), Duration.ofMinutes(30)),
+                new AuthTokenProperties.RefreshToken(Duration.ofDays(30))
         );
 
         return new JwtProvider(properties)
