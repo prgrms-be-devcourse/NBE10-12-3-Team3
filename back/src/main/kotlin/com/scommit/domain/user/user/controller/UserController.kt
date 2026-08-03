@@ -60,7 +60,7 @@ class UserController(
     fun signUp(
         @Valid @RequestBody request: SignupRequest,
     ): RsData<SignupResponse> {
-        val user = userService.signUp(request.email, request.password, request.nickname)
+        val user = userService.signUp(requireNotNull(request.email), request.password, request.nickname)
         return RsData(
             "201-1",
             "회원가입에 성공했습니다.",
@@ -73,7 +73,7 @@ class UserController(
     fun login(
         @Valid @RequestBody request: LoginRequest,
     ): RsData<LoginResponse> {
-        val user = userService.login(request.email, request.password)
+        val user = userService.login(request.email, requireNotNull(request.password))
         val accessToken = jwtProvider.generateAccessToken(user.id, user.email, user.nickname, user.role)
 
         securityHelper.setCookie("accessToken", accessToken)
@@ -102,7 +102,7 @@ class UserController(
         @Valid @RequestBody request: UserDeleteRequest,
     ): RsData<Unit> {
         val actor = securityHelper.actor ?: throw BusinessException(ErrorCode.UNAUTHORIZED)
-        userService.deleteUser(actor.id, request.password)
+        userService.deleteUser(actor.id, requireNotNull(request.password))
         securityHelper.deleteCookie("accessToken")
         securityHelper.deleteCookie("refreshToken")
         return RsData("200-1", "회원탈퇴에 성공했습니다.")
@@ -147,7 +147,7 @@ class UserController(
         @Valid @RequestBody request: UserPasswordUpdateRequest,
     ): RsData<UserPasswordUpdateResponse> {
         val actor = securityHelper.actor ?: throw BusinessException(ErrorCode.UNAUTHORIZED)
-        userService.updatePassword(actor.id, request.currentPassword, request.newPassword)
+        userService.updatePassword(actor.id, requireNotNull(request.currentPassword), request.newPassword)
 
         val user = userService.getUser(actor.id) ?: throw BusinessException(ErrorCode.USER_NOT_FOUND)
         val accessToken = jwtProvider.generateAccessToken(actor.id, actor.email, actor.nickname, user.role)
