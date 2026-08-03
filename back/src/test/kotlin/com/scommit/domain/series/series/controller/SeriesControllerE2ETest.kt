@@ -2004,7 +2004,7 @@ class SeriesControllerE2ETest {
                     checkNotNull(body)
                     assertThat(body.resultCode()).isEqualTo("200-1")
                     assertThat(body.data().id()).isEqualTo(postId)
-                    assertThat(body.data().seriesId()).isNull()
+                    assertThat(body.data().seriesId() as Long?).isNull()
                 }
         }
 
@@ -2496,7 +2496,7 @@ class SeriesControllerE2ETest {
                     checkNotNull(body)
                     assertThat(body.resultCode()).isEqualTo("200-1")
                     assertThat(body.data().id()).isEqualTo(postId)
-                    assertThat(body.data().seriesId()).isNull()
+                    assertThat(body.data().seriesId() as Long?).isNull()
                 }
         }
 
