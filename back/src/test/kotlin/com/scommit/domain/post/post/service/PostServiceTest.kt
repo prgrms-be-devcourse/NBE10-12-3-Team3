@@ -82,21 +82,11 @@ class PostServiceTest {
     fun setUp() {
         // JPA가 없으므로 id는 ReflectionTestUtils로 직접 주입
         mockUser =
-            User
-                .builder()
-                .email("test@example.com")
-                .nickname("테스터")
-                .role(UserRole.USER)
-                .build()
+            User("test@example.com", null, "테스터", null, UserRole.USER)
                 .also { ReflectionTestUtils.setField(it, "id", 1L) }
 
         otherUser =
-            User
-                .builder()
-                .email("other@example.com")
-                .nickname("다른유저")
-                .role(UserRole.USER)
-                .build()
+            User("other@example.com", null, "다른유저", null, UserRole.USER)
                 .also { ReflectionTestUtils.setField(it, "id", 2L) }
     }
 
@@ -113,12 +103,7 @@ class PostServiceTest {
         id: Long,
         owner: User,
     ): Series =
-        Series
-            .builder()
-            .user(owner)
-            .title("시리즈")
-            .body("설명")
-            .build()
+        Series(owner, "시리즈", "설명")
             .also { ReflectionTestUtils.setField(it, "id", id) }
 
     @Nested
@@ -354,13 +339,7 @@ class PostServiceTest {
         @Test
         @DisplayName("성공: PUBLIC 게시글 생성 시 구독자에게 SSE 알림을 전송한다.")
         fun create_Public_SendsSse() {
-            val sub =
-                Subscription
-                    .builder()
-                    .user(otherUser)
-                    .creator(mockUser)
-                    .tier(SubscriptionTier.FOLLOW)
-                    .build()
+            val sub = Subscription(otherUser, mockUser, SubscriptionTier.FOLLOW, null, null)
             given(subscriptionRepository.findByCreatorIdAndDeletedAtIsNull(1L)).willReturn(listOf(sub))
 
             postService.createPost(mockUser, "제목", "내용", PublishStatus.PUBLIC, PostAccessLevel.FREE, null)
@@ -371,13 +350,7 @@ class PostServiceTest {
         @Test
         @DisplayName("성공: PAID 게시글 생성 시 멤버십 구독자에게만 SSE 알림을 전송한다.")
         fun create_Paid_SendsSseOnlyToMembers() {
-            val member =
-                Subscription
-                    .builder()
-                    .user(otherUser)
-                    .creator(mockUser)
-                    .tier(SubscriptionTier.MEMBERSHIP)
-                    .build()
+            val member = Subscription(otherUser, mockUser, SubscriptionTier.MEMBERSHIP, null, null)
             given(subscriptionRepository.findByCreatorIdAndTierAndDeletedAtIsNull(1L, SubscriptionTier.MEMBERSHIP))
                 .willReturn(listOf(member))
 
@@ -416,7 +389,7 @@ class PostServiceTest {
         @DisplayName("성공: 본인 게시글을 수정한다.")
         fun update_Success() {
             val post = buildPost(1L, mockUser, null)
-            given(postRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(Optional.of(post))
+            given(postRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(post)
 
             val response =
                 postService.updatePost(mockUser, 1L, "수정제목", "수정내용", PublishStatus.DRAFT, PostAccessLevel.FREE, null)
@@ -429,14 +402,8 @@ class PostServiceTest {
         fun update_DraftToPublic_SendsSse() {
             val post = buildPost(1L, mockUser, null)
             ReflectionTestUtils.setField(post, "publishStatus", PublishStatus.DRAFT)
-            val sub =
-                Subscription
-                    .builder()
-                    .user(otherUser)
-                    .creator(mockUser)
-                    .tier(SubscriptionTier.FOLLOW)
-                    .build()
-            given(postRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(Optional.of(post))
+            val sub = Subscription(otherUser, mockUser, SubscriptionTier.FOLLOW, null, null)
+            given(postRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(post)
             given(subscriptionRepository.findByCreatorIdAndDeletedAtIsNull(1L)).willReturn(listOf(sub))
 
             postService.updatePost(mockUser, 1L, "제목", "내용", PublishStatus.PUBLIC, PostAccessLevel.FREE, null)
@@ -448,7 +415,7 @@ class PostServiceTest {
         @DisplayName("성공: 이미 PUBLIC인 게시글 수정 시 SSE 알림을 다시 전송하지 않는다.")
         fun update_AlreadyPublic_NoSse() {
             val post = buildPost(1L, mockUser, null)
-            given(postRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(Optional.of(post))
+            given(postRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(post)
 
             postService.updatePost(mockUser, 1L, "수정제목", "수정내용", PublishStatus.PUBLIC, PostAccessLevel.FREE, null)
 
@@ -459,7 +426,7 @@ class PostServiceTest {
         @Test
         @DisplayName("실패: 존재하지 않는 게시글이면 POST_NOT_FOUND 예외를 던진다.")
         fun update_PostNotFound() {
-            given(postRepository.findByIdAndDeletedAtIsNull(999L)).willReturn(Optional.empty())
+            given(postRepository.findByIdAndDeletedAtIsNull(999L)).willReturn(null)
 
             assertThatThrownBy {
                 postService.updatePost(mockUser, 999L, "제목", "내용", PublishStatus.PUBLIC, PostAccessLevel.FREE, null)
@@ -472,7 +439,7 @@ class PostServiceTest {
         @DisplayName("실패: 다른 유저의 게시글을 수정하면 ACCESS_DENIED 예외를 던진다.")
         fun update_NotOwner() {
             val post = buildPost(1L, otherUser, null)
-            given(postRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(Optional.of(post))
+            given(postRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(post)
 
             assertThatThrownBy {
                 postService.updatePost(mockUser, 1L, "제목", "내용", PublishStatus.PUBLIC, PostAccessLevel.FREE, null)
@@ -489,7 +456,7 @@ class PostServiceTest {
         @DisplayName("성공: 본인 게시글을 삭제한다.")
         fun delete_Success() {
             val post = buildPost(1L, mockUser, null)
-            given(postRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(Optional.of(post))
+            given(postRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(post)
 
             postService.deletePost(mockUser, 1L)
 
@@ -500,7 +467,7 @@ class PostServiceTest {
         @Test
         @DisplayName("실패: 존재하지 않는 게시글이면 POST_NOT_FOUND 예외를 던진다.")
         fun delete_PostNotFound() {
-            given(postRepository.findByIdAndDeletedAtIsNull(999L)).willReturn(Optional.empty())
+            given(postRepository.findByIdAndDeletedAtIsNull(999L)).willReturn(null)
 
             assertThatThrownBy { postService.deletePost(mockUser, 999L) }
                 .isInstanceOf(BusinessException::class.java)
@@ -512,7 +479,7 @@ class PostServiceTest {
         @DisplayName("실패: 다른 유저의 게시글을 삭제하면 ACCESS_DENIED 예외를 던진다.")
         fun delete_NotOwner() {
             val post = buildPost(1L, otherUser, null)
-            given(postRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(Optional.of(post))
+            given(postRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(post)
 
             assertThatThrownBy { postService.deletePost(mockUser, 1L) }
                 .isInstanceOf(BusinessException::class.java)
@@ -528,7 +495,7 @@ class PostServiceTest {
         @DisplayName("성공: 게시글 조회 시 조회수가 1 증가한다.")
         fun getPost_Success_ViewCountIncreased() {
             val post = buildPost(1L, mockUser, null)
-            given(postRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(Optional.of(post))
+            given(postRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(post)
 
             postService.getPost(1L, mockUser)
 
@@ -539,7 +506,7 @@ class PostServiceTest {
         @Test
         @DisplayName("실패: 존재하지 않는 게시글이면 POST_NOT_FOUND 예외를 던진다.")
         fun getPost_NotFound() {
-            given(postRepository.findByIdAndDeletedAtIsNull(999L)).willReturn(Optional.empty())
+            given(postRepository.findByIdAndDeletedAtIsNull(999L)).willReturn(null)
 
             assertThatThrownBy { postService.getPost(999L, null) }
                 .isInstanceOf(BusinessException::class.java)
@@ -552,7 +519,7 @@ class PostServiceTest {
         fun getPost_Private_NotOwner() {
             val post = buildPost(1L, mockUser, null)
             ReflectionTestUtils.setField(post, "publishStatus", PublishStatus.PRIVATE)
-            given(postRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(Optional.of(post))
+            given(postRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(post)
 
             assertThatThrownBy { postService.getPost(1L, otherUser) }
                 .isInstanceOf(BusinessException::class.java)
@@ -565,7 +532,7 @@ class PostServiceTest {
         fun getPost_Private_Anonymous() {
             val post = buildPost(1L, mockUser, null)
             ReflectionTestUtils.setField(post, "publishStatus", PublishStatus.PRIVATE)
-            given(postRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(Optional.of(post))
+            given(postRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(post)
 
             assertThatThrownBy { postService.getPost(1L, null) }
                 .isInstanceOf(BusinessException::class.java)
@@ -578,7 +545,7 @@ class PostServiceTest {
         fun getPost_Paid_NotMember_IsLocked() {
             val post = buildPost(1L, mockUser, null)
             ReflectionTestUtils.setField(post, "accessLevel", PostAccessLevel.PAID)
-            given(postRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(Optional.of(post))
+            given(postRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(post)
             given(subscriptionRepository.findByUserIdAndCreatorId(otherUser.id, mockUser.id))
                 .willReturn(Optional.empty())
 
@@ -592,7 +559,7 @@ class PostServiceTest {
         @DisplayName("성공: 로그인한 유저가 좋아요한 게시글 조회 시 isLiked=true를 반환한다.")
         fun getPost_withActor_isLiked() {
             val post = buildPost(1L, otherUser, null)
-            given(postRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(Optional.of(post))
+            given(postRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(post)
             given(likeRepository.existsByPostIdAndUserId(1L, mockUser.id)).willReturn(true)
 
             val response = postService.getPost(1L, mockUser)
@@ -605,7 +572,7 @@ class PostServiceTest {
         @DisplayName("성공: 로그인한 유저가 북마크한 게시글 조회 시 isBookmarked=true를 반환한다.")
         fun getPost_withActor_isBookmarked() {
             val post = buildPost(1L, otherUser, null)
-            given(postRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(Optional.of(post))
+            given(postRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(post)
             given(bookmarkRepository.existsByPostIdAndUserId(1L, mockUser.id)).willReturn(true)
 
             val response = postService.getPost(1L, mockUser)
@@ -618,7 +585,7 @@ class PostServiceTest {
         @DisplayName("성공: 비로그인 사용자가 조회하면 isLiked=false, isBookmarked=false를 반환한다.")
         fun getPost_anonymous_isLikedAndBookmarkedFalse() {
             val post = buildPost(1L, mockUser, null)
-            given(postRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(Optional.of(post))
+            given(postRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(post)
 
             val response = postService.getPost(1L, null)
 
@@ -638,7 +605,7 @@ class PostServiceTest {
             val series = buildSeries(5L, mockUser)
             val post = buildPost(10L, mockUser, null)
 
-            given(postRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(Optional.of(post))
+            given(postRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(post)
             given(seriesRepository.findByIdAndDeletedAtIsNull(5L)).willReturn(Optional.of(series))
 
             postService.addPostToSeries(10L, 5L, mockUser)
@@ -650,7 +617,7 @@ class PostServiceTest {
         @Test
         @DisplayName("실패: 존재하지 않는 포스트면 POST_NOT_FOUND 예외를 던진다.")
         fun add_PostNotFound() {
-            given(postRepository.findByIdAndDeletedAtIsNull(999L)).willReturn(Optional.empty())
+            given(postRepository.findByIdAndDeletedAtIsNull(999L)).willReturn(null)
 
             assertThatThrownBy { postService.addPostToSeries(999L, 5L, mockUser) }
                 .isInstanceOf(BusinessException::class.java)
@@ -664,7 +631,7 @@ class PostServiceTest {
         @DisplayName("실패: 포스트 주인이 아니면 ACCESS_DENIED 예외를 던진다.")
         fun add_PostNotOwned() {
             val post = buildPost(10L, otherUser, null)
-            given(postRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(Optional.of(post))
+            given(postRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(post)
 
             assertThatThrownBy { postService.addPostToSeries(10L, 5L, mockUser) }
                 .isInstanceOf(BusinessException::class.java)
@@ -677,7 +644,7 @@ class PostServiceTest {
         @DisplayName("실패: 존재하지 않는 시리즈면 SERIES_NOT_FOUND 예외를 던진다.")
         fun add_SeriesNotFound() {
             val post = buildPost(10L, mockUser, null)
-            given(postRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(Optional.of(post))
+            given(postRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(post)
             given(seriesRepository.findByIdAndDeletedAtIsNull(999L)).willReturn(Optional.empty())
 
             assertThatThrownBy { postService.addPostToSeries(10L, 999L, mockUser) }
@@ -691,7 +658,7 @@ class PostServiceTest {
             val series = buildSeries(5L, otherUser)
             val post = buildPost(10L, mockUser, null)
 
-            given(postRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(Optional.of(post))
+            given(postRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(post)
             given(seriesRepository.findByIdAndDeletedAtIsNull(5L)).willReturn(Optional.of(series))
 
             assertThatThrownBy { postService.addPostToSeries(10L, 5L, mockUser) }
@@ -709,7 +676,7 @@ class PostServiceTest {
             val series = buildSeries(5L, mockUser)
             val post = buildPost(10L, mockUser, series)
 
-            given(postRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(Optional.of(post))
+            given(postRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(post)
 
             postService.removePostFromSeries(10L, 5L, mockUser)
 
@@ -719,7 +686,7 @@ class PostServiceTest {
         @Test
         @DisplayName("실패: 존재하지 않는 포스트면 POST_NOT_FOUND 예외를 던진다.")
         fun remove_PostNotFound() {
-            given(postRepository.findByIdAndDeletedAtIsNull(999L)).willReturn(Optional.empty())
+            given(postRepository.findByIdAndDeletedAtIsNull(999L)).willReturn(null)
 
             assertThatThrownBy { postService.removePostFromSeries(999L, 5L, mockUser) }
                 .isInstanceOf(BusinessException::class.java)
@@ -731,7 +698,7 @@ class PostServiceTest {
         @DisplayName("실패: 포스트가 어떤 시리즈에도 속하지 않으면 SERIES_NOT_FOUND 예외를 던진다.")
         fun remove_PostHasNoSeries() {
             val post = buildPost(10L, mockUser, null)
-            given(postRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(Optional.of(post))
+            given(postRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(post)
 
             assertThatThrownBy { postService.removePostFromSeries(10L, 5L, mockUser) }
                 .isInstanceOf(BusinessException::class.java)
@@ -744,7 +711,7 @@ class PostServiceTest {
         fun remove_PostBelongsToDifferentSeries() {
             val otherSeries = buildSeries(99L, mockUser)
             val post = buildPost(10L, mockUser, otherSeries)
-            given(postRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(Optional.of(post))
+            given(postRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(post)
 
             assertThatThrownBy { postService.removePostFromSeries(10L, 5L, mockUser) }
                 .isInstanceOf(BusinessException::class.java)
@@ -756,7 +723,7 @@ class PostServiceTest {
         fun remove_SeriesNotOwned() {
             val series = buildSeries(5L, otherUser)
             val post = buildPost(10L, mockUser, series)
-            given(postRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(Optional.of(post))
+            given(postRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(post)
 
             assertThatThrownBy { postService.removePostFromSeries(10L, 5L, mockUser) }
                 .isInstanceOf(BusinessException::class.java)

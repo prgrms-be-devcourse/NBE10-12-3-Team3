@@ -10,15 +10,11 @@ import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
-import java.util.Optional
 
-// findByIdAndDeletedAtIsNull는 Like/Bookmark/Comment/Series 등 Post 바깥 도메인에서도 호출하는
-// 공유 API라, 이번 마이그레이션 범위 밖의 파일들을 건드리지 않기 위해 일부러 Optional을 유지한다
-// (다른 커스텀 finder는 Post 내부에서만 쓰여서 nullable로 바꿔도 리플이 없다).
 @Suppress("TooManyFunctions")
 interface PostRepository : JpaRepository<Post, Long> {
     // 삭제되지 않은 게시글 단건 조회
-    fun findByIdAndDeletedAtIsNull(id: Long): Optional<Post>
+    fun findByIdAndDeletedAtIsNull(id: Long): Post?
 
     // 특정 유저 게시글 전체 조회 - 관리자용 (삭제된 게시글 포함)
     fun findByUser(user: User): List<Post>

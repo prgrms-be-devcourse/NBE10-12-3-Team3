@@ -93,9 +93,8 @@ class PostService
             actor: User?,
         ): PostResponse {
             val post =
-                postRepository
-                    .findByIdAndDeletedAtIsNull(id)
-                    .orElseThrow { BusinessException(ErrorCode.POST_NOT_FOUND) }
+                postRepository.findByIdAndDeletedAtIsNull(id)
+                    ?: throw BusinessException(ErrorCode.POST_NOT_FOUND)
 
             val isOwner = actor != null && post.user.id == actor.id
 
@@ -135,9 +134,8 @@ class PostService
             seriesId: Long?,
         ): PostResponse {
             val post =
-                postRepository
-                    .findByIdAndDeletedAtIsNull(id)
-                    .orElseThrow { BusinessException(ErrorCode.POST_NOT_FOUND) }
+                postRepository.findByIdAndDeletedAtIsNull(id)
+                    ?: throw BusinessException(ErrorCode.POST_NOT_FOUND)
 
             if (post.user.id != actor.id) {
                 throw BusinessException(ErrorCode.ACCESS_DENIED)
@@ -165,9 +163,8 @@ class PostService
             id: Long,
         ) {
             val post =
-                postRepository
-                    .findByIdAndDeletedAtIsNull(id)
-                    .orElseThrow { BusinessException(ErrorCode.POST_NOT_FOUND) }
+                postRepository.findByIdAndDeletedAtIsNull(id)
+                    ?: throw BusinessException(ErrorCode.POST_NOT_FOUND)
 
             if (post.user.id != actor.id) {
                 throw BusinessException(ErrorCode.ACCESS_DENIED)
@@ -218,9 +215,8 @@ class PostService
             actor: User,
         ) {
             val post =
-                postRepository
-                    .findByIdAndDeletedAtIsNull(postId)
-                    .orElseThrow { BusinessException(ErrorCode.POST_NOT_FOUND) }
+                postRepository.findByIdAndDeletedAtIsNull(postId)
+                    ?: throw BusinessException(ErrorCode.POST_NOT_FOUND)
             if (post.user.id != actor.id) {
                 throw BusinessException(ErrorCode.ACCESS_DENIED)
             }
@@ -245,9 +241,8 @@ class PostService
             actor: User,
         ) {
             val post =
-                postRepository
-                    .findByIdAndDeletedAtIsNull(postId)
-                    .orElseThrow { BusinessException(ErrorCode.POST_NOT_FOUND) }
+                postRepository.findByIdAndDeletedAtIsNull(postId)
+                    ?: throw BusinessException(ErrorCode.POST_NOT_FOUND)
 
             val series = post.series
             if (series == null || series.id != seriesId) {
