@@ -299,12 +299,13 @@ public class ProdInitDataService {
                 PublishStatus status = forcePublicFree ? PublishStatus.PUBLIC : randomStatus(true);
                 PostAccessLevel level = forcePublicFree ? PostAccessLevel.FREE
                         : (status == PublishStatus.PUBLIC ? randomLevel(true) : PostAccessLevel.FREE);
-                Post post = postRepository.save(Post.builder()
-                        .user(heavyUsers.get(i)).series(series)
-                        .title(POST_TITLES[(i * 40 + j) % POST_TITLES.length])
-                        .body(POST_BODIES[j % POST_BODIES.length])
-                        .publishStatus(status).accessLevel(level)
-                        .build());
+                Post post = postRepository.save(new Post(
+                        heavyUsers.get(i),
+                        series,
+                        POST_TITLES[(i * 40 + j) % POST_TITLES.length],
+                        POST_BODIES[j % POST_BODIES.length],
+                        status,
+                        level));
                 attachMedia(post, globalIndex, thumbnailUrls, bodyUrls);
                 allPosts.add(post);
                 globalIndex++;
@@ -318,12 +319,13 @@ public class ProdInitDataService {
             for (int j = 0; j < postCount; j++) {
                 PublishStatus status = randomStatus(false);
                 PostAccessLevel level = status == PublishStatus.PUBLIC ? randomLevel(false) : PostAccessLevel.FREE;
-                allPosts.add(postRepository.save(Post.builder()
-                        .user(generalUsers.get(i)).series(series)
-                        .title(POST_TITLES[(i * 3 + j) % POST_TITLES.length])
-                        .body(POST_BODIES[j % POST_BODIES.length])
-                        .publishStatus(status).accessLevel(level)
-                        .build()));
+                allPosts.add(postRepository.save(new Post(
+                        generalUsers.get(i),
+                        series,
+                        POST_TITLES[(i * 3 + j) % POST_TITLES.length],
+                        POST_BODIES[j % POST_BODIES.length],
+                        status,
+                        level)));
                 globalIndex++;
             }
         }
@@ -401,11 +403,11 @@ public class ProdInitDataService {
         String bodyUrl = bodyUrls.get(imgIdx);
         if (thumbUrl != null) {
             Media thumb = mediaRepository.save(Media.builder().url(thumbUrl).type(MediaType.IMAGE).build());
-            postMediaRepository.save(PostMedia.builder().post(post).media(thumb).type(PostMediaType.THUMBNAIL).build());
+            postMediaRepository.save(new PostMedia(post, thumb, PostMediaType.THUMBNAIL));
         }
         if (bodyUrl != null) {
             Media body = mediaRepository.save(Media.builder().url(bodyUrl).type(MediaType.IMAGE).build());
-            postMediaRepository.save(PostMedia.builder().post(post).media(body).type(PostMediaType.BODY).build());
+            postMediaRepository.save(new PostMedia(post, body, PostMediaType.BODY));
         }
     }
 }

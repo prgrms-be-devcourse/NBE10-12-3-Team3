@@ -240,14 +240,13 @@ public class BaseInitData implements ApplicationRunner {
                 Series series = j < 16 ? mySeries.get(j % 4) : null;
                 PublishStatus status = randomStatus(true);
                 PostAccessLevel level = status == PublishStatus.PUBLIC ? randomLevel(true) : PostAccessLevel.FREE;
-                allPosts.add(postRepository.save(Post.builder()
-                        .user(owner)
-                        .series(series)
-                        .title(POST_TITLES[j % POST_TITLES.length] + " " + (i + 1) + "편")
-                        .body(POST_BODIES[j % POST_BODIES.length])
-                        .publishStatus(status)
-                        .accessLevel(level)
-                        .build()));
+                allPosts.add(postRepository.save(new Post(
+                        owner,
+                        series,
+                        POST_TITLES[j % POST_TITLES.length] + " " + (i + 1) + "편",
+                        POST_BODIES[j % POST_BODIES.length],
+                        status,
+                        level)));
             }
         }
 
@@ -259,14 +258,13 @@ public class BaseInitData implements ApplicationRunner {
                 Series series = (i < 20 && RNG.nextBoolean()) ? generalSeriesList.get(i) : null;
                 PublishStatus status = randomStatus(false);
                 PostAccessLevel level = status == PublishStatus.PUBLIC ? randomLevel(false) : PostAccessLevel.FREE;
-                allPosts.add(postRepository.save(Post.builder()
-                        .user(owner)
-                        .series(series)
-                        .title(POST_TITLES[(i * 3 + j) % POST_TITLES.length])
-                        .body(POST_BODIES[j % POST_BODIES.length])
-                        .publishStatus(status)
-                        .accessLevel(level)
-                        .build()));
+                allPosts.add(postRepository.save(new Post(
+                        owner,
+                        series,
+                        POST_TITLES[(i * 3 + j) % POST_TITLES.length],
+                        POST_BODIES[j % POST_BODIES.length],
+                        status,
+                        level)));
             }
         }
 

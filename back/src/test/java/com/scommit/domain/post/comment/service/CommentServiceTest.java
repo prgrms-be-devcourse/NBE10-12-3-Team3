@@ -77,13 +77,7 @@ class CommentServiceTest {
                 .build();
         ReflectionTestUtils.setField(otherUser, "id", 2L);
 
-        mockPost = Post.builder()
-                .user(mockUser)
-                .title("테스트 게시글")
-                .body("내용")
-                .publishStatus(PublishStatus.PUBLIC)
-                .accessLevel(PostAccessLevel.FREE)
-                .build();
+        mockPost = new Post(mockUser, null, "테스트 게시글", "내용", PublishStatus.PUBLIC, PostAccessLevel.FREE);
         ReflectionTestUtils.setField(mockPost, "id", 10L);
     }
 

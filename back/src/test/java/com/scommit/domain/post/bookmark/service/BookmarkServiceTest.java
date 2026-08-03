@@ -63,13 +63,7 @@ class BookmarkServiceTest {
                 .build();
         ReflectionTestUtils.setField(actor, "id", 1L);
 
-        post = Post.builder()
-                .user(actor)
-                .title("테스트 게시글")
-                .body("내용")
-                .publishStatus(PublishStatus.PUBLIC)
-                .accessLevel(PostAccessLevel.FREE)
-                .build();
+        post = new Post(actor, null, "테스트 게시글", "내용", PublishStatus.PUBLIC, PostAccessLevel.FREE);
         ReflectionTestUtils.setField(post, "id", 10L);
     }
 
