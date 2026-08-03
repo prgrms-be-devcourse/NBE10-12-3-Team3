@@ -14,6 +14,11 @@ import org.springframework.context.annotation.Configuration
 
 @Configuration
 class SwaggerConfig {
+    companion object {
+        private const val DEFAULT_PAGE_NUMBER = 0
+        private const val DEFAULT_PAGE_SIZE = 10
+    }
+
     // Swagger UI 우상단 Authorize 버튼 활성화 — Bearer JWT 토큰 입력 후 인증 필요 API 테스트 가능
     @Bean
     fun openAPI(): OpenAPI {
@@ -39,7 +44,6 @@ class SwaggerConfig {
 
     // Swagger에서 Pageable이 JSON 객체로 표시되는 문제를 막기 위해 page, size, sort 파라미터로 직접 등록
     @Bean
-    @Suppress("MagicNumber")
     fun swaggerPageableCustomizer(): OpenApiCustomizer =
         OpenApiCustomizer { openApi ->
             openApi.paths.values.forEach { pathItem ->
@@ -60,12 +64,12 @@ class SwaggerConfig {
                                     .`in`("query")
                                     .name("page")
                                     .description("페이지 번호 (0부터 시작)")
-                                    .schema(IntegerSchema().example(0)),
+                                    .schema(IntegerSchema().example(DEFAULT_PAGE_NUMBER)),
                                 Parameter()
                                     .`in`("query")
                                     .name("size")
                                     .description("페이지 크기")
-                                    .schema(IntegerSchema().example(10)),
+                                    .schema(IntegerSchema().example(DEFAULT_PAGE_SIZE)),
                                 Parameter()
                                     .`in`("query")
                                     .name("sort")
