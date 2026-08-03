@@ -119,7 +119,8 @@ public class SecurityConfig {
                                 "/api/posts/{id:\\d+}",
                                 "/api/posts/{id:\\d+}/comments",
                                 "/api/posts/{id:\\d+}/medias/thumbnail",
-                                "/api/users/search"
+                                "/api/users/search",
+                                "/api/coupon-policies/active"
                         ).permitAll()
                         // 일반 인증 필요 경로
                         .requestMatchers("/api/**").authenticated()

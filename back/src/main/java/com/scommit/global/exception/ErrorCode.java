@@ -34,7 +34,8 @@ public enum ErrorCode {
     MEDIA_NOT_FOUND(HttpStatus.NOT_FOUND, "404-7", "미디어를 찾을 수 없습니다."),
     BOOKMARK_NOT_FOUND(HttpStatus.NOT_FOUND, "404-8", "북마크를 찾을 수 없습니다."),
     LIKE_NOT_FOUND(HttpStatus.NOT_FOUND, "404-9", "좋아요 기록이 없습니다."),
-    
+    COUPON_POLICY_NOT_FOUND(HttpStatus.NOT_FOUND, "404-10", "쿠폰 이벤트를 찾을 수 없습니다."),
+
     // 409 Conflict
     DUPLICATE_EMAIL(HttpStatus.CONFLICT, "409-1", "이미 사용중인 이메일입니다."),
     ALREADY_SUBSCRIBED(HttpStatus.CONFLICT, "409-2", "이미 구독중인 창작자입니다."),
@@ -44,6 +45,9 @@ public enum ErrorCode {
     NOT_MEMBERSHIP_SUBSCRIBER(HttpStatus.CONFLICT, "409-6", "멤버십에 가입되어 있지 않습니다."),
     ALREADY_LIKED(HttpStatus.CONFLICT, "409-7", "이미 좋아요를 누른 게시글입니다."),
     ALREADY_BOOKMARKED(HttpStatus.CONFLICT, "409-8", "이미 북마크한 게시글입니다."),
+    COUPON_NOT_ACTIVE(HttpStatus.CONFLICT, "409-9", "진행 중인 쿠폰 이벤트가 아닙니다."),
+    COUPON_ALREADY_ISSUED(HttpStatus.CONFLICT, "409-10", "이미 발급받은 쿠폰입니다."),
+    COUPON_SOLD_OUT(HttpStatus.CONFLICT, "409-11", "쿠폰이 모두 소진되었습니다."),
 
     // 415 Unsupported Media Type
     UNSUPPORTED_FILE_TYPE(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "415-1", "지원하지 않는 파일 형식입니다."),
