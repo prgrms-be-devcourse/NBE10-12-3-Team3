@@ -28,7 +28,6 @@ import com.scommit.domain.series.series.dto.SeriesUpdateRequest
 import com.scommit.domain.series.series.repository.SeriesRepository
 import com.scommit.domain.series.seriesmedia.dto.SeriesMediaResponse
 import com.scommit.domain.series.seriesmedia.repository.SeriesMediaRepository
-import com.scommit.domain.user.user.dto.LoginResponse
 import com.scommit.domain.user.user.dto.UserDeleteRequest
 import com.scommit.global.dto.PageResponse
 import com.scommit.global.e2e.ApiResponse
@@ -656,6 +655,7 @@ class SeriesControllerE2ETest {
         // user 도메인과 완전히 같은 구조다. 상세: docs/user-e2e-known-issues.md #4
         @Test
         @DisplayName("5. 비숫자 id를 비로그인으로 호출하면 401-1을 반환한다 (정규식 미매칭)")
+        @Suppress("ForbiddenComment")
         fun getSeries_nonNumericId_unauthenticated_returns401_1() {
             expectEntryPointUnauthorized(getSeries("abc"))
         }
@@ -945,6 +945,7 @@ class SeriesControllerE2ETest {
         // 상세: docs/series-e2e-known-issues.md #2
         @Test
         @DisplayName("6. 삭제해도 썸네일(series_media/media 행, 파일)은 정리되지 않고 그대로 남는다 (D-2, FIXME)")
+        @Suppress("ForbiddenComment")
         fun deleteSeries_owner_leavesThumbnailOrphaned() {
             val accessToken = newUserToken()
             val seriesId = createSeries(accessToken, "썸네일 고아 확인용 시리즈", "본문")
@@ -1086,6 +1087,7 @@ class SeriesControllerE2ETest {
         // 실패해 GlobalExceptionHandler의 포괄 Exception 핸들러로 떨어진다. 상세: docs/series-e2e-known-issues.md #4
         @Test
         @DisplayName("6. 존재하지 않는 정렬 프로퍼티(postCount)를 쓰면 실제 동작을 그대로 고정한다 (Q2)")
+        @Suppress("ForbiddenComment")
         fun getSeriesList_invalidSortProperty_returns500_1() {
             expectResultCode(getSeriesListRequest("?sort=postCount,desc"), HttpStatus.INTERNAL_SERVER_ERROR, "500-1")
         }
@@ -1171,6 +1173,7 @@ class SeriesControllerE2ETest {
         // 명시적으로 잡지 않아 포괄 Exception 핸들러로 떨어져 500-1이 된다. 상세: docs/series-e2e-known-issues.md #4
         @Test
         @DisplayName("6. keyword 파라미터 자체가 없으면 실제 동작을 그대로 고정한다 (D-4, FIXME)")
+        @Suppress("ForbiddenComment")
         fun searchSeries_missingKeyword_returns500_1() {
             expectResultCode(searchSeriesRequest(""), HttpStatus.INTERNAL_SERVER_ERROR, "500-1")
         }
@@ -1446,7 +1449,7 @@ class SeriesControllerE2ETest {
                     checkNotNull(body)
                     assertThat(body.resultCode()).isEqualTo("201-1")
                     assertThat(body.data().id()).isNotNull()
-                    assertThat(body.data().seriesId() as Long?).isEqualTo(seriesId)
+                    assertThat(body.data().seriesId()).isEqualTo(seriesId)
                     assertThat(body.data().url()).isNotBlank()
                     assertThat(body.data().mediaType()).isEqualTo(DomainMediaType.IMAGE)
                     uploadedUrl = body.data().url()
@@ -1598,6 +1601,7 @@ class SeriesControllerE2ETest {
         // 신규 등재 안 함). 상세: docs/user-e2e-known-issues.md #3
         @Test
         @DisplayName("10. file part 자체가 없으면 실제 동작을 그대로 고정한다")
+        @Suppress("ForbiddenComment")
         fun uploadMedia_missingFilePart_returns500_1() {
             val accessToken = newUserToken()
             val seriesId = createSeries(accessToken, "file part 누락 대상", "본문")
@@ -1628,7 +1632,7 @@ class SeriesControllerE2ETest {
                     checkNotNull(body)
                     assertThat(body.resultCode()).isEqualTo("200-1")
                     assertThat(body.data().id()).isEqualTo(uploaded.id())
-                    assertThat(body.data().seriesId() as Long?).isEqualTo(seriesId)
+                    assertThat(body.data().seriesId()).isEqualTo(seriesId)
                     assertThat(body.data().url()).isEqualTo(uploaded.url())
                     assertThat(body.data().mediaType()).isEqualTo(DomainMediaType.IMAGE)
                 }
@@ -1663,6 +1667,7 @@ class SeriesControllerE2ETest {
         // 한 리소스의 "없음"이 메서드에 따라 200과 404로 갈린다. 상세: docs/series-e2e-known-issues.md #3
         @Test
         @DisplayName("3. 썸네일이 없으면 실제 동작을 그대로 고정한다 (200 + data:null)")
+        @Suppress("ForbiddenComment")
         fun getMedia_withoutMedia_returns200WithNullData() {
             val accessToken = newUserToken()
             val seriesId = createSeries(accessToken, "썸네일 없는 시리즈", "본문")
@@ -1825,7 +1830,7 @@ class SeriesControllerE2ETest {
                     assertThat(body.resultCode()).isEqualTo("200-1")
                     assertThat(body.data()).hasSize(1)
                     assertThat(body.data()[0].id()).isEqualTo(postId)
-                    assertThat(body.data()[0].seriesId() as Long?).isEqualTo(seriesId)
+                    assertThat(body.data()[0].seriesId()).isEqualTo(seriesId)
                 }
         }
 
@@ -1999,7 +2004,7 @@ class SeriesControllerE2ETest {
                     checkNotNull(body)
                     assertThat(body.resultCode()).isEqualTo("200-1")
                     assertThat(body.data().id()).isEqualTo(postId)
-                    assertThat(body.data().seriesId() as Long?).isNull()
+                    assertThat(body.data().seriesId()).isNull()
                 }
         }
 
@@ -2296,6 +2301,7 @@ class SeriesControllerE2ETest {
         // 시리즈"와 "없는 시리즈"를 구분할 수 없다. 상세: docs/series-e2e-known-issues.md #1
         @Test
         @DisplayName("9. 존재하지 않는 시리즈여도 실제 동작을 그대로 고정한다 (200 + 빈 배열)")
+        @Suppress("ForbiddenComment")
         fun getSeriesPosts_nonExistentSeries_returns200WithEmptyList() {
             // 같은 id에 대해 상세 조회는 404-5라는 점을 나란히 고정한다.
             expectResultCode(getSeries(NON_EXISTENT_SERIES_ID), HttpStatus.NOT_FOUND, "404-5")
@@ -2316,6 +2322,7 @@ class SeriesControllerE2ETest {
         // 상세: docs/series-e2e-known-issues.md #1
         @Test
         @DisplayName("10. soft delete된 시리즈여도 실제 동작을 그대로 고정한다 (200 + 빈 배열)")
+        @Suppress("ForbiddenComment")
         fun getSeriesPosts_softDeletedSeries_returns200WithEmptyList() {
             val accessToken = newUserToken()
             val seriesId = createSeries(accessToken, "삭제 후 포스트 목록을 조회할 시리즈", "본문")
@@ -2462,7 +2469,7 @@ class SeriesControllerE2ETest {
                 .expectBody<ApiResponse<PostResponse>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data().seriesId() as Long?).isEqualTo(seriesId)
+                    assertThat(body.data().seriesId()).isEqualTo(seriesId)
                 }
             assertThat(seriesPostIds(seriesId)).containsExactly(postId)
 
@@ -2489,7 +2496,7 @@ class SeriesControllerE2ETest {
                     checkNotNull(body)
                     assertThat(body.resultCode()).isEqualTo("200-1")
                     assertThat(body.data().id()).isEqualTo(postId)
-                    assertThat(body.data().seriesId() as Long?).isNull()
+                    assertThat(body.data().seriesId()).isNull()
                 }
         }
 

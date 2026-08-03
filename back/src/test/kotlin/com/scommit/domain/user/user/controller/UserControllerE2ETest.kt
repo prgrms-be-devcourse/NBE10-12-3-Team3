@@ -23,7 +23,6 @@ package com.scommit.domain.user.user.controller
 
 import com.scommit.domain.user.user.dto.LoginResponse
 import com.scommit.domain.user.user.dto.SignupRequest
-import com.scommit.domain.user.user.dto.SignupResponse
 import com.scommit.domain.user.user.dto.UserDeleteRequest
 import com.scommit.domain.user.user.dto.UserMeResponse
 import com.scommit.domain.user.user.dto.UserPasswordUpdateRequest
@@ -402,6 +401,7 @@ class UserControllerE2ETest {
         // 헤더만 쓴다). 상세: docs/user-e2e-known-issues.md #5
         @Test
         @DisplayName("1. 성공하면 200과 토큰·유저 정보를 반환하고 쿠키를 내려준다")
+        @Suppress("ForbiddenComment")
         fun login_success_returns200WithTokensAndCookies() {
             val email = uniqueEmail()
             val nickname = uniqueNickname()
@@ -433,6 +433,7 @@ class UserControllerE2ETest {
         // 다르다. E2E는 실제 구현(401-2)을 정답으로 고정한다. 상세: docs/user-e2e-known-issues.md #1
         @Test
         @DisplayName("2. 존재하지 않는 이메일이면 401-2를 반환한다")
+        @Suppress("ForbiddenComment")
         fun login_emailNotFound_returns401_2() {
             expectResultCode(
                 loginRequest(client, uniqueEmail(), DEFAULT_PASSWORD),
@@ -444,6 +445,7 @@ class UserControllerE2ETest {
         // FIXME: docs/user-e2e-known-issues.md #1 참고 — 목 검증(401-1)과 실제 구현(401-2)이 다르다.
         @Test
         @DisplayName("3. 비밀번호가 일치하지 않으면 401-2를 반환한다")
+        @Suppress("ForbiddenComment")
         fun login_wrongPassword_returns401_2() {
             val email = uniqueEmail()
             signUp(client, email, DEFAULT_PASSWORD, uniqueNickname())
@@ -458,6 +460,7 @@ class UserControllerE2ETest {
         // FIXME: docs/user-e2e-known-issues.md #1 참고 — 목 검증(401-1)과 실제 구현(401-2)이 다르다.
         @Test
         @DisplayName("4. 탈퇴(soft delete)한 계정이면 401-2를 반환한다")
+        @Suppress("ForbiddenComment")
         fun login_softDeletedAccount_returns401_2() {
             val email = uniqueEmail()
             val accessToken = createUserAndGetAccessToken(client, email, DEFAULT_PASSWORD, uniqueNickname())
@@ -565,6 +568,7 @@ class UserControllerE2ETest {
         // ErrorCode.TOKEN_INVALID(401-4)는 사용되지 않는다. 상세: docs/user-e2e-known-issues.md #2
         @Test
         @DisplayName("4. 깨진 토큰 문자열이면 401-1을 반환한다")
+        @Suppress("ForbiddenComment")
         fun logout_malformedTokenString_returns401_1() {
             val response =
                 client
@@ -585,6 +589,7 @@ class UserControllerE2ETest {
         // 상세: docs/user-e2e-known-issues.md #6
         @Test
         @DisplayName("1. 성공하면 200을 반환하고, 이후 같은 계정 로그인은 401-2가 되며, 같은 accessToken으로 재탈퇴해도 200이 된다")
+        @Suppress("ForbiddenComment")
         fun deleteAccount_success_returns200_thenLoginFails_andReDeleteStillReturns200() {
             val email = uniqueEmail()
             val session = createUserAndLogin(client, email, DEFAULT_PASSWORD, uniqueNickname())
@@ -682,6 +687,7 @@ class UserControllerE2ETest {
         // ErrorCode.TOKEN_EXPIRED(401-3)는 사용되지 않는다. 상세: docs/user-e2e-known-issues.md #2
         @Test
         @DisplayName("3. 만료된 토큰(리프레시 없음)이면 401-1을 반환한다")
+        @Suppress("ForbiddenComment")
         fun getMe_expiredAccessToken_returns401_1() {
             val email = uniqueEmail()
             val nickname = uniqueNickname()
@@ -699,6 +705,7 @@ class UserControllerE2ETest {
         // 없어서 400이 아니라 500-1로 응답된다. 상세: docs/user-e2e-known-issues.md #3
         @Test
         @DisplayName("1. 성공하면 닉네임·소개글이 반영된 200을 반환한다 (request part 누락 시 500-1도 확인)")
+        @Suppress("ForbiddenComment")
         fun updateMe_success_updatesProfile_andMissingRequestPartReturns500() {
             val email = uniqueEmail()
             val accessToken = createUserAndGetAccessToken(client, email, DEFAULT_PASSWORD, uniqueNickname())
@@ -998,6 +1005,7 @@ class UserControllerE2ETest {
         // 상세: docs/user-e2e-known-issues.md #4
         @Test
         @DisplayName("5. 비숫자 id를 비로그인으로 호출하면 401-1을 반환한다 (정규식 미매칭)")
+        @Suppress("ForbiddenComment")
         fun getUserProfile_nonNumericId_unauthenticated_returns401_1() {
             expectResultCode(
                 client.get().uri("/api/users/abc").exchange(),
@@ -1202,7 +1210,7 @@ class UserControllerE2ETest {
     @Nested
     @DisplayName("DELETE /api/users/me/medias — 프로필 이미지 삭제")
     inner class DeleteMedia {
-        private fun deleteMedia(accessToken: String): RestTestClient.ResponseSpec =
+        private fun deleteProfileMedia(accessToken: String): RestTestClient.ResponseSpec =
             client
                 .method(HttpMethod.DELETE)
                 .uri("/api/users/me/medias")
@@ -1228,7 +1236,7 @@ class UserControllerE2ETest {
                     assertThat(body.data()).isNotNull()
                 }
 
-            expectResultCode(deleteMedia(accessToken), HttpStatus.OK, "200-1")
+            expectResultCode(deleteProfileMedia(accessToken), HttpStatus.OK, "200-1")
 
             // 삭제라는 부작용 자체를 확인한다. 미디어가 없는 유저는 404가 아니라
             // 200 + data=null 이 계약이다(GetMedia 2번 케이스와 동일).
@@ -1258,7 +1266,7 @@ class UserControllerE2ETest {
         fun deleteMedia_noMedia_returns404_7() {
             val accessToken = createUserAndGetAccessToken(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
 
-            expectResultCode(deleteMedia(accessToken), HttpStatus.NOT_FOUND, "404-7")
+            expectResultCode(deleteProfileMedia(accessToken), HttpStatus.NOT_FOUND, "404-7")
         }
     }
 
