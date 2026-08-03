@@ -202,7 +202,7 @@ class BookmarkControllerE2ETest {
 
             // 후속 조회로도 확인한다.
             val myBookmarks = getMyBookmarks(accessToken)
-            assertThat(myBookmarks.totalElements()).isEqualTo(1)
+            assertThat(myBookmarks.totalElements).isEqualTo(1)
             assertThat(myBookmarks.content)
                 .extracting<Long>(PostListResponse::id)
                 .containsExactly(postId)
@@ -295,7 +295,7 @@ class BookmarkControllerE2ETest {
 
             // 유니크 제약(uk_post_bookmarks_post_user)이 중복 행을 막고, 목록에도 하나만 남는다.
             assertThat(bookmarkCountOf(postId)).isEqualTo(1L)
-            assertThat(getMyBookmarks(accessToken).totalElements()).isEqualTo(1)
+            assertThat(getMyBookmarks(accessToken).totalElements).isEqualTo(1)
         }
 
         // FIXME(#3): BookmarkService.createBookmark 는 findByIdAndDeletedAtIsNull 만 보고 publishStatus 를
@@ -365,10 +365,10 @@ class BookmarkControllerE2ETest {
                     checkNotNull(body)
                     assertThat(body.resultCode()).isEqualTo("200-1")
                     assertThat(body.msg()).isEqualTo("북마크한 게시글 목록입니다.")
-                    assertThat(body.data().totalElements()).isEqualTo(2)
-                    assertThat(body.data().pageSize()).isEqualTo(10) // @PageableDefault(size = 10)
-                    assertThat(body.data().pageNumber()).isZero()
-                    assertThat(body.data().totalPages()).isEqualTo(1)
+                    assertThat(body.data().totalElements).isEqualTo(2)
+                    assertThat(body.data().pageSize).isEqualTo(10) // @PageableDefault(size = 10)
+                    assertThat(body.data().pageNumber).isZero()
+                    assertThat(body.data().totalPages).isEqualTo(1)
                     assertThat(body.data().isLast).isTrue()
                     // @PageableDefault(sort = "id", direction = DESC) — Bookmark.id 내림차순(= 최근 북마크 순)
                     assertThat(body.data().content)
@@ -398,8 +398,8 @@ class BookmarkControllerE2ETest {
                     checkNotNull(body)
                     assertThat(body.resultCode()).isEqualTo("200-1")
                     assertThat(body.data().content).isEmpty()
-                    assertThat(body.data().totalElements()).isZero()
-                    assertThat(body.data().totalPages()).isZero()
+                    assertThat(body.data().totalElements).isZero()
+                    assertThat(body.data().totalPages).isZero()
                     assertThat(body.data().isLast).isTrue()
                 }
         }
@@ -423,9 +423,9 @@ class BookmarkControllerE2ETest {
                 .value { body ->
                     checkNotNull(body)
                     assertThat(body.resultCode()).isEqualTo("200-1")
-                    assertThat(body.data().totalElements()).isEqualTo(3)
-                    assertThat(body.data().pageSize()).isEqualTo(2)
-                    assertThat(body.data().totalPages()).isEqualTo(2)
+                    assertThat(body.data().totalElements).isEqualTo(3)
+                    assertThat(body.data().pageSize).isEqualTo(2)
+                    assertThat(body.data().totalPages).isEqualTo(2)
                     assertThat(body.data().isLast).isFalse()
                     assertThat(body.data().content)
                         .extracting<Long>(PostListResponse::id)
@@ -438,7 +438,7 @@ class BookmarkControllerE2ETest {
                 .expectBody<ApiResponse<PageResponse<PostListResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data().pageNumber()).isEqualTo(1)
+                    assertThat(body.data().pageNumber).isEqualTo(1)
                     assertThat(body.data().isLast).isTrue()
                     assertThat(body.data().content)
                         .extracting<Long>(PostListResponse::id)
@@ -456,13 +456,13 @@ class BookmarkControllerE2ETest {
 
             createBookmark(reader.accessToken(), kept)
             createBookmark(reader.accessToken(), removed)
-            assertThat(getMyBookmarks(reader.accessToken()).totalElements()).isEqualTo(2)
+            assertThat(getMyBookmarks(reader.accessToken()).totalElements).isEqualTo(2)
 
             deletePost(author.accessToken(), removed)
 
             // 목록 쿼리가 findByUserIdAndPostDeletedAtIsNull 이라 삭제된 게시글은 빠진다.
             val afterDelete = getMyBookmarks(reader.accessToken())
-            assertThat(afterDelete.totalElements()).isEqualTo(1)
+            assertThat(afterDelete.totalElements).isEqualTo(1)
             assertThat(afterDelete.content)
                 .extracting<Long>(PostListResponse::id)
                 .containsExactly(kept)
@@ -597,7 +597,7 @@ class BookmarkControllerE2ETest {
             assertThat(findBookmark(postId, userId)).isPresent()
             // 취소한 게시글이 내 북마크 목록에 계속 보인다 — 사용자에게 바로 드러나는 증상이다.
             val myBookmarks = getMyBookmarks(accessToken)
-            assertThat(myBookmarks.totalElements()).isEqualTo(1)
+            assertThat(myBookmarks.totalElements).isEqualTo(1)
             assertThat(myBookmarks.content)
                 .extracting<Long>(PostListResponse::id)
                 .containsExactly(postId)
@@ -685,7 +685,7 @@ class BookmarkControllerE2ETest {
 
             assertThat(findBookmark(postId, owner.user().id())).isPresent()
             assertThat(bookmarkCountOf(postId)).isEqualTo(1L)
-            assertThat(getMyBookmarks(owner.accessToken()).totalElements()).isEqualTo(1)
+            assertThat(getMyBookmarks(owner.accessToken()).totalElements).isEqualTo(1)
         }
 
         // FIXME(#1): 첫 취소에서 행이 실제로 지워지지 않기 때문에(#1) 두 번째 취소도 대상을 찾아 성공한다.
@@ -721,7 +721,7 @@ class BookmarkControllerE2ETest {
             expectResultCode(createBookmarkRequest(accessToken, postId), HttpStatus.CONFLICT, "409-8")
 
             assertThat(bookmarkCountOf(postId)).isZero()
-            assertThat(getMyBookmarks(accessToken).totalElements()).isEqualTo(1)
+            assertThat(getMyBookmarks(accessToken).totalElements).isEqualTo(1)
         }
     }
 
@@ -739,8 +739,8 @@ class BookmarkControllerE2ETest {
             createBookmark(other.accessToken(), postId)
 
             assertThat(bookmarkCountOf(postId)).isEqualTo(2L)
-            assertThat(getMyBookmarks(author.accessToken()).totalElements()).isEqualTo(1)
-            assertThat(getMyBookmarks(other.accessToken()).totalElements()).isEqualTo(1)
+            assertThat(getMyBookmarks(author.accessToken()).totalElements).isEqualTo(1)
+            assertThat(getMyBookmarks(other.accessToken()).totalElements).isEqualTo(1)
 
             // 한쪽이 취소하면 공유 카운트만 1 줄어든다(행은 #1 때문에 남는다).
             expectResultCode(deleteBookmarkRequest(other.accessToken(), postId), HttpStatus.OK, "200-1")

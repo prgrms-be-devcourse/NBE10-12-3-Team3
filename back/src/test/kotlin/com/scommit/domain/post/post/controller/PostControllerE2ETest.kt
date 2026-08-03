@@ -780,7 +780,7 @@ class PostControllerE2ETest {
             val orphan = checkNotNull(postMediaRepository.findByIdOrNull(mediaId))
             assertThat(orphan.post.id).isEqualTo(postId)
 
-            val orphanMedia: MediaEntity = checkNotNull(mediaRepository.findByIdOrNull(orphan.media.id))
+            val orphanMedia: MediaEntity = checkNotNull(mediaRepository.findByIdOrNull(checkNotNull(orphan.media.id)))
             // Media.url = "post/{uuid}_{원본파일명}" — LocalMediaService.uploadFile()이
             // file.path("./build/test-uploads") + url 을 이어붙여 저장하므로, "post/" 다음 부분이
             // POST_UPLOAD_DIR("build/test-uploadspost") 바로 아래의 실제 파일명이 된다.

@@ -20,7 +20,6 @@ import com.scommit.domain.post.post.dto.PostResponse
 import com.scommit.domain.post.post.entity.PostAccessLevel
 import com.scommit.domain.post.post.entity.PublishStatus
 import com.scommit.domain.post.post.repository.PostRepository
-import com.scommit.domain.user.user.dto.LoginResponse
 import com.scommit.global.e2e.ApiResponse
 import com.scommit.global.e2e.E2ETestSupport
 import com.scommit.global.e2e.E2ETestSupport.bearer
@@ -193,8 +192,8 @@ class CommentControllerE2ETest {
     private fun liveCommentIdsOf(postId: Long): List<Long> =
         commentRepository
             .findAllByPostIdAndDeletedAtIsNull(postId, PageRequest.of(0, 50))
-            .map(Comment::getId)
             .content
+            .map { checkNotNull(it.id) }
 
     @Nested
     @DisplayName("POST /api/posts/{postId}/comments — 댓글 작성")
