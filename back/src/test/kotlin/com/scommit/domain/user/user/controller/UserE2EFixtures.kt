@@ -63,7 +63,7 @@ class UserE2EFixtures {
             )
         }
 
-        return FollowerCountFixture(creator.id, creatorEmail, FOLLOWER_COUNT)
+        return FollowerCountFixture(checkNotNull(creator.id), creatorEmail, FOLLOWER_COUNT)
     }
 
     @Bean
@@ -83,6 +83,7 @@ class UserE2EFixtures {
                             UserRole.USER,
                         ),
                     ).id
+                    .let { checkNotNull(it) }
             }
         return SearchPagingFixture(SEARCH_NICKNAME_PREFIX, ids)
     }

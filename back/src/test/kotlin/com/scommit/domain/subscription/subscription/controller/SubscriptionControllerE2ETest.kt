@@ -36,12 +36,12 @@ class SubscriptionControllerE2ETest {
     fun setUp() {
         client = E2ETestSupport.client(port)
         val me = createUserAndLogin(client, uniqueEmail(), "123456", uniqueNickname())
-        myToken = me.accessToken()
-        myId = me.user().id()
+        myToken = me.accessToken
+        myId = me.user.id
 
         val creator = createUserAndLogin(client, uniqueEmail(), "123456", uniqueNickname())
-        creatorToken = creator.accessToken()
-        creatorId = creator.user().id()
+        creatorToken = creator.accessToken
+        creatorId = creator.user.id
     }
 
     @Test
@@ -619,7 +619,7 @@ class SubscriptionControllerE2ETest {
         client
             .post()
             .uri("/api/subscriptions/follow/{creatorId}", myId)
-            .header("Authorization", "Bearer ${follower.accessToken()}")
+            .header("Authorization", "Bearer ${follower.accessToken}")
             .exchange()
             .expectStatus()
             .isOk()

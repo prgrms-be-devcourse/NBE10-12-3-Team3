@@ -20,7 +20,6 @@ import com.scommit.domain.post.post.dto.PostResponse
 import com.scommit.domain.post.post.entity.PostAccessLevel
 import com.scommit.domain.post.post.entity.PublishStatus
 import com.scommit.domain.post.post.repository.PostRepository
-import com.scommit.domain.user.user.dto.LoginResponse
 import com.scommit.global.e2e.ApiResponse
 import com.scommit.global.e2e.E2ETestSupport
 import com.scommit.global.e2e.E2ETestSupport.bearer
@@ -105,7 +104,7 @@ class CommentControllerE2ETest {
                 .expectBody<ApiResponse<PostResponse>>()
                 .returnResult()
                 .responseBody,
-        ).data().id()
+        ).data.id
 
     private fun createPublicPost(accessToken: String): Long =
         createPost(accessToken, PublishStatus.PUBLIC, PostAccessLevel.FREE)
@@ -149,7 +148,7 @@ class CommentControllerE2ETest {
                 .expectBody<ApiResponse<CommentResponse>>()
                 .returnResult()
                 .responseBody,
-        ).data()
+        ).data
 
     private fun getCommentsRequest(
         postId: Long,
@@ -193,8 +192,8 @@ class CommentControllerE2ETest {
     private fun liveCommentIdsOf(postId: Long): List<Long> =
         commentRepository
             .findAllByPostIdAndDeletedAtIsNull(postId, PageRequest.of(0, 50))
-            .map(Comment::getId)
             .content
+            .map { checkNotNull(it.id) }
 
     @Nested
     @DisplayName("POST /api/posts/{postId}/comments — 댓글 작성")
@@ -203,9 +202,9 @@ class CommentControllerE2ETest {
         @DisplayName("1. 성공하면 201-1과 댓글 정보를 반환하고 DB에 반영된다")
         fun createComment_success_returns201AndPersistsComment() {
             val session = createUserAndLogin(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
-            val accessToken = session.accessToken()
-            val userId = session.user().id()
-            val nickname = session.user().nickname()
+            val accessToken = session.accessToken
+            val userId = session.user.id
+            val nickname = session.user.nickname
             val postId = createPublicPost(accessToken)
 
             client
@@ -220,18 +219,18 @@ class CommentControllerE2ETest {
                 .expectBody<ApiResponse<CommentResponse>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("201-1")
-                    assertThat(body.msg()).isEqualTo("댓글이 작성되었습니다.")
-                    assertThat(body.data().id()).isNotNull()
-                    assertThat(body.data().postId()).isEqualTo(postId)
-                    assertThat(body.data().userId()).isEqualTo(userId)
-                    assertThat(body.data().nickname()).isEqualTo(nickname)
-                    assertThat(body.data().body()).isEqualTo("첫 번째 댓글")
-                    assertThat(body.data().createdAt()).isNotNull()
-                    assertThat(body.data().updatedAt()).isNotNull()
+                    assertThat(body.resultCode).isEqualTo("201-1")
+                    assertThat(body.msg).isEqualTo("댓글이 작성되었습니다.")
+                    assertThat(body.data.id).isNotNull()
+                    assertThat(body.data.postId).isEqualTo(postId)
+                    assertThat(body.data.userId).isEqualTo(userId)
+                    assertThat(body.data.nickname).isEqualTo(nickname)
+                    assertThat(body.data.body).isEqualTo("첫 번째 댓글")
+                    assertThat(body.data.createdAt).isNotNull()
+                    assertThat(body.data.updatedAt).isNotNull()
 
                     // 생성이라는 부작용 자체를 DB에서 되짚어 확인한다.
-                    val saved = findComment(body.data().id())
+                    val saved = findComment(body.data.id)
                     assertThat(saved.body).isEqualTo("첫 번째 댓글")
                     assertThat(saved.deletedAt).isNull()
                     assertThat(saved.post.id).isEqualTo(postId)
@@ -247,11 +246,11 @@ class CommentControllerE2ETest {
 
             val commenter = createUserAndLogin(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
 
-            val created = createComment(commenter.accessToken(), postId, "남의 글에 다는 댓글")
+            val created = createComment(commenter.accessToken, postId, "남의 글에 다는 댓글")
 
-            assertThat(created.userId()).isEqualTo(commenter.user().id())
-            assertThat(created.postId()).isEqualTo(postId)
-            assertThat(liveCommentIdsOf(postId)).containsExactly(created.id())
+            assertThat(created.userId).isEqualTo(commenter.user.id)
+            assertThat(created.postId).isEqualTo(postId)
+            assertThat(liveCommentIdsOf(postId)).containsExactly(created.id)
         }
 
         @Test
@@ -321,8 +320,8 @@ class CommentControllerE2ETest {
                 .value { body ->
                     checkNotNull(body)
                     // 400-1 은 Bean Validation 실패와 JSON 파싱 실패가 공유하는 코드라 msg 까지 본다(컨벤션 6장).
-                    assertThat(body.resultCode()).isEqualTo("400-1")
-                    assertThat(body.msg()).isEqualTo("올바른 JSON 요청 형식이 아닙니다.")
+                    assertThat(body.resultCode).isEqualTo("400-1")
+                    assertThat(body.msg).isEqualTo("올바른 JSON 요청 형식이 아닙니다.")
                 }
         }
 
@@ -336,8 +335,8 @@ class CommentControllerE2ETest {
 
             val created = createComment(accessToken, postId, null)
 
-            assertThat(created.body()).isNull()
-            assertThat(findComment(created.id()).body).isNull()
+            assertThat(created.body).isNull()
+            assertThat(findComment(created.id).body).isNull()
         }
 
         // FIXME(#3): CommentService.createComment 는 post.getDeletedAt() 만 확인하고 publishStatus 를 보지 않는다.
@@ -364,8 +363,8 @@ class CommentControllerE2ETest {
 
             // 그런데 댓글 작성은 통과한다.
             val created = createComment(otherToken, postId, "볼 수 없는 글에 다는 댓글")
-            assertThat(created.postId()).isEqualTo(postId)
-            assertThat(liveCommentIdsOf(postId)).containsExactly(created.id())
+            assertThat(created.postId).isEqualTo(postId)
+            assertThat(liveCommentIdsOf(postId)).containsExactly(created.id)
         }
 
         // FIXME(#4): 바로 위 케이스(#3)와 같은 원인. 아직 발행되지 않은(DRAFT) 게시글에도 제3자가 댓글을 달 수 있다.
@@ -378,8 +377,8 @@ class CommentControllerE2ETest {
             val otherToken = createUserAndGetAccessToken(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
 
             val created = createComment(otherToken, postId, "미발행 글에 다는 댓글")
-            assertThat(created.postId()).isEqualTo(postId)
-            assertThat(liveCommentIdsOf(postId)).containsExactly(created.id())
+            assertThat(created.postId).isEqualTo(postId)
+            assertThat(liveCommentIdsOf(postId)).containsExactly(created.id)
         }
     }
 
@@ -390,10 +389,10 @@ class CommentControllerE2ETest {
         @DisplayName("1. 비로그인으로도 200-1과 작성 순 목록을 반환한다")
         fun getComments_anonymous_returns200AndCommentsInIdOrder() {
             val session = createUserAndLogin(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
-            val postId = createPublicPost(session.accessToken())
+            val postId = createPublicPost(session.accessToken)
 
-            val first = createComment(session.accessToken(), postId, "첫 댓글")
-            val second = createComment(session.accessToken(), postId, "둘째 댓글")
+            val first = createComment(session.accessToken, postId, "첫 댓글")
+            val second = createComment(session.accessToken, postId, "둘째 댓글")
 
             getCommentsRequest(postId)
                 .expectStatus()
@@ -401,20 +400,20 @@ class CommentControllerE2ETest {
                 .expectBody<ApiResponse<PageResult<CommentResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("200-1")
-                    assertThat(body.msg()).isEqualTo("댓글 목록입니다.")
-                    assertThat(body.data().totalElements).isEqualTo(2L)
-                    assertThat(body.data().size).isEqualTo(10) // @PageableDefault(size = 10)
-                    assertThat(body.data().number).isZero()
+                    assertThat(body.resultCode).isEqualTo("200-1")
+                    assertThat(body.msg).isEqualTo("댓글 목록입니다.")
+                    assertThat(body.data.totalElements).isEqualTo(2L)
+                    assertThat(body.data.size).isEqualTo(10) // @PageableDefault(size = 10)
+                    assertThat(body.data.number).isZero()
                     // @PageableDefault(sort = "id") — 방향 지정이 없어 id 오름차순(= 작성 순)
-                    assertThat(body.data().content)
+                    assertThat(body.data.content)
                         .extracting<Long>(CommentResponse::id)
-                        .containsExactly(first.id(), second.id())
-                    assertThat(body.data().content)
+                        .containsExactly(first.id, second.id)
+                    assertThat(body.data.content)
                         .extracting<String>(CommentResponse::body)
                         .containsExactly("첫 댓글", "둘째 댓글")
-                    assertThat(body.data().content[0].userId()).isEqualTo(session.user().id())
-                    assertThat(body.data().content[0].nickname()).isEqualTo(session.user().nickname())
+                    assertThat(body.data.content[0].userId).isEqualTo(session.user.id)
+                    assertThat(body.data.content[0].nickname).isEqualTo(session.user.nickname)
                 }
         }
 
@@ -430,9 +429,9 @@ class CommentControllerE2ETest {
                 .expectBody<ApiResponse<PageResult<CommentResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("200-1")
-                    assertThat(body.data().content).isEmpty()
-                    assertThat(body.data().totalElements).isZero()
+                    assertThat(body.resultCode).isEqualTo("200-1")
+                    assertThat(body.data.content).isEmpty()
+                    assertThat(body.data.totalElements).isZero()
                 }
         }
 
@@ -452,13 +451,13 @@ class CommentControllerE2ETest {
                 .expectBody<ApiResponse<PageResult<CommentResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("200-1")
-                    assertThat(body.data().totalElements).isEqualTo(3L)
-                    assertThat(body.data().size).isEqualTo(2)
-                    assertThat(body.data().number).isZero()
-                    assertThat(body.data().content)
+                    assertThat(body.resultCode).isEqualTo("200-1")
+                    assertThat(body.data.totalElements).isEqualTo(3L)
+                    assertThat(body.data.size).isEqualTo(2)
+                    assertThat(body.data.number).isZero()
+                    assertThat(body.data.content)
                         .extracting<Long>(CommentResponse::id)
-                        .containsExactly(first.id(), second.id())
+                        .containsExactly(first.id, second.id)
                 }
 
             getCommentsRequest(postId, 1, 2)
@@ -467,10 +466,10 @@ class CommentControllerE2ETest {
                 .expectBody<ApiResponse<PageResult<CommentResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data().number).isEqualTo(1)
-                    assertThat(body.data().content)
+                    assertThat(body.data.number).isEqualTo(1)
+                    assertThat(body.data.content)
                         .extracting<Long>(CommentResponse::id)
-                        .containsExactly(third.id())
+                        .containsExactly(third.id)
                 }
         }
 
@@ -483,7 +482,7 @@ class CommentControllerE2ETest {
             val kept = createComment(accessToken, postId, "남는 댓글")
             val removed = createComment(accessToken, postId, "지울 댓글")
 
-            deleteCommentRequest(accessToken, postId, removed.id()).expectStatus().isOk()
+            deleteCommentRequest(accessToken, postId, removed.id).expectStatus().isOk()
 
             getCommentsRequest(postId)
                 .expectStatus()
@@ -491,11 +490,11 @@ class CommentControllerE2ETest {
                 .expectBody<ApiResponse<PageResult<CommentResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("200-1")
-                    assertThat(body.data().totalElements).isEqualTo(1L)
-                    assertThat(body.data().content)
+                    assertThat(body.resultCode).isEqualTo("200-1")
+                    assertThat(body.data.totalElements).isEqualTo(1L)
+                    assertThat(body.data.content)
                         .extracting<Long>(CommentResponse::id)
-                        .containsExactly(kept.id())
+                        .containsExactly(kept.id)
                 }
         }
 
@@ -527,8 +526,8 @@ class CommentControllerE2ETest {
         @DisplayName("7. 타인의 PRIVATE 게시글 댓글이 비로그인에게도 노출된다")
         fun getComments_onPrivatePost_isVisibleToAnonymous() {
             val author = createUserAndLogin(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
-            val postId = createPost(author.accessToken(), PublishStatus.PRIVATE, PostAccessLevel.FREE)
-            val comment = createComment(author.accessToken(), postId, "비공개 글의 댓글")
+            val postId = createPost(author.accessToken, PublishStatus.PRIVATE, PostAccessLevel.FREE)
+            val comment = createComment(author.accessToken, postId, "비공개 글의 댓글")
 
             // 비로그인 사용자에게 게시글 상세는 막혀 있다.
             expectResultCode(
@@ -544,12 +543,12 @@ class CommentControllerE2ETest {
                 .expectBody<ApiResponse<PageResult<CommentResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("200-1")
-                    assertThat(body.data().content)
+                    assertThat(body.resultCode).isEqualTo("200-1")
+                    assertThat(body.data.content)
                         .extracting<Long>(CommentResponse::id)
-                        .containsExactly(comment.id())
-                    assertThat(body.data().content[0].body()).isEqualTo("비공개 글의 댓글")
-                    assertThat(body.data().content[0].nickname()).isEqualTo(author.user().nickname())
+                        .containsExactly(comment.id)
+                    assertThat(body.data.content[0].body).isEqualTo("비공개 글의 댓글")
+                    assertThat(body.data.content[0].nickname).isEqualTo(author.user.nickname)
                 }
         }
     }
@@ -561,26 +560,26 @@ class CommentControllerE2ETest {
         @DisplayName("1. 성공하면 200-1을 반환하고 본문이 DB와 목록에 반영된다")
         fun updateComment_success_returns200AndPersistsNewBody() {
             val session = createUserAndLogin(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
-            val accessToken = session.accessToken()
+            val accessToken = session.accessToken
             val postId = createPublicPost(accessToken)
             val created = createComment(accessToken, postId, "수정 전 본문")
 
-            updateCommentRequest(accessToken, postId, created.id(), "수정 후 본문")
+            updateCommentRequest(accessToken, postId, created.id, "수정 후 본문")
                 .expectStatus()
                 .isOk()
                 .expectBody<ApiResponse<CommentResponse>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("200-1")
-                    assertThat(body.msg()).isEqualTo("댓글이 수정되었습니다.")
-                    assertThat(body.data().id()).isEqualTo(created.id())
-                    assertThat(body.data().postId()).isEqualTo(postId)
-                    assertThat(body.data().userId()).isEqualTo(session.user().id())
-                    assertThat(body.data().body()).isEqualTo("수정 후 본문")
+                    assertThat(body.resultCode).isEqualTo("200-1")
+                    assertThat(body.msg).isEqualTo("댓글이 수정되었습니다.")
+                    assertThat(body.data.id).isEqualTo(created.id)
+                    assertThat(body.data.postId).isEqualTo(postId)
+                    assertThat(body.data.userId).isEqualTo(session.user.id)
+                    assertThat(body.data.body).isEqualTo("수정 후 본문")
                 }
 
             // 수정이라는 부작용을 DB와 후속 조회로 각각 되짚는다.
-            assertThat(findComment(created.id()).body).isEqualTo("수정 후 본문")
+            assertThat(findComment(created.id).body).isEqualTo("수정 후 본문")
 
             getCommentsRequest(postId)
                 .expectStatus()
@@ -588,7 +587,7 @@ class CommentControllerE2ETest {
                 .expectBody<ApiResponse<PageResult<CommentResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data().content)
+                    assertThat(body.data.content)
                         .extracting<String>(CommentResponse::body)
                         .containsExactly("수정 후 본문")
                 }
@@ -605,33 +604,33 @@ class CommentControllerE2ETest {
             val postId = createPublicPost(accessToken)
             val created = createComment(accessToken, postId, "수정 전 본문")
 
-            val createdUpdatedAt = created.updatedAt()
-            val dbUpdatedAtBefore = findComment(created.id()).updatedAt
+            val createdUpdatedAt = created.updatedAt
+            val dbUpdatedAtBefore = findComment(created.id).updatedAt
             // DB는 나노초보다 낮은 정밀도(예: 마이크로초 반올림)로 저장하므로 완전 일치 대신 오차범위로 비교한다.
             assertThat(dbUpdatedAtBefore).isCloseTo(createdUpdatedAt, within(1, ChronoUnit.MICROS))
 
             val updated =
                 checkNotNull(
-                    updateCommentRequest(accessToken, postId, created.id(), "수정 후 본문")
+                    updateCommentRequest(accessToken, postId, created.id, "수정 후 본문")
                         .expectStatus()
                         .isOk()
                         .expectBody<ApiResponse<CommentResponse>>()
                         .returnResult()
                         .responseBody,
-                ).data()
+                ).data
 
             // 응답 값: 갱신되지 않은 옛 updatedAt 이 그대로 실려 온다.
             // updateComment 가 findById 로 DB에서 다시 읽어온 값이라 마이크로초로 반올림돼 있다.
-            assertThat(updated.updatedAt()).isCloseTo(createdUpdatedAt, within(1, ChronoUnit.MICROS))
+            assertThat(updated.updatedAt).isCloseTo(createdUpdatedAt, within(1, ChronoUnit.MICROS))
 
             // DB 값: 실제로는 갱신되어 있다. 둘의 차이 자체를 고정해 둔다.
-            val dbUpdatedAtAfter: LocalDateTime = findComment(created.id()).updatedAt
+            val dbUpdatedAtAfter: LocalDateTime = findComment(created.id).updatedAt
             assertThat(dbUpdatedAtAfter).isAfter(createdUpdatedAt)
-            assertThat(dbUpdatedAtAfter).isNotEqualTo(updated.updatedAt())
+            assertThat(dbUpdatedAtAfter).isNotEqualTo(updated.updatedAt)
 
             // createdAt 은 응답/DB 모두 그대로다.
-            assertThat(updated.createdAt()).isCloseTo(created.createdAt(), within(1, ChronoUnit.MICROS))
-            assertThat(findComment(created.id()).createdAt).isCloseTo(created.createdAt(), within(1, ChronoUnit.MICROS))
+            assertThat(updated.createdAt).isCloseTo(created.createdAt, within(1, ChronoUnit.MICROS))
+            assertThat(findComment(created.id).createdAt).isCloseTo(created.createdAt, within(1, ChronoUnit.MICROS))
         }
 
         @Test
@@ -644,7 +643,7 @@ class CommentControllerE2ETest {
             expectResultCode(
                 client
                     .put()
-                    .uri("/api/posts/$postId/comments/${created.id()}")
+                    .uri("/api/posts/$postId/comments/${created.id}")
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(CommentUpdateRequest("비로그인 수정"))
                     .exchange(),
@@ -652,7 +651,7 @@ class CommentControllerE2ETest {
                 "401-1",
             )
 
-            assertThat(findComment(created.id()).body).isEqualTo("원래 본문")
+            assertThat(findComment(created.id).body).isEqualTo("원래 본문")
         }
 
         @Test
@@ -665,12 +664,12 @@ class CommentControllerE2ETest {
             val otherToken = createUserAndGetAccessToken(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
 
             expectResultCode(
-                updateCommentRequest(otherToken, postId, created.id(), "남이 고친 본문"),
+                updateCommentRequest(otherToken, postId, created.id, "남이 고친 본문"),
                 HttpStatus.FORBIDDEN,
                 "403-1",
             )
 
-            assertThat(findComment(created.id()).body).isEqualTo("원래 본문")
+            assertThat(findComment(created.id).body).isEqualTo("원래 본문")
         }
 
         @Test
@@ -692,15 +691,15 @@ class CommentControllerE2ETest {
             val accessToken = createUserAndGetAccessToken(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
             val postId = createPublicPost(accessToken)
             val created = createComment(accessToken, postId, "지울 댓글")
-            deleteCommentRequest(accessToken, postId, created.id()).expectStatus().isOk()
+            deleteCommentRequest(accessToken, postId, created.id).expectStatus().isOk()
 
             expectResultCode(
-                updateCommentRequest(accessToken, postId, created.id(), "삭제된 댓글 수정"),
+                updateCommentRequest(accessToken, postId, created.id, "삭제된 댓글 수정"),
                 HttpStatus.NOT_FOUND,
                 "404-6",
             )
 
-            assertThat(findComment(created.id()).body).isEqualTo("지울 댓글")
+            assertThat(findComment(created.id).body).isEqualTo("지울 댓글")
         }
 
         // FIXME(#1): CommentController.updateComment 가 @PathVariable Long postId 를 받기만 하고
@@ -714,19 +713,19 @@ class CommentControllerE2ETest {
             val unrelatedPostId = createPublicPost(accessToken)
             val created = createComment(accessToken, postId, "원래 본문")
 
-            updateCommentRequest(accessToken, unrelatedPostId, created.id(), "엉뚱한 경로로 고친 본문")
+            updateCommentRequest(accessToken, unrelatedPostId, created.id, "엉뚱한 경로로 고친 본문")
                 .expectStatus()
                 .isOk()
                 .expectBody<ApiResponse<CommentResponse>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("200-1")
+                    assertThat(body.resultCode).isEqualTo("200-1")
                     // 응답의 postId 는 경로 값이 아니라 댓글이 실제로 속한 게시글 id 다.
-                    assertThat(body.data().postId()).isEqualTo(postId)
-                    assertThat(body.data().body()).isEqualTo("엉뚱한 경로로 고친 본문")
+                    assertThat(body.data.postId).isEqualTo(postId)
+                    assertThat(body.data.body).isEqualTo("엉뚱한 경로로 고친 본문")
                 }
 
-            assertThat(findComment(created.id()).body).isEqualTo("엉뚱한 경로로 고친 본문")
+            assertThat(findComment(created.id).body).isEqualTo("엉뚱한 경로로 고친 본문")
             assertThat(liveCommentIdsOf(unrelatedPostId)).isEmpty()
         }
 
@@ -740,18 +739,18 @@ class CommentControllerE2ETest {
             val postId = createPublicPost(accessToken)
             val created = createComment(accessToken, postId, "원래 본문")
 
-            updateCommentRequest(accessToken, NON_EXISTENT_POST_ID, created.id(), "없는 게시글 경로로 고친 본문")
+            updateCommentRequest(accessToken, NON_EXISTENT_POST_ID, created.id, "없는 게시글 경로로 고친 본문")
                 .expectStatus()
                 .isOk()
                 .expectBody<ApiResponse<CommentResponse>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("200-1")
-                    assertThat(body.data().postId()).isEqualTo(postId)
-                    assertThat(body.data().body()).isEqualTo("없는 게시글 경로로 고친 본문")
+                    assertThat(body.resultCode).isEqualTo("200-1")
+                    assertThat(body.data.postId).isEqualTo(postId)
+                    assertThat(body.data.body).isEqualTo("없는 게시글 경로로 고친 본문")
                 }
 
-            assertThat(findComment(created.id()).body).isEqualTo("없는 게시글 경로로 고친 본문")
+            assertThat(findComment(created.id).body).isEqualTo("없는 게시글 경로로 고친 본문")
         }
     }
 
@@ -765,19 +764,19 @@ class CommentControllerE2ETest {
             val postId = createPublicPost(accessToken)
             val created = createComment(accessToken, postId, "지울 댓글")
 
-            deleteCommentRequest(accessToken, postId, created.id())
+            deleteCommentRequest(accessToken, postId, created.id)
                 .expectStatus()
                 .isOk()
                 .expectBody(ApiResponse.VOID_BODY)
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("200-1")
-                    assertThat(body.msg()).isEqualTo("댓글이 삭제되었습니다.")
-                    assertThat(body.data()).isNull()
+                    assertThat(body.resultCode).isEqualTo("200-1")
+                    assertThat(body.msg).isEqualTo("댓글이 삭제되었습니다.")
+                    assertThat(body.data).isNull()
                 }
 
             // 하드 삭제가 아니라 소프트 삭제라는 부작용을 DB에서 직접 확인한다.
-            val deleted = findComment(created.id())
+            val deleted = findComment(created.id)
             assertThat(deleted.deletedAt).isNotNull()
             assertThat(deleted.body).isEqualTo("지울 댓글")
 
@@ -787,9 +786,9 @@ class CommentControllerE2ETest {
                 .expectBody<ApiResponse<PageResult<CommentResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("200-1")
-                    assertThat(body.data().content).isEmpty()
-                    assertThat(body.data().totalElements).isZero()
+                    assertThat(body.resultCode).isEqualTo("200-1")
+                    assertThat(body.data.content).isEmpty()
+                    assertThat(body.data.totalElements).isZero()
                 }
         }
 
@@ -801,12 +800,12 @@ class CommentControllerE2ETest {
             val created = createComment(accessToken, postId, "지켜질 댓글")
 
             expectResultCode(
-                client.delete().uri("/api/posts/$postId/comments/${created.id()}").exchange(),
+                client.delete().uri("/api/posts/$postId/comments/${created.id}").exchange(),
                 HttpStatus.UNAUTHORIZED,
                 "401-1",
             )
 
-            assertThat(findComment(created.id()).deletedAt).isNull()
+            assertThat(findComment(created.id).deletedAt).isNull()
         }
 
         @Test
@@ -819,13 +818,13 @@ class CommentControllerE2ETest {
             val otherToken = createUserAndGetAccessToken(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
 
             expectResultCode(
-                deleteCommentRequest(otherToken, postId, created.id()),
+                deleteCommentRequest(otherToken, postId, created.id),
                 HttpStatus.FORBIDDEN,
                 "403-1",
             )
 
-            assertThat(findComment(created.id()).deletedAt).isNull()
-            assertThat(liveCommentIdsOf(postId)).containsExactly(created.id())
+            assertThat(findComment(created.id).deletedAt).isNull()
+            assertThat(liveCommentIdsOf(postId)).containsExactly(created.id)
         }
 
         @Test
@@ -848,17 +847,17 @@ class CommentControllerE2ETest {
             val postId = createPublicPost(accessToken)
             val created = createComment(accessToken, postId, "두 번 지울 댓글")
 
-            deleteCommentRequest(accessToken, postId, created.id()).expectStatus().isOk()
-            val firstDeletedAt = findComment(created.id()).deletedAt
+            deleteCommentRequest(accessToken, postId, created.id).expectStatus().isOk()
+            val firstDeletedAt = findComment(created.id).deletedAt
 
             expectResultCode(
-                deleteCommentRequest(accessToken, postId, created.id()),
+                deleteCommentRequest(accessToken, postId, created.id),
                 HttpStatus.NOT_FOUND,
                 "404-6",
             )
 
             // 두 번째 요청이 deletedAt 을 덮어쓰지 않는다.
-            assertThat(findComment(created.id()).deletedAt).isEqualTo(firstDeletedAt)
+            assertThat(findComment(created.id).deletedAt).isEqualTo(firstDeletedAt)
         }
 
         // FIXME(#1): CommentController.deleteComment 도 @PathVariable postId 를
@@ -872,12 +871,12 @@ class CommentControllerE2ETest {
             val created = createComment(accessToken, postId, "엉뚱한 경로로 지울 댓글")
 
             expectResultCode(
-                deleteCommentRequest(accessToken, unrelatedPostId, created.id()),
+                deleteCommentRequest(accessToken, unrelatedPostId, created.id),
                 HttpStatus.OK,
                 "200-1",
             )
 
-            assertThat(findComment(created.id()).deletedAt).isNotNull()
+            assertThat(findComment(created.id).deletedAt).isNotNull()
             assertThat(liveCommentIdsOf(postId)).isEmpty()
         }
 
@@ -891,12 +890,12 @@ class CommentControllerE2ETest {
             val created = createComment(accessToken, postId, "없는 게시글 경로로 지울 댓글")
 
             expectResultCode(
-                deleteCommentRequest(accessToken, NON_EXISTENT_POST_ID, created.id()),
+                deleteCommentRequest(accessToken, NON_EXISTENT_POST_ID, created.id),
                 HttpStatus.OK,
                 "200-1",
             )
 
-            assertThat(findComment(created.id()).deletedAt).isNotNull()
+            assertThat(findComment(created.id).deletedAt).isNotNull()
             assertThat(liveCommentIdsOf(postId)).isEmpty()
         }
     }
@@ -908,7 +907,7 @@ class CommentControllerE2ETest {
         @DisplayName("1. 게시글 생성 → 댓글 작성 → 수정 → 삭제까지 목록이 매 단계 따라온다")
         fun createUpdateDeleteComment_isReflectedInList() {
             val session = createUserAndLogin(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
-            val accessToken = session.accessToken()
+            val accessToken = session.accessToken
             val postId = createPublicPost(accessToken)
 
             getCommentsRequest(postId)
@@ -917,7 +916,7 @@ class CommentControllerE2ETest {
                 .expectBody<ApiResponse<PageResult<CommentResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data().totalElements).isZero()
+                    assertThat(body.data.totalElements).isZero()
                 }
 
             val created = createComment(accessToken, postId, "처음 본문")
@@ -927,13 +926,13 @@ class CommentControllerE2ETest {
                 .expectBody<ApiResponse<PageResult<CommentResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data().totalElements).isEqualTo(1L)
-                    assertThat(body.data().content[0].id()).isEqualTo(created.id())
-                    assertThat(body.data().content[0].body()).isEqualTo("처음 본문")
+                    assertThat(body.data.totalElements).isEqualTo(1L)
+                    assertThat(body.data.content[0].id).isEqualTo(created.id)
+                    assertThat(body.data.content[0].body).isEqualTo("처음 본문")
                 }
 
             expectResultCode(
-                updateCommentRequest(accessToken, postId, created.id(), "고친 본문"),
+                updateCommentRequest(accessToken, postId, created.id, "고친 본문"),
                 HttpStatus.OK,
                 "200-1",
             )
@@ -943,12 +942,12 @@ class CommentControllerE2ETest {
                 .expectBody<ApiResponse<PageResult<CommentResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data().totalElements).isEqualTo(1L)
-                    assertThat(body.data().content[0].body()).isEqualTo("고친 본문")
+                    assertThat(body.data.totalElements).isEqualTo(1L)
+                    assertThat(body.data.content[0].body).isEqualTo("고친 본문")
                 }
 
             expectResultCode(
-                deleteCommentRequest(accessToken, postId, created.id()),
+                deleteCommentRequest(accessToken, postId, created.id),
                 HttpStatus.OK,
                 "200-1",
             )
@@ -958,12 +957,12 @@ class CommentControllerE2ETest {
                 .expectBody<ApiResponse<PageResult<CommentResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data().content).isEmpty()
-                    assertThat(body.data().totalElements).isZero()
+                    assertThat(body.data.content).isEmpty()
+                    assertThat(body.data.totalElements).isZero()
                 }
 
             // 소프트 삭제라 행 자체는 남아 있다.
-            assertThat(commentRepository.findByIdOrNull(created.id())).isNotNull()
+            assertThat(commentRepository.findByIdOrNull(created.id)).isNotNull()
         }
 
         @Test
@@ -977,34 +976,34 @@ class CommentControllerE2ETest {
             val created = createComment(authorToken, postId, "A의 댓글")
 
             expectResultCode(
-                updateCommentRequest(otherToken, postId, created.id(), "B가 고친 본문"),
+                updateCommentRequest(otherToken, postId, created.id, "B가 고친 본문"),
                 HttpStatus.FORBIDDEN,
                 "403-1",
             )
             expectResultCode(
-                deleteCommentRequest(otherToken, postId, created.id()),
+                deleteCommentRequest(otherToken, postId, created.id),
                 HttpStatus.FORBIDDEN,
                 "403-1",
             )
 
             // 게시글 주인이어도 남의 댓글은 건드릴 수 없다.
-            val untouched = findComment(created.id())
+            val untouched = findComment(created.id)
             assertThat(untouched.body).isEqualTo("A의 댓글")
             assertThat(untouched.deletedAt).isNull()
 
             expectResultCode(
-                updateCommentRequest(authorToken, postId, created.id(), "A가 고친 본문"),
+                updateCommentRequest(authorToken, postId, created.id, "A가 고친 본문"),
                 HttpStatus.OK,
                 "200-1",
             )
-            assertThat(findComment(created.id()).body).isEqualTo("A가 고친 본문")
+            assertThat(findComment(created.id).body).isEqualTo("A가 고친 본문")
 
             expectResultCode(
-                deleteCommentRequest(authorToken, postId, created.id()),
+                deleteCommentRequest(authorToken, postId, created.id),
                 HttpStatus.OK,
                 "200-1",
             )
-            assertThat(findComment(created.id()).deletedAt).isNotNull()
+            assertThat(findComment(created.id).deletedAt).isNotNull()
         }
 
         // FIXME(#7): 게시글 소프트 삭제가 연관 댓글을 정리하지 않고(PostService.deletePost 는 post.softDelete()만
@@ -1024,7 +1023,7 @@ class CommentControllerE2ETest {
                 .expectBody<ApiResponse<PageResult<CommentResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data().totalElements).isEqualTo(1L)
+                    assertThat(body.data.totalElements).isEqualTo(1L)
                 }
 
             deletePost(accessToken, postId)
@@ -1041,16 +1040,16 @@ class CommentControllerE2ETest {
             val deletedPost = checkNotNull(postRepository.findByIdOrNull(postId))
             assertThat(deletedPost.deletedAt).isNotNull()
 
-            val orphan = findComment(created.id())
+            val orphan = findComment(created.id)
             assertThat(orphan.deletedAt).isNull()
             assertThat(orphan.body).isEqualTo("게시글과 함께 묻힐 댓글")
 
             expectResultCode(
-                updateCommentRequest(accessToken, postId, created.id(), "묻힌 댓글 수정"),
+                updateCommentRequest(accessToken, postId, created.id, "묻힌 댓글 수정"),
                 HttpStatus.OK,
                 "200-1",
             )
-            assertThat(findComment(created.id()).body).isEqualTo("묻힌 댓글 수정")
+            assertThat(findComment(created.id).body).isEqualTo("묻힌 댓글 수정")
         }
     }
 

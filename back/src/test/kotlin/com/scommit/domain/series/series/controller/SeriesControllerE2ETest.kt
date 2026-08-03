@@ -126,7 +126,7 @@ class SeriesControllerE2ETest {
                 .expectBody<ApiResponse<SeriesResponse>>()
                 .returnResult()
                 .responseBody,
-        ).data().id()
+        ).data.id
 
     private fun getSeries(id: Any): RestTestClient.ResponseSpec = client.get().uri("/api/series/$id").exchange()
 
@@ -162,8 +162,8 @@ class SeriesControllerE2ETest {
             .expectBody(ApiResponse.VOID_BODY)
             .value { body ->
                 checkNotNull(body)
-                assertThat(body.resultCode()).isEqualTo("401-1")
-                assertThat(body.msg()).isEqualTo("로그인 후 이용해주세요.")
+                assertThat(body.resultCode).isEqualTo("401-1")
+                assertThat(body.msg).isEqualTo("로그인 후 이용해주세요.")
             }
     }
 
@@ -281,9 +281,9 @@ class SeriesControllerE2ETest {
                 .expectBody<ApiResponse<SeriesMediaResponse>>()
                 .returnResult()
                 .responseBody,
-        ).data()
+        ).data
 
-    /** SeriesMediaResponse.url() (예: "series/&lt;uuid&gt;_thumbnail.png")로부터 실제 디스크 경로를 만든다.
+    /** SeriesMediaResponse.url (예: "series/&lt;uuid&gt;_thumbnail.png")로부터 실제 디스크 경로를 만든다.
      *  SERIES_UPLOAD_DIR 주석 참고 — "series/" 접두사를 뗀 나머지가 실제 저장 파일명이다. */
     private fun uploadedFilePath(url: String): Path = SERIES_UPLOAD_DIR.resolve(url.removePrefix("series/"))
 
@@ -311,7 +311,7 @@ class SeriesControllerE2ETest {
                 .expectBody<ApiResponse<PostResponse>>()
                 .returnResult()
                 .responseBody,
-        ).data().id()
+        ).data.id
 
     /** 시리즈에 편입된 포스트를 만든다. 두 API를 잇는 픽스처라 각 단계의 성공을 확인하고 넘어간다. */
     private fun createPostInSeries(
@@ -377,7 +377,7 @@ class SeriesControllerE2ETest {
                 .expectBody<ApiResponse<List<PostListResponse>>>()
                 .returnResult()
                 .responseBody,
-        ).data().map(PostListResponse::id)
+        ).data.map(PostListResponse::id)
 
     /** 키 집합 검증용 — DTO로 받으면 "응답에만 있고 DTO에 없는 키"를 볼 수 없다(계획서 C-3). */
     private fun firstSeriesPostNode(response: RestTestClient.ResponseSpec): JsonNode {
@@ -437,9 +437,9 @@ class SeriesControllerE2ETest {
                 .expectBody<ApiResponse<PageResponse<SeriesListResponse>>>()
                 .returnResult()
                 .responseBody,
-        ).data()
+        ).data
             .content
-            .find { series -> series.id() == seriesId }
+            .find { series -> series.id == seriesId }
             ?: throw AssertionError("유저 시리즈 목록에 시리즈 $seriesId 가 없다")
 
     @Nested
@@ -472,14 +472,14 @@ class SeriesControllerE2ETest {
                 .expectBody<ApiResponse<SeriesResponse>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("201-1")
-                    assertThat(body.data().id()).isNotNull()
-                    assertThat(body.data().nickname()).isEqualTo(nickname)
-                    assertThat(body.data().title()).isEqualTo("e2e 생성 시리즈")
-                    assertThat(body.data().body()).isEqualTo("e2e 생성 본문")
-                    assertThat(body.data().createdAt()).isNotNull()
-                    assertThat(body.data().updatedAt()).isNotNull()
-                    createdId = body.data().id()
+                    assertThat(body.resultCode).isEqualTo("201-1")
+                    assertThat(body.data.id).isNotNull()
+                    assertThat(body.data.nickname).isEqualTo(nickname)
+                    assertThat(body.data.title).isEqualTo("e2e 생성 시리즈")
+                    assertThat(body.data.body).isEqualTo("e2e 생성 본문")
+                    assertThat(body.data.createdAt).isNotNull()
+                    assertThat(body.data.updatedAt).isNotNull()
+                    createdId = body.data.id
                 }
 
             // 응답만 그럴듯한 게 아니라 실제로 저장되었는지 후속 조회로 확인한다.
@@ -489,11 +489,11 @@ class SeriesControllerE2ETest {
                 .expectBody<ApiResponse<SeriesResponse>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("200-1")
-                    assertThat(body.data().id()).isEqualTo(createdId)
-                    assertThat(body.data().title()).isEqualTo("e2e 생성 시리즈")
-                    assertThat(body.data().body()).isEqualTo("e2e 생성 본문")
-                    assertThat(body.data().nickname()).isEqualTo(nickname)
+                    assertThat(body.resultCode).isEqualTo("200-1")
+                    assertThat(body.data.id).isEqualTo(createdId)
+                    assertThat(body.data.title).isEqualTo("e2e 생성 시리즈")
+                    assertThat(body.data.body).isEqualTo("e2e 생성 본문")
+                    assertThat(body.data.nickname).isEqualTo(nickname)
                 }
         }
 
@@ -509,10 +509,10 @@ class SeriesControllerE2ETest {
                 .expectBody<ApiResponse<SeriesResponse>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("201-1")
-                    assertThat(body.data().title()).isEqualTo("본문 없는 시리즈")
-                    assertThat(body.data().body()).isNull()
-                    createdId = body.data().id()
+                    assertThat(body.resultCode).isEqualTo("201-1")
+                    assertThat(body.data.title).isEqualTo("본문 없는 시리즈")
+                    assertThat(body.data.body).isNull()
+                    createdId = body.data.id
                 }
 
             getSeries(requireNotNull(createdId))
@@ -521,7 +521,7 @@ class SeriesControllerE2ETest {
                 .expectBody<ApiResponse<SeriesResponse>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data().body()).isNull()
+                    assertThat(body.data.body).isNull()
                 }
         }
 
@@ -536,8 +536,8 @@ class SeriesControllerE2ETest {
                 .expectBody(ApiResponse.VOID_BODY)
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("400-1")
-                    assertThat(body.msg()).isEqualTo("제목은 필수입니다.")
+                    assertThat(body.resultCode).isEqualTo("400-1")
+                    assertThat(body.msg).isEqualTo("제목은 필수입니다.")
                 }
         }
 
@@ -552,8 +552,8 @@ class SeriesControllerE2ETest {
                 .expectBody(ApiResponse.VOID_BODY)
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("400-1")
-                    assertThat(body.msg()).isEqualTo("제목은 필수입니다.")
+                    assertThat(body.resultCode).isEqualTo("400-1")
+                    assertThat(body.msg).isEqualTo("제목은 필수입니다.")
                 }
         }
 
@@ -576,8 +576,8 @@ class SeriesControllerE2ETest {
                 .expectBody(ApiResponse.VOID_BODY)
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("400-1")
-                    assertThat(body.msg()).isEqualTo("올바른 JSON 요청 형식이 아닙니다.")
+                    assertThat(body.resultCode).isEqualTo("400-1")
+                    assertThat(body.msg).isEqualTo("올바른 JSON 요청 형식이 아닙니다.")
                 }
         }
     }
@@ -598,13 +598,13 @@ class SeriesControllerE2ETest {
                 .expectBody<ApiResponse<SeriesResponse>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("200-1")
-                    assertThat(body.data().id()).isEqualTo(seriesId)
-                    assertThat(body.data().nickname()).isEqualTo(nickname)
-                    assertThat(body.data().title()).isEqualTo("비로그인 조회 시리즈")
-                    assertThat(body.data().body()).isEqualTo("비로그인 조회 본문")
-                    assertThat(body.data().createdAt()).isNotNull()
-                    assertThat(body.data().updatedAt()).isNotNull()
+                    assertThat(body.resultCode).isEqualTo("200-1")
+                    assertThat(body.data.id).isEqualTo(seriesId)
+                    assertThat(body.data.nickname).isEqualTo(nickname)
+                    assertThat(body.data.title).isEqualTo("비로그인 조회 시리즈")
+                    assertThat(body.data.body).isEqualTo("비로그인 조회 본문")
+                    assertThat(body.data.createdAt).isNotNull()
+                    assertThat(body.data.updatedAt).isNotNull()
                 }
         }
 
@@ -626,9 +626,9 @@ class SeriesControllerE2ETest {
                 .expectBody<ApiResponse<SeriesResponse>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("200-1")
-                    assertThat(body.data().id()).isEqualTo(seriesId)
-                    assertThat(body.data().title()).isEqualTo("타인이 조회할 시리즈")
+                    assertThat(body.resultCode).isEqualTo("200-1")
+                    assertThat(body.data.id).isEqualTo(seriesId)
+                    assertThat(body.data.title).isEqualTo("타인이 조회할 시리즈")
                 }
         }
 
@@ -710,10 +710,10 @@ class SeriesControllerE2ETest {
                 .expectBody<ApiResponse<SeriesResponse>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("200-1")
-                    assertThat(body.data().id()).isEqualTo(seriesId)
-                    assertThat(body.data().title()).isEqualTo("수정 후 제목")
-                    assertThat(body.data().body()).isEqualTo("수정 후 본문")
+                    assertThat(body.resultCode).isEqualTo("200-1")
+                    assertThat(body.data.id).isEqualTo(seriesId)
+                    assertThat(body.data.title).isEqualTo("수정 후 제목")
+                    assertThat(body.data.body).isEqualTo("수정 후 본문")
                 }
 
             getSeries(seriesId)
@@ -722,8 +722,8 @@ class SeriesControllerE2ETest {
                 .expectBody<ApiResponse<SeriesResponse>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data().title()).isEqualTo("수정 후 제목")
-                    assertThat(body.data().body()).isEqualTo("수정 후 본문")
+                    assertThat(body.data.title).isEqualTo("수정 후 제목")
+                    assertThat(body.data.body).isEqualTo("수정 후 본문")
                 }
         }
 
@@ -741,9 +741,9 @@ class SeriesControllerE2ETest {
                 .expectBody<ApiResponse<SeriesResponse>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("200-1")
-                    assertThat(body.data().title()).isEqualTo("본문 지운 시리즈")
-                    assertThat(body.data().body()).isNull()
+                    assertThat(body.resultCode).isEqualTo("200-1")
+                    assertThat(body.data.title).isEqualTo("본문 지운 시리즈")
+                    assertThat(body.data.body).isNull()
                 }
 
             getSeries(seriesId)
@@ -752,7 +752,7 @@ class SeriesControllerE2ETest {
                 .expectBody<ApiResponse<SeriesResponse>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data().body()).isNull()
+                    assertThat(body.data.body).isNull()
                 }
         }
 
@@ -777,7 +777,7 @@ class SeriesControllerE2ETest {
                 .expectBody<ApiResponse<SeriesResponse>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data().title()).isEqualTo("남의 시리즈")
+                    assertThat(body.data.title).isEqualTo("남의 시리즈")
                 }
         }
 
@@ -820,8 +820,8 @@ class SeriesControllerE2ETest {
                 .expectBody(ApiResponse.VOID_BODY)
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("400-1")
-                    assertThat(body.msg()).isEqualTo("제목은 필수입니다.")
+                    assertThat(body.resultCode).isEqualTo("400-1")
+                    assertThat(body.msg).isEqualTo("제목은 필수입니다.")
                 }
         }
 
@@ -837,8 +837,8 @@ class SeriesControllerE2ETest {
                 .expectBody(ApiResponse.VOID_BODY)
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("400-1")
-                    assertThat(body.msg()).isEqualTo("제목은 필수입니다.")
+                    assertThat(body.resultCode).isEqualTo("400-1")
+                    assertThat(body.msg).isEqualTo("제목은 필수입니다.")
                 }
         }
 
@@ -856,7 +856,7 @@ class SeriesControllerE2ETest {
                         .expectBody<ApiResponse<SeriesResponse>>()
                         .returnResult()
                         .responseBody,
-                ).data()
+                ).data
 
             // 등호(>=)로 비교해 같은 밀리초에 생성·수정되어도 흔들리지 않게 한다.
             updateSeriesRequest(accessToken, seriesId, "updatedAt 검증용 시리즈 수정", "수정 본문")
@@ -865,8 +865,8 @@ class SeriesControllerE2ETest {
                 .expectBody<ApiResponse<SeriesResponse>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data().updatedAt()).isAfterOrEqualTo(before.createdAt())
-                    assertThat(body.data().updatedAt()).isAfterOrEqualTo(before.updatedAt())
+                    assertThat(body.data.updatedAt).isAfterOrEqualTo(before.createdAt)
+                    assertThat(body.data.updatedAt).isAfterOrEqualTo(before.updatedAt)
                 }
         }
     }
@@ -959,9 +959,9 @@ class SeriesControllerE2ETest {
 
             val seriesMediaAfterDelete = seriesMediaRepository.findBySeries(series)
             assertThat(seriesMediaAfterDelete).isPresent()
-            assertThat(seriesMediaAfterDelete.get().id).isEqualTo(uploaded.id())
+            assertThat(seriesMediaAfterDelete.get().id).isEqualTo(uploaded.id)
             assertThat(mediaRepository.count()).isEqualTo(mediaCountBeforeDelete)
-            assertThat(Files.exists(uploadedFilePath(uploaded.url()))).isTrue()
+            assertThat(Files.exists(uploadedFilePath(requireNotNull(uploaded.url)))).isTrue()
         }
     }
 
@@ -980,8 +980,8 @@ class SeriesControllerE2ETest {
                 .expectBody<ApiResponse<SliceResult<SeriesListResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("200-1")
-                    assertThat(body.data().content)
+                    assertThat(body.resultCode).isEqualTo("200-1")
+                    assertThat(body.data.content)
                         .extracting<Long>(SeriesListResponse::id)
                         .contains(seriesId)
                 }
@@ -1027,7 +1027,7 @@ class SeriesControllerE2ETest {
                 .expectBody<ApiResponse<SliceResult<SeriesListResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data().content)
+                    assertThat(body.data.content)
                         .extracting<Long>(SeriesListResponse::id)
                         .contains(seriesAId, seriesBId)
                 }
@@ -1047,9 +1047,9 @@ class SeriesControllerE2ETest {
                 .expectBody<ApiResponse<SliceResult<SeriesListResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data().size).isEqualTo(1)
-                    assertThat(body.data().number).isEqualTo(0)
-                    assertThat(body.data().content).extracting<Long>(SeriesListResponse::id).containsExactly(newerId)
+                    assertThat(body.data.size).isEqualTo(1)
+                    assertThat(body.data.number).isEqualTo(0)
+                    assertThat(body.data.content).extracting<Long>(SeriesListResponse::id).containsExactly(newerId)
                 }
 
             getSeriesListRequest("?size=1&page=1")
@@ -1058,8 +1058,8 @@ class SeriesControllerE2ETest {
                 .expectBody<ApiResponse<SliceResult<SeriesListResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data().number).isEqualTo(1)
-                    assertThat(body.data().content).extracting<Long>(SeriesListResponse::id).containsExactly(olderId)
+                    assertThat(body.data.number).isEqualTo(1)
+                    assertThat(body.data.content).extracting<Long>(SeriesListResponse::id).containsExactly(olderId)
                 }
         }
 
@@ -1076,7 +1076,7 @@ class SeriesControllerE2ETest {
                 .expectBody<ApiResponse<SliceResult<SeriesListResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data().content)
+                    assertThat(body.data.content)
                         .extracting<Long>(SeriesListResponse::id)
                         .doesNotContain(seriesId)
                 }
@@ -1109,13 +1109,13 @@ class SeriesControllerE2ETest {
                 .expectBody<ApiResponse<PageResponse<SeriesListResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("200-1")
-                    assertThat(body.data().pageNumber()).isEqualTo(0)
-                    assertThat(body.data().pageSize()).isEqualTo(10)
-                    assertThat(body.data().totalElements()).isEqualTo(1)
-                    assertThat(body.data().totalPages()).isEqualTo(1)
-                    assertThat(body.data().isLast).isTrue()
-                    assertThat(body.data().content).extracting<Long>(SeriesListResponse::id).containsExactly(seriesId)
+                    assertThat(body.resultCode).isEqualTo("200-1")
+                    assertThat(body.data.pageNumber).isEqualTo(0)
+                    assertThat(body.data.pageSize).isEqualTo(10)
+                    assertThat(body.data.totalElements).isEqualTo(1)
+                    assertThat(body.data.totalPages).isEqualTo(1)
+                    assertThat(body.data.isLast).isTrue()
+                    assertThat(body.data.content).extracting<Long>(SeriesListResponse::id).containsExactly(seriesId)
                 }
         }
 
@@ -1132,7 +1132,7 @@ class SeriesControllerE2ETest {
                 .expectBody<ApiResponse<PageResponse<SeriesListResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data().content)
+                    assertThat(body.data.content)
                         .extracting<Long>(SeriesListResponse::id)
                         .containsExactly(seriesId)
                 }
@@ -1147,9 +1147,9 @@ class SeriesControllerE2ETest {
                 .expectBody<ApiResponse<PageResponse<SeriesListResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("200-1")
-                    assertThat(body.data().content).isEmpty()
-                    assertThat(body.data().totalElements()).isZero()
+                    assertThat(body.resultCode).isEqualTo("200-1")
+                    assertThat(body.data.content).isEmpty()
+                    assertThat(body.data.totalElements).isZero()
                 }
         }
 
@@ -1192,7 +1192,7 @@ class SeriesControllerE2ETest {
                 .expectBody<ApiResponse<PageResponse<SeriesListResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data().content).isEmpty()
+                    assertThat(body.data.content).isEmpty()
                 }
         }
 
@@ -1210,10 +1210,10 @@ class SeriesControllerE2ETest {
                 .expectBody<ApiResponse<PageResponse<SeriesListResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data().content).extracting<Long>(SeriesListResponse::id).containsExactly(newerId)
-                    assertThat(body.data().totalElements()).isEqualTo(2)
-                    assertThat(body.data().totalPages()).isEqualTo(2)
-                    assertThat(body.data().isLast).isFalse()
+                    assertThat(body.data.content).extracting<Long>(SeriesListResponse::id).containsExactly(newerId)
+                    assertThat(body.data.totalElements).isEqualTo(2)
+                    assertThat(body.data.totalPages).isEqualTo(2)
+                    assertThat(body.data.isLast).isFalse()
                 }
 
             searchSeriesRequest("?keyword=$keyword&size=1&page=1")
@@ -1222,8 +1222,8 @@ class SeriesControllerE2ETest {
                 .expectBody<ApiResponse<PageResponse<SeriesListResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data().content).extracting<Long>(SeriesListResponse::id).containsExactly(olderId)
-                    assertThat(body.data().isLast).isTrue()
+                    assertThat(body.data.content).extracting<Long>(SeriesListResponse::id).containsExactly(olderId)
+                    assertThat(body.data.isLast).isTrue()
                 }
         }
     }
@@ -1235,20 +1235,20 @@ class SeriesControllerE2ETest {
         @DisplayName("1. 비로그인으로 조회해도 200과 해당 유저의 시리즈만 반환한다")
         fun getUserSeriesList_anonymous_returnsOnlyThatUsersSeries() {
             val userA = createUserAndLogin(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
-            val seriesA1 = createSeries(userA.accessToken(), "A의 유저별 목록 시리즈1", "본문")
-            val seriesA2 = createSeries(userA.accessToken(), "A의 유저별 목록 시리즈2", "본문")
+            val seriesA1 = createSeries(userA.accessToken, "A의 유저별 목록 시리즈1", "본문")
+            val seriesA2 = createSeries(userA.accessToken, "A의 유저별 목록 시리즈2", "본문")
 
             val tokenB = newUserToken()
             createSeries(tokenB, "B의 유저별 목록 시리즈", "본문")
 
-            getUserSeriesListRequest(userA.user().id(), "")
+            getUserSeriesListRequest(userA.user.id, "")
                 .expectStatus()
                 .isOk()
                 .expectBody<ApiResponse<PageResponse<SeriesListResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("200-1")
-                    assertThat(body.data().content)
+                    assertThat(body.resultCode).isEqualTo("200-1")
+                    assertThat(body.data.content)
                         .extracting<Long>(SeriesListResponse::id)
                         .containsExactlyInAnyOrder(seriesA1, seriesA2)
                 }
@@ -1259,15 +1259,15 @@ class SeriesControllerE2ETest {
         fun getUserSeriesList_userWithNoSeries_returnsEmptyContent() {
             val user = createUserAndLogin(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
 
-            getUserSeriesListRequest(user.user().id(), "")
+            getUserSeriesListRequest(user.user.id, "")
                 .expectStatus()
                 .isOk()
                 .expectBody<ApiResponse<PageResponse<SeriesListResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("200-1")
-                    assertThat(body.data().content).isEmpty()
-                    assertThat(body.data().totalElements()).isZero()
+                    assertThat(body.resultCode).isEqualTo("200-1")
+                    assertThat(body.data.content).isEmpty()
+                    assertThat(body.data.totalElements).isZero()
                 }
         }
 
@@ -1282,8 +1282,8 @@ class SeriesControllerE2ETest {
                 .expectBody<ApiResponse<PageResponse<SeriesListResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("200-1")
-                    assertThat(body.data().content).isEmpty()
+                    assertThat(body.resultCode).isEqualTo("200-1")
+                    assertThat(body.data.content).isEmpty()
                 }
         }
 
@@ -1293,17 +1293,17 @@ class SeriesControllerE2ETest {
         @DisplayName("4. 탈퇴한 유저의 시리즈를 조회하면 실제 동작을 그대로 고정한다")
         fun getUserSeriesList_withdrawnUser_stillReturnsTheirSeries() {
             val user = createUserAndLogin(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
-            val seriesId = createSeries(user.accessToken(), "탈퇴 전 만든 시리즈", "본문")
+            val seriesId = createSeries(user.accessToken, "탈퇴 전 만든 시리즈", "본문")
 
-            expectResultCode(deleteAccount(user.accessToken(), DEFAULT_PASSWORD), HttpStatus.OK, "200-1")
+            expectResultCode(deleteAccount(user.accessToken, DEFAULT_PASSWORD), HttpStatus.OK, "200-1")
 
-            getUserSeriesListRequest(user.user().id(), "")
+            getUserSeriesListRequest(user.user.id, "")
                 .expectStatus()
                 .isOk()
                 .expectBody<ApiResponse<PageResponse<SeriesListResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data().content)
+                    assertThat(body.data.content)
                         .extracting<Long>(SeriesListResponse::id)
                         .contains(seriesId)
                 }
@@ -1313,16 +1313,16 @@ class SeriesControllerE2ETest {
         @DisplayName("5. soft delete된 시리즈는 목록에서 제외된다")
         fun getUserSeriesList_excludesSoftDeletedSeries() {
             val user = createUserAndLogin(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
-            val seriesId = createSeries(user.accessToken(), "유저별 목록에서 삭제될 시리즈", "본문")
-            deleteSeriesRequest(user.accessToken(), seriesId).expectStatus().isOk()
+            val seriesId = createSeries(user.accessToken, "유저별 목록에서 삭제될 시리즈", "본문")
+            deleteSeriesRequest(user.accessToken, seriesId).expectStatus().isOk()
 
-            getUserSeriesListRequest(user.user().id(), "")
+            getUserSeriesListRequest(user.user.id, "")
                 .expectStatus()
                 .isOk()
                 .expectBody<ApiResponse<PageResponse<SeriesListResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data().content)
+                    assertThat(body.data.content)
                         .extracting<Long>(SeriesListResponse::id)
                         .doesNotContain(seriesId)
                 }
@@ -1351,8 +1351,8 @@ class SeriesControllerE2ETest {
                 .expectBody<ApiResponse<PageResponse<SeriesListResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("200-1")
-                    assertThat(body.data().content)
+                    assertThat(body.resultCode).isEqualTo("200-1")
+                    assertThat(body.data.content)
                         .extracting<Long>(SeriesListResponse::id)
                         .containsExactlyInAnyOrder(seriesId1, seriesId2)
                 }
@@ -1372,7 +1372,7 @@ class SeriesControllerE2ETest {
                 .expectBody<ApiResponse<PageResponse<SeriesListResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data().content)
+                    assertThat(body.data.content)
                         .extracting<Long>(SeriesListResponse::id)
                         .doesNotContain(otherSeriesId)
                 }
@@ -1389,8 +1389,8 @@ class SeriesControllerE2ETest {
                 .expectBody<ApiResponse<PageResponse<SeriesListResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data().content).isEmpty()
-                    assertThat(body.data().totalElements()).isZero()
+                    assertThat(body.data.content).isEmpty()
+                    assertThat(body.data.totalElements).isZero()
                 }
         }
 
@@ -1407,7 +1407,7 @@ class SeriesControllerE2ETest {
                 .expectBody<ApiResponse<PageResponse<SeriesListResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data().content)
+                    assertThat(body.data.content)
                         .extracting<Long>(SeriesListResponse::id)
                         .doesNotContain(seriesId)
                 }
@@ -1447,12 +1447,12 @@ class SeriesControllerE2ETest {
                 .expectBody<ApiResponse<SeriesMediaResponse>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("201-1")
-                    assertThat(body.data().id()).isNotNull()
-                    assertThat(body.data().seriesId()).isEqualTo(seriesId)
-                    assertThat(body.data().url()).isNotBlank()
-                    assertThat(body.data().mediaType()).isEqualTo(DomainMediaType.IMAGE)
-                    uploadedUrl = body.data().url()
+                    assertThat(body.resultCode).isEqualTo("201-1")
+                    assertThat(body.data.id).isNotNull()
+                    assertThat(body.data.seriesId).isEqualTo(seriesId)
+                    assertThat(body.data.url).isNotBlank()
+                    assertThat(body.data.mediaType).isEqualTo(DomainMediaType.IMAGE)
+                    uploadedUrl = body.data.url
                 }
 
             // 응답만 그럴듯한 게 아니라 실제로 디스크에 저장되었는지 확인한다.
@@ -1464,8 +1464,8 @@ class SeriesControllerE2ETest {
                 .expectBody<ApiResponse<SeriesMediaResponse>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data()).isNotNull()
-                    assertThat(body.data().url()).isEqualTo(uploadedUrl)
+                    assertThat(body.data).isNotNull()
+                    assertThat(body.data.url).isEqualTo(uploadedUrl)
                 }
         }
 
@@ -1476,7 +1476,7 @@ class SeriesControllerE2ETest {
             val seriesId = createSeries(accessToken, "썸네일 교체 대상", "본문")
 
             val first = uploadSeriesMedia(accessToken, seriesId, PNG_BYTES, "first.png")
-            val firstFilePath = uploadedFilePath(first.url())
+            val firstFilePath = uploadedFilePath(requireNotNull(first.url))
             assertThat(Files.exists(firstFilePath)).isTrue()
 
             uploadMediaRequest(accessToken, seriesId, mediaFilePart(PNG_BYTES, "second.png", MediaType.IMAGE_PNG))
@@ -1485,9 +1485,9 @@ class SeriesControllerE2ETest {
                 .expectBody<ApiResponse<SeriesMediaResponse>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("201-1")
-                    assertThat(body.data().id()).isEqualTo(first.id())
-                    assertThat(body.data().url()).isNotEqualTo(first.url())
+                    assertThat(body.resultCode).isEqualTo("201-1")
+                    assertThat(body.data.id).isEqualTo(first.id)
+                    assertThat(body.data.url).isNotEqualTo(first.url)
                 }
 
             assertThat(Files.exists(firstFilePath)).isFalse()
@@ -1630,11 +1630,11 @@ class SeriesControllerE2ETest {
                 .expectBody<ApiResponse<SeriesMediaResponse>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("200-1")
-                    assertThat(body.data().id()).isEqualTo(uploaded.id())
-                    assertThat(body.data().seriesId()).isEqualTo(seriesId)
-                    assertThat(body.data().url()).isEqualTo(uploaded.url())
-                    assertThat(body.data().mediaType()).isEqualTo(DomainMediaType.IMAGE)
+                    assertThat(body.resultCode).isEqualTo("200-1")
+                    assertThat(body.data.id).isEqualTo(uploaded.id)
+                    assertThat(body.data.seriesId).isEqualTo(seriesId)
+                    assertThat(body.data.url).isEqualTo(uploaded.url)
+                    assertThat(body.data.mediaType).isEqualTo(DomainMediaType.IMAGE)
                 }
         }
 
@@ -1657,8 +1657,8 @@ class SeriesControllerE2ETest {
                 .expectBody<ApiResponse<SeriesMediaResponse>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("200-1")
-                    assertThat(body.data()).isNotNull()
+                    assertThat(body.resultCode).isEqualTo("200-1")
+                    assertThat(body.data).isNotNull()
                 }
         }
 
@@ -1678,8 +1678,8 @@ class SeriesControllerE2ETest {
                 .expectBody<ApiResponse<SeriesMediaResponse>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("200-1")
-                    assertThat(body.data()).isNull()
+                    assertThat(body.resultCode).isEqualTo("200-1")
+                    assertThat(body.data).isNull()
                 }
         }
 
@@ -1721,7 +1721,7 @@ class SeriesControllerE2ETest {
             val accessToken = newUserToken()
             val seriesId = createSeries(accessToken, "썸네일 삭제 대상", "본문")
             val uploaded = uploadSeriesMedia(accessToken, seriesId, PNG_BYTES, "thumbnail.png")
-            val filePath = uploadedFilePath(uploaded.url())
+            val filePath = uploadedFilePath(requireNotNull(uploaded.url))
             assertThat(Files.exists(filePath)).isTrue()
 
             expectResultCode(deleteMediaRequest(accessToken, seriesId), HttpStatus.OK, "200-1")
@@ -1732,7 +1732,7 @@ class SeriesControllerE2ETest {
                 .expectBody<ApiResponse<SeriesMediaResponse>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data()).isNull()
+                    assertThat(body.data).isNull()
                 }
             assertThat(Files.exists(filePath)).isFalse()
         }
@@ -1827,10 +1827,10 @@ class SeriesControllerE2ETest {
                 .expectBody<ApiResponse<List<PostListResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("200-1")
-                    assertThat(body.data()).hasSize(1)
-                    assertThat(body.data()[0].id()).isEqualTo(postId)
-                    assertThat(body.data()[0].seriesId()).isEqualTo(seriesId)
+                    assertThat(body.resultCode).isEqualTo("200-1")
+                    assertThat(body.data).hasSize(1)
+                    assertThat(body.data[0].id).isEqualTo(postId)
+                    assertThat(body.data[0].seriesId).isEqualTo(seriesId)
                 }
         }
 
@@ -2002,9 +2002,9 @@ class SeriesControllerE2ETest {
                 .expectBody<ApiResponse<PostResponse>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("200-1")
-                    assertThat(body.data().id()).isEqualTo(postId)
-                    assertThat(body.data().seriesId() as Long?).isNull()
+                    assertThat(body.resultCode).isEqualTo("200-1")
+                    assertThat(body.data.id).isEqualTo(postId)
+                    assertThat(body.data.seriesId as Long?).isNull()
                 }
         }
 
@@ -2127,8 +2127,8 @@ class SeriesControllerE2ETest {
                 .expectBody<ApiResponse<List<PostListResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("200-1")
-                    assertThat(body.data())
+                    assertThat(body.resultCode).isEqualTo("200-1")
+                    assertThat(body.data)
                         .extracting<Long>(PostListResponse::id)
                         .containsExactlyInAnyOrder(firstPostId, secondPostId)
                 }
@@ -2186,8 +2186,8 @@ class SeriesControllerE2ETest {
                 .expectBody<ApiResponse<List<PostListResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("200-1")
-                    assertThat(body.data()).isEmpty()
+                    assertThat(body.resultCode).isEqualTo("200-1")
+                    assertThat(body.data).isEmpty()
                 }
         }
 
@@ -2227,10 +2227,10 @@ class SeriesControllerE2ETest {
                 .expectBody<ApiResponse<List<PostListResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data()).hasSize(1)
-                    assertThat(body.data()[0].id()).isEqualTo(postId)
-                    assertThat(body.data()[0].title()).isEqualTo("PRIVATE 포스트")
-                    assertThat(body.data()[0].publishStatus()).isEqualTo(PublishStatus.PRIVATE)
+                    assertThat(body.data).hasSize(1)
+                    assertThat(body.data[0].id).isEqualTo(postId)
+                    assertThat(body.data[0].title).isEqualTo("PRIVATE 포스트")
+                    assertThat(body.data[0].publishStatus).isEqualTo(PublishStatus.PRIVATE)
                 }
 
             // 대조군: 본문 보호는 상세 조회가 담당한다. 목록은 애초에 body를 싣지 않아서 안전하다(B-4).
@@ -2258,9 +2258,9 @@ class SeriesControllerE2ETest {
                 .expectBody<ApiResponse<List<PostListResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data()).hasSize(1)
-                    assertThat(body.data()[0].id()).isEqualTo(postId)
-                    assertThat(body.data()[0].publishStatus()).isEqualTo(PublishStatus.DRAFT)
+                    assertThat(body.data).hasSize(1)
+                    assertThat(body.data[0].id).isEqualTo(postId)
+                    assertThat(body.data[0].publishStatus).isEqualTo(PublishStatus.DRAFT)
                 }
         }
 
@@ -2285,9 +2285,9 @@ class SeriesControllerE2ETest {
                 .expectBody<ApiResponse<List<PostListResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data()).hasSize(1)
-                    assertThat(body.data()[0].id()).isEqualTo(postId)
-                    assertThat(body.data()[0].accessLevel()).isEqualTo(PostAccessLevel.PAID)
+                    assertThat(body.data).hasSize(1)
+                    assertThat(body.data[0].id).isEqualTo(postId)
+                    assertThat(body.data[0].accessLevel).isEqualTo(PostAccessLevel.PAID)
                 }
 
             val post = firstSeriesPostNode(getSeriesPostsRequest(seriesId))
@@ -2312,8 +2312,8 @@ class SeriesControllerE2ETest {
                 .expectBody<ApiResponse<List<PostListResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("200-1")
-                    assertThat(body.data()).isEmpty()
+                    assertThat(body.resultCode).isEqualTo("200-1")
+                    assertThat(body.data).isEmpty()
                 }
         }
 
@@ -2340,8 +2340,8 @@ class SeriesControllerE2ETest {
                 .expectBody<ApiResponse<List<PostListResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("200-1")
-                    assertThat(body.data()).isEmpty()
+                    assertThat(body.resultCode).isEqualTo("200-1")
+                    assertThat(body.data).isEmpty()
                 }
         }
 
@@ -2363,11 +2363,11 @@ class SeriesControllerE2ETest {
                 .expectBody<ApiResponse<List<PostListResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data()).hasSize(1)
-                    assertThat(body.data()[0].isLiked).isFalse()
-                    assertThat(body.data()[0].isBookmarked).isFalse()
-                    assertThat(body.data()[0].likeCount()).isEqualTo(1L)
-                    assertThat(body.data()[0].bookmarkCount()).isEqualTo(1L)
+                    assertThat(body.data).hasSize(1)
+                    assertThat(body.data[0].isLiked).isFalse()
+                    assertThat(body.data[0].isBookmarked).isFalse()
+                    assertThat(body.data[0].likeCount).isEqualTo(1L)
+                    assertThat(body.data[0].bookmarkCount).isEqualTo(1L)
                 }
         }
 
@@ -2385,8 +2385,8 @@ class SeriesControllerE2ETest {
                 .expectBody<ApiResponse<List<PostListResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data()[0].isLiked).isFalse()
-                    assertThat(body.data()[0].isBookmarked).isFalse()
+                    assertThat(body.data[0].isLiked).isFalse()
+                    assertThat(body.data[0].isBookmarked).isFalse()
                 }
 
             likePost(ownerToken, postId)
@@ -2398,11 +2398,11 @@ class SeriesControllerE2ETest {
                 .expectBody<ApiResponse<List<PostListResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("200-1")
-                    assertThat(body.data()).hasSize(1)
-                    assertThat(body.data()[0].id()).isEqualTo(postId)
-                    assertThat(body.data()[0].isLiked).isTrue()
-                    assertThat(body.data()[0].isBookmarked).isTrue()
+                    assertThat(body.resultCode).isEqualTo("200-1")
+                    assertThat(body.data).hasSize(1)
+                    assertThat(body.data[0].id).isEqualTo(postId)
+                    assertThat(body.data[0].isLiked).isTrue()
+                    assertThat(body.data[0].isBookmarked).isTrue()
                 }
 
             // 같은 포스트를 다른 유저가 보면 false다 — 개인화 값이 요청자 기준인지 확인한다.
@@ -2413,8 +2413,8 @@ class SeriesControllerE2ETest {
                 .expectBody<ApiResponse<List<PostListResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data()[0].isLiked).isFalse()
-                    assertThat(body.data()[0].isBookmarked).isFalse()
+                    assertThat(body.data[0].isLiked).isFalse()
+                    assertThat(body.data[0].isBookmarked).isFalse()
                 }
         }
     }
@@ -2426,31 +2426,31 @@ class SeriesControllerE2ETest {
         @DisplayName("1. 생성 → 썸네일 → 포스트 2개 추가가 GET /users/{userId}의 postCount·thumbnailUrl에 반영된다")
         fun scenario_createSeries_uploadThumbnail_addPosts_reflectedInUserSeriesList() {
             val user = createUserAndLogin(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
-            val accessToken = user.accessToken()
-            val userId = user.user().id()
+            val accessToken = user.accessToken
+            val userId = user.user.id
 
             val seriesId = createSeries(accessToken, "시나리오1 시리즈", "본문")
 
             val justCreated = userSeriesListEntry(userId, seriesId)
-            assertThat(justCreated.postCount()).isZero()
-            assertThat(justCreated.thumbnailUrl()).isNull()
+            assertThat(justCreated.postCount).isZero()
+            assertThat(justCreated.thumbnailUrl).isNull()
 
             val thumbnail = uploadSeriesMedia(accessToken, seriesId, PNG_BYTES, "scenario1.png")
 
             val withThumbnail = userSeriesListEntry(userId, seriesId)
-            assertThat(withThumbnail.thumbnailUrl()).isEqualTo(thumbnail.url())
-            assertThat(withThumbnail.postCount()).isZero()
+            assertThat(withThumbnail.thumbnailUrl).isEqualTo(thumbnail.url)
+            assertThat(withThumbnail.postCount).isZero()
 
             val firstPostId = createPostInSeries(accessToken, seriesId, "시나리오1 포스트1")
 
             val withOnePost = userSeriesListEntry(userId, seriesId)
-            assertThat(withOnePost.postCount()).isEqualTo(1L)
+            assertThat(withOnePost.postCount).isEqualTo(1L)
 
             val secondPostId = createPostInSeries(accessToken, seriesId, "시나리오1 포스트2")
 
             val withTwoPosts = userSeriesListEntry(userId, seriesId)
-            assertThat(withTwoPosts.postCount()).isEqualTo(2L)
-            assertThat(withTwoPosts.thumbnailUrl()).isEqualTo(thumbnail.url())
+            assertThat(withTwoPosts.postCount).isEqualTo(2L)
+            assertThat(withTwoPosts.thumbnailUrl).isEqualTo(thumbnail.url)
             assertThat(seriesPostIds(seriesId)).containsExactlyInAnyOrder(firstPostId, secondPostId)
         }
 
@@ -2458,7 +2458,7 @@ class SeriesControllerE2ETest {
         @DisplayName("2. 시리즈를 삭제하면 포스트는 살아남고 seriesId만 null이 된다")
         fun scenario_deleteSeries_detachesPostsButKeepsThem() {
             val user = createUserAndLogin(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
-            val accessToken = user.accessToken()
+            val accessToken = user.accessToken
 
             val seriesId = createSeries(accessToken, "시나리오2 시리즈", "본문")
             val postId = createPostInSeries(accessToken, seriesId, "시나리오2 포스트")
@@ -2469,20 +2469,20 @@ class SeriesControllerE2ETest {
                 .expectBody<ApiResponse<PostResponse>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data().seriesId()).isEqualTo(seriesId)
+                    assertThat(body.data.seriesId).isEqualTo(seriesId)
                 }
             assertThat(seriesPostIds(seriesId)).containsExactly(postId)
 
             expectResultCode(deleteSeriesRequest(accessToken, seriesId), HttpStatus.OK, "200-1")
 
             expectResultCode(getSeries(seriesId), HttpStatus.NOT_FOUND, "404-5")
-            getUserSeriesListRequest(user.user().id(), "")
+            getUserSeriesListRequest(user.user.id, "")
                 .expectStatus()
                 .isOk()
                 .expectBody<ApiResponse<PageResponse<SeriesListResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data().content)
+                    assertThat(body.data.content)
                         .extracting<Long>(SeriesListResponse::id)
                         .doesNotContain(seriesId)
                 }
@@ -2494,9 +2494,9 @@ class SeriesControllerE2ETest {
                 .expectBody<ApiResponse<PostResponse>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("200-1")
-                    assertThat(body.data().id()).isEqualTo(postId)
-                    assertThat(body.data().seriesId() as Long?).isNull()
+                    assertThat(body.resultCode).isEqualTo("200-1")
+                    assertThat(body.data.id).isEqualTo(postId)
+                    assertThat(body.data.seriesId as Long?).isNull()
                 }
         }
 
@@ -2506,37 +2506,37 @@ class SeriesControllerE2ETest {
             val userA = createUserAndLogin(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
             val userB = createUserAndLogin(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
 
-            val seriesOfA = createSeries(userA.accessToken(), "시나리오3 A의 시리즈", "A의 본문")
+            val seriesOfA = createSeries(userA.accessToken, "시나리오3 A의 시리즈", "A의 본문")
 
             // A의 목록에는 있고 B의 목록에는 없다.
-            getMySeriesListRequest(userA.accessToken(), "")
+            getMySeriesListRequest(userA.accessToken, "")
                 .expectStatus()
                 .isOk()
                 .expectBody<ApiResponse<PageResponse<SeriesListResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data().content)
+                    assertThat(body.data.content)
                         .extracting<Long>(SeriesListResponse::id)
                         .contains(seriesOfA)
                 }
-            getMySeriesListRequest(userB.accessToken(), "")
+            getMySeriesListRequest(userB.accessToken, "")
                 .expectStatus()
                 .isOk()
                 .expectBody<ApiResponse<PageResponse<SeriesListResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data().content)
+                    assertThat(body.data.content)
                         .extracting<Long>(SeriesListResponse::id)
                         .doesNotContain(seriesOfA)
                 }
 
             // B는 수정도 삭제도 못 한다.
             expectResultCode(
-                updateSeriesRequest(userB.accessToken(), seriesOfA, "B가 빼앗은 제목", "B의 본문"),
+                updateSeriesRequest(userB.accessToken, seriesOfA, "B가 빼앗은 제목", "B의 본문"),
                 HttpStatus.FORBIDDEN,
                 "403-1",
             )
-            expectResultCode(deleteSeriesRequest(userB.accessToken(), seriesOfA), HttpStatus.FORBIDDEN, "403-1")
+            expectResultCode(deleteSeriesRequest(userB.accessToken, seriesOfA), HttpStatus.FORBIDDEN, "403-1")
 
             // 두 번의 실패가 아무것도 바꾸지 않았는지 확인한다. 조회 자체는 누구에게나 열려 있다.
             getSeries(seriesOfA)
@@ -2545,8 +2545,8 @@ class SeriesControllerE2ETest {
                 .expectBody<ApiResponse<SeriesResponse>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data().title()).isEqualTo("시나리오3 A의 시리즈")
-                    assertThat(body.data().userId()).isEqualTo(userA.user().id())
+                    assertThat(body.data.title).isEqualTo("시나리오3 A의 시리즈")
+                    assertThat(body.data.userId).isEqualTo(userA.user.id)
                 }
         }
 
@@ -2565,7 +2565,7 @@ class SeriesControllerE2ETest {
                 .expectBody<ApiResponse<PageResponse<SeriesListResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data().content)
+                    assertThat(body.data.content)
                         .extracting<Long>(SeriesListResponse::id)
                         .containsExactly(seriesId)
                 }
@@ -2576,7 +2576,7 @@ class SeriesControllerE2ETest {
                 .expectBody<ApiResponse<SeriesResponse>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data().title()).isEqualTo(oldKeyword)
+                    assertThat(body.data.title).isEqualTo(oldKeyword)
                 }
 
             expectResultCode(
@@ -2592,7 +2592,7 @@ class SeriesControllerE2ETest {
                 .expectBody<ApiResponse<PageResponse<SeriesListResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data().content)
+                    assertThat(body.data.content)
                         .extracting<Long>(SeriesListResponse::id)
                         .containsExactly(seriesId)
                 }
@@ -2604,7 +2604,7 @@ class SeriesControllerE2ETest {
                 .expectBody<ApiResponse<PageResponse<SeriesListResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data().content).isEmpty()
+                    assertThat(body.data.content).isEmpty()
                 }
         }
 
@@ -2612,25 +2612,25 @@ class SeriesControllerE2ETest {
         @DisplayName("5. 썸네일을 교체하면 GET /users/{userId}의 thumbnailUrl도 새 url로 갱신된다")
         fun scenario_replaceThumbnail_updatesThumbnailUrlInUserSeriesList() {
             val user = createUserAndLogin(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
-            val accessToken = user.accessToken()
-            val userId = user.user().id()
+            val accessToken = user.accessToken
+            val userId = user.user.id
 
             val seriesId = createSeries(accessToken, "시나리오5 시리즈", "본문")
-            assertThat(userSeriesListEntry(userId, seriesId).thumbnailUrl()).isNull()
+            assertThat(userSeriesListEntry(userId, seriesId).thumbnailUrl).isNull()
 
             val first = uploadSeriesMedia(accessToken, seriesId, PNG_BYTES, "scenario5-first.png")
-            assertThat(userSeriesListEntry(userId, seriesId).thumbnailUrl()).isEqualTo(first.url())
-            assertThat(Files.exists(uploadedFilePath(first.url()))).isTrue()
+            assertThat(userSeriesListEntry(userId, seriesId).thumbnailUrl).isEqualTo(first.url)
+            assertThat(Files.exists(uploadedFilePath(requireNotNull(first.url)))).isTrue()
 
             val second = uploadSeriesMedia(accessToken, seriesId, PNG_BYTES, "scenario5-second.png")
-            assertThat(second.id()).isEqualTo(first.id())
-            assertThat(second.url()).isNotEqualTo(first.url())
+            assertThat(second.id).isEqualTo(first.id)
+            assertThat(second.url).isNotEqualTo(first.url)
 
             val afterReplace = userSeriesListEntry(userId, seriesId)
-            assertThat(afterReplace.thumbnailUrl()).isEqualTo(second.url())
-            assertThat(afterReplace.thumbnailUrl()).isNotEqualTo(first.url())
-            assertThat(Files.exists(uploadedFilePath(first.url()))).isFalse()
-            assertThat(Files.exists(uploadedFilePath(second.url()))).isTrue()
+            assertThat(afterReplace.thumbnailUrl).isEqualTo(second.url)
+            assertThat(afterReplace.thumbnailUrl).isNotEqualTo(first.url)
+            assertThat(Files.exists(uploadedFilePath(requireNotNull(first.url)))).isFalse()
+            assertThat(Files.exists(uploadedFilePath(requireNotNull(second.url)))).isTrue()
         }
     }
 
