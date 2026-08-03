@@ -19,7 +19,6 @@ import com.scommit.domain.post.post.dto.PostResponse
 import com.scommit.domain.post.post.entity.PostAccessLevel
 import com.scommit.domain.post.post.entity.PublishStatus
 import com.scommit.domain.post.post.repository.PostRepository
-import com.scommit.domain.user.user.dto.LoginResponse
 import com.scommit.global.dto.PageResponse
 import com.scommit.global.e2e.ApiResponse
 import com.scommit.global.e2e.E2ETestSupport
@@ -204,11 +203,11 @@ class BookmarkControllerE2ETest {
             // 후속 조회로도 확인한다.
             val myBookmarks = getMyBookmarks(accessToken)
             assertThat(myBookmarks.totalElements()).isEqualTo(1)
-            assertThat(myBookmarks.content())
+            assertThat(myBookmarks.content)
                 .extracting<Long>(PostListResponse::id)
                 .containsExactly(postId)
-            assertThat(myBookmarks.content()[0].isBookmarked).isTrue()
-            assertThat(myBookmarks.content()[0].bookmarkCount()).isEqualTo(1)
+            assertThat(myBookmarks.content[0].isBookmarked).isTrue()
+            assertThat(myBookmarks.content[0].bookmarkCount()).isEqualTo(1)
         }
 
         @Test
@@ -225,10 +224,10 @@ class BookmarkControllerE2ETest {
             assertThat(bookmarkCountOf(postId)).isEqualTo(1L)
 
             // 북마크는 누른 사람의 목록에만 들어간다.
-            assertThat(getMyBookmarks(bookmarker.accessToken()).content())
+            assertThat(getMyBookmarks(bookmarker.accessToken()).content)
                 .extracting<Long>(PostListResponse::id)
                 .containsExactly(postId)
-            assertThat(getMyBookmarks(authorToken).content()).isEmpty()
+            assertThat(getMyBookmarks(authorToken).content).isEmpty()
         }
 
         @Test
@@ -372,11 +371,11 @@ class BookmarkControllerE2ETest {
                     assertThat(body.data().totalPages()).isEqualTo(1)
                     assertThat(body.data().isLast).isTrue()
                     // @PageableDefault(sort = "id", direction = DESC) — Bookmark.id 내림차순(= 최근 북마크 순)
-                    assertThat(body.data().content())
+                    assertThat(body.data().content)
                         .extracting<Long>(PostListResponse::id)
                         .containsExactly(second, first)
 
-                    val head = body.data().content()[0]
+                    val head = body.data().content[0]
                     assertThat(head.userId()).isEqualTo(session.user().id())
                     assertThat(head.nickname()).isEqualTo(session.user().nickname())
                     assertThat(head.title()).isEqualTo("북마크 E2E 게시글")
@@ -398,7 +397,7 @@ class BookmarkControllerE2ETest {
                 .value { body ->
                     checkNotNull(body)
                     assertThat(body.resultCode()).isEqualTo("200-1")
-                    assertThat(body.data().content()).isEmpty()
+                    assertThat(body.data().content).isEmpty()
                     assertThat(body.data().totalElements()).isZero()
                     assertThat(body.data().totalPages()).isZero()
                     assertThat(body.data().isLast).isTrue()
@@ -428,7 +427,7 @@ class BookmarkControllerE2ETest {
                     assertThat(body.data().pageSize()).isEqualTo(2)
                     assertThat(body.data().totalPages()).isEqualTo(2)
                     assertThat(body.data().isLast).isFalse()
-                    assertThat(body.data().content())
+                    assertThat(body.data().content)
                         .extracting<Long>(PostListResponse::id)
                         .containsExactly(third, second)
                 }
@@ -441,7 +440,7 @@ class BookmarkControllerE2ETest {
                     checkNotNull(body)
                     assertThat(body.data().pageNumber()).isEqualTo(1)
                     assertThat(body.data().isLast).isTrue()
-                    assertThat(body.data().content())
+                    assertThat(body.data().content)
                         .extracting<Long>(PostListResponse::id)
                         .containsExactly(first)
                 }
@@ -464,7 +463,7 @@ class BookmarkControllerE2ETest {
             // 목록 쿼리가 findByUserIdAndPostDeletedAtIsNull 이라 삭제된 게시글은 빠진다.
             val afterDelete = getMyBookmarks(reader.accessToken())
             assertThat(afterDelete.totalElements()).isEqualTo(1)
-            assertThat(afterDelete.content())
+            assertThat(afterDelete.content)
                 .extracting<Long>(PostListResponse::id)
                 .containsExactly(kept)
 
@@ -494,10 +493,10 @@ class BookmarkControllerE2ETest {
             createBookmark(authorToken, mine)
             createBookmark(otherToken, theirs)
 
-            assertThat(getMyBookmarks(authorToken).content())
+            assertThat(getMyBookmarks(authorToken).content)
                 .extracting<Long>(PostListResponse::id)
                 .containsExactly(mine)
-            assertThat(getMyBookmarks(otherToken).content())
+            assertThat(getMyBookmarks(otherToken).content)
                 .extracting<Long>(PostListResponse::id)
                 .containsExactly(theirs)
         }
@@ -528,11 +527,11 @@ class BookmarkControllerE2ETest {
 
             // 북마크 목록에는 그대로 실려 온다.
             val myBookmarks = getMyBookmarks(otherToken)
-            assertThat(myBookmarks.content())
+            assertThat(myBookmarks.content)
                 .extracting<Long>(PostListResponse::id)
                 .containsExactly(postId)
-            assertThat(myBookmarks.content()[0].publishStatus()).isEqualTo(PublishStatus.PRIVATE)
-            assertThat(myBookmarks.content()[0].title()).isEqualTo("북마크 E2E 게시글")
+            assertThat(myBookmarks.content[0].publishStatus()).isEqualTo(PublishStatus.PRIVATE)
+            assertThat(myBookmarks.content[0].title()).isEqualTo("북마크 E2E 게시글")
         }
 
         // FIXME(#5): @PageableDefault 로 들어온 Sort 의 프로퍼티를 검증하는 곳이 없어서
@@ -599,11 +598,11 @@ class BookmarkControllerE2ETest {
             // 취소한 게시글이 내 북마크 목록에 계속 보인다 — 사용자에게 바로 드러나는 증상이다.
             val myBookmarks = getMyBookmarks(accessToken)
             assertThat(myBookmarks.totalElements()).isEqualTo(1)
-            assertThat(myBookmarks.content())
+            assertThat(myBookmarks.content)
                 .extracting<Long>(PostListResponse::id)
                 .containsExactly(postId)
-            assertThat(myBookmarks.content()[0].bookmarkCount()).isZero()
-            assertThat(myBookmarks.content()[0].isBookmarked).isTrue()
+            assertThat(myBookmarks.content[0].bookmarkCount()).isZero()
+            assertThat(myBookmarks.content[0].isBookmarked).isTrue()
         }
 
         @Test
@@ -770,13 +769,13 @@ class BookmarkControllerE2ETest {
             createBookmark(readerToken, notLiked)
 
             val myBookmarks = getMyBookmarks(readerToken)
-            assertThat(myBookmarks.content())
+            assertThat(myBookmarks.content)
                 .extracting(PostListResponse::id, PostListResponse::isLiked, PostListResponse::isBookmarked)
                 .containsExactly(
                     tuple(notLiked, false, true),
                     tuple(liked, true, true),
                 )
-            assertThat(myBookmarks.content()[1].likeCount()).isEqualTo(1)
+            assertThat(myBookmarks.content[1].likeCount()).isEqualTo(1)
         }
     }
 

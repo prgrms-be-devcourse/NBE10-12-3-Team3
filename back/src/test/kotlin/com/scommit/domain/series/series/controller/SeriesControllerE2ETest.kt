@@ -438,7 +438,7 @@ class SeriesControllerE2ETest {
                 .returnResult()
                 .responseBody,
         ).data()
-            .content()
+            .content
             .find { series -> series.id() == seriesId }
             ?: throw AssertionError("유저 시리즈 목록에 시리즈 $seriesId 가 없다")
 
@@ -1115,7 +1115,7 @@ class SeriesControllerE2ETest {
                     assertThat(body.data().totalElements()).isEqualTo(1)
                     assertThat(body.data().totalPages()).isEqualTo(1)
                     assertThat(body.data().isLast).isTrue()
-                    assertThat(body.data().content()).extracting<Long>(SeriesListResponse::id).containsExactly(seriesId)
+                    assertThat(body.data().content).extracting<Long>(SeriesListResponse::id).containsExactly(seriesId)
                 }
         }
 
@@ -1132,7 +1132,7 @@ class SeriesControllerE2ETest {
                 .expectBody<ApiResponse<PageResponse<SeriesListResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data().content())
+                    assertThat(body.data().content)
                         .extracting<Long>(SeriesListResponse::id)
                         .containsExactly(seriesId)
                 }
@@ -1148,7 +1148,7 @@ class SeriesControllerE2ETest {
                 .value { body ->
                     checkNotNull(body)
                     assertThat(body.resultCode()).isEqualTo("200-1")
-                    assertThat(body.data().content()).isEmpty()
+                    assertThat(body.data().content).isEmpty()
                     assertThat(body.data().totalElements()).isZero()
                 }
         }
@@ -1192,7 +1192,7 @@ class SeriesControllerE2ETest {
                 .expectBody<ApiResponse<PageResponse<SeriesListResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data().content()).isEmpty()
+                    assertThat(body.data().content).isEmpty()
                 }
         }
 
@@ -1210,7 +1210,7 @@ class SeriesControllerE2ETest {
                 .expectBody<ApiResponse<PageResponse<SeriesListResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data().content()).extracting<Long>(SeriesListResponse::id).containsExactly(newerId)
+                    assertThat(body.data().content).extracting<Long>(SeriesListResponse::id).containsExactly(newerId)
                     assertThat(body.data().totalElements()).isEqualTo(2)
                     assertThat(body.data().totalPages()).isEqualTo(2)
                     assertThat(body.data().isLast).isFalse()
@@ -1222,7 +1222,7 @@ class SeriesControllerE2ETest {
                 .expectBody<ApiResponse<PageResponse<SeriesListResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data().content()).extracting<Long>(SeriesListResponse::id).containsExactly(olderId)
+                    assertThat(body.data().content).extracting<Long>(SeriesListResponse::id).containsExactly(olderId)
                     assertThat(body.data().isLast).isTrue()
                 }
         }
@@ -1248,7 +1248,7 @@ class SeriesControllerE2ETest {
                 .value { body ->
                     checkNotNull(body)
                     assertThat(body.resultCode()).isEqualTo("200-1")
-                    assertThat(body.data().content())
+                    assertThat(body.data().content)
                         .extracting<Long>(SeriesListResponse::id)
                         .containsExactlyInAnyOrder(seriesA1, seriesA2)
                 }
@@ -1266,7 +1266,7 @@ class SeriesControllerE2ETest {
                 .value { body ->
                     checkNotNull(body)
                     assertThat(body.resultCode()).isEqualTo("200-1")
-                    assertThat(body.data().content()).isEmpty()
+                    assertThat(body.data().content).isEmpty()
                     assertThat(body.data().totalElements()).isZero()
                 }
         }
@@ -1283,7 +1283,7 @@ class SeriesControllerE2ETest {
                 .value { body ->
                     checkNotNull(body)
                     assertThat(body.resultCode()).isEqualTo("200-1")
-                    assertThat(body.data().content()).isEmpty()
+                    assertThat(body.data().content).isEmpty()
                 }
         }
 
@@ -1303,7 +1303,7 @@ class SeriesControllerE2ETest {
                 .expectBody<ApiResponse<PageResponse<SeriesListResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data().content())
+                    assertThat(body.data().content)
                         .extracting<Long>(SeriesListResponse::id)
                         .contains(seriesId)
                 }
@@ -1322,7 +1322,7 @@ class SeriesControllerE2ETest {
                 .expectBody<ApiResponse<PageResponse<SeriesListResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data().content())
+                    assertThat(body.data().content)
                         .extracting<Long>(SeriesListResponse::id)
                         .doesNotContain(seriesId)
                 }
@@ -1352,7 +1352,7 @@ class SeriesControllerE2ETest {
                 .value { body ->
                     checkNotNull(body)
                     assertThat(body.resultCode()).isEqualTo("200-1")
-                    assertThat(body.data().content())
+                    assertThat(body.data().content)
                         .extracting<Long>(SeriesListResponse::id)
                         .containsExactlyInAnyOrder(seriesId1, seriesId2)
                 }
@@ -1372,7 +1372,7 @@ class SeriesControllerE2ETest {
                 .expectBody<ApiResponse<PageResponse<SeriesListResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data().content())
+                    assertThat(body.data().content)
                         .extracting<Long>(SeriesListResponse::id)
                         .doesNotContain(otherSeriesId)
                 }
@@ -1389,7 +1389,7 @@ class SeriesControllerE2ETest {
                 .expectBody<ApiResponse<PageResponse<SeriesListResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data().content()).isEmpty()
+                    assertThat(body.data().content).isEmpty()
                     assertThat(body.data().totalElements()).isZero()
                 }
         }
@@ -1407,7 +1407,7 @@ class SeriesControllerE2ETest {
                 .expectBody<ApiResponse<PageResponse<SeriesListResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data().content())
+                    assertThat(body.data().content)
                         .extracting<Long>(SeriesListResponse::id)
                         .doesNotContain(seriesId)
                 }
@@ -2482,7 +2482,7 @@ class SeriesControllerE2ETest {
                 .expectBody<ApiResponse<PageResponse<SeriesListResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data().content())
+                    assertThat(body.data().content)
                         .extracting<Long>(SeriesListResponse::id)
                         .doesNotContain(seriesId)
                 }
@@ -2515,7 +2515,7 @@ class SeriesControllerE2ETest {
                 .expectBody<ApiResponse<PageResponse<SeriesListResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data().content())
+                    assertThat(body.data().content)
                         .extracting<Long>(SeriesListResponse::id)
                         .contains(seriesOfA)
                 }
@@ -2525,7 +2525,7 @@ class SeriesControllerE2ETest {
                 .expectBody<ApiResponse<PageResponse<SeriesListResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data().content())
+                    assertThat(body.data().content)
                         .extracting<Long>(SeriesListResponse::id)
                         .doesNotContain(seriesOfA)
                 }
@@ -2565,7 +2565,7 @@ class SeriesControllerE2ETest {
                 .expectBody<ApiResponse<PageResponse<SeriesListResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data().content())
+                    assertThat(body.data().content)
                         .extracting<Long>(SeriesListResponse::id)
                         .containsExactly(seriesId)
                 }
@@ -2592,7 +2592,7 @@ class SeriesControllerE2ETest {
                 .expectBody<ApiResponse<PageResponse<SeriesListResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data().content())
+                    assertThat(body.data().content)
                         .extracting<Long>(SeriesListResponse::id)
                         .containsExactly(seriesId)
                 }
@@ -2604,7 +2604,7 @@ class SeriesControllerE2ETest {
                 .expectBody<ApiResponse<PageResponse<SeriesListResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data().content()).isEmpty()
+                    assertThat(body.data().content).isEmpty()
                 }
         }
 
