@@ -145,7 +145,7 @@ class SubscriptionService(
     fun getMySubscriptions(userId: Long, pageable: Pageable): Page<SubscriptionInfo> {
         val subscriptionsPage = subscriptionRepository.findMySubscriptions(userId, pageable)
         
-        val creatorIds = subscriptionsPage.content.map { it.creator.id!! }.distinct()
+        val creatorIds = subscriptionsPage.content.mapNotNull { it.creator.id }.distinct()
 
         val followerCounts = if (creatorIds.isEmpty()) {
             emptyMap()

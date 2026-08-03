@@ -53,9 +53,9 @@ class Subscription(
         this.restore()
     }
 
-    fun upgradeToMembership() {
+    fun upgradeToMembership(durationMonths: Long = 1L) {
         this.tier = SubscriptionTier.MEMBERSHIP
-        this.expiredAt = LocalDate.now().plusMonths(1)
+        this.expiredAt = LocalDate.now().plusMonths(durationMonths)
     }
 
     // 멤버십을 해지하고 팔로우 티어로 강등 처리
