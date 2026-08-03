@@ -58,6 +58,7 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
@@ -70,6 +71,7 @@ import static com.scommit.global.e2e.E2ETestSupport.expectResultCode;
 import static com.scommit.global.e2e.E2ETestSupport.uniqueEmail;
 import static com.scommit.global.e2e.E2ETestSupport.uniqueNickname;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
 
 @SpringBootTest(
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
@@ -547,9 +549,10 @@ class PostControllerE2ETest {
             assertThat(java.time.Duration.between(updated.updatedAt(), dbUpdatedAtAfter).abs())
                     .isLessThan(java.time.Duration.ofMillis(100));
 
-            // createdAt은 응답/DB 모두 그대로다.
-            assertThat(updated.createdAt()).isEqualTo(created.createdAt());
-            assertThat(findPost(postId).getCreatedAt()).isEqualTo(created.createdAt());
+            // createdAt은 응답/DB 모두 그대로다. DB가 나노초보다 낮은 정밀도로 저장할 수 있어
+            // 완전 일치 대신 오차범위로 비교한다(CommentControllerE2ETest와 동일한 이유).
+            assertThat(updated.createdAt()).isCloseTo(created.createdAt(), within(1, ChronoUnit.MICROS));
+            assertThat(findPost(postId).getCreatedAt()).isCloseTo(created.createdAt(), within(1, ChronoUnit.MICROS));
         }
 
         @Test
