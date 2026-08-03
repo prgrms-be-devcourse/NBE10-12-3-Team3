@@ -1110,10 +1110,10 @@ class SeriesControllerE2ETest {
                 .value { body ->
                     checkNotNull(body)
                     assertThat(body.resultCode()).isEqualTo("200-1")
-                    assertThat(body.data().pageNumber()).isEqualTo(0)
-                    assertThat(body.data().pageSize()).isEqualTo(10)
-                    assertThat(body.data().totalElements()).isEqualTo(1)
-                    assertThat(body.data().totalPages()).isEqualTo(1)
+                    assertThat(body.data().pageNumber).isEqualTo(0)
+                    assertThat(body.data().pageSize).isEqualTo(10)
+                    assertThat(body.data().totalElements).isEqualTo(1)
+                    assertThat(body.data().totalPages).isEqualTo(1)
                     assertThat(body.data().isLast).isTrue()
                     assertThat(body.data().content).extracting<Long>(SeriesListResponse::id).containsExactly(seriesId)
                 }
@@ -1149,7 +1149,7 @@ class SeriesControllerE2ETest {
                     checkNotNull(body)
                     assertThat(body.resultCode()).isEqualTo("200-1")
                     assertThat(body.data().content).isEmpty()
-                    assertThat(body.data().totalElements()).isZero()
+                    assertThat(body.data().totalElements).isZero()
                 }
         }
 
@@ -1211,8 +1211,8 @@ class SeriesControllerE2ETest {
                 .value { body ->
                     checkNotNull(body)
                     assertThat(body.data().content).extracting<Long>(SeriesListResponse::id).containsExactly(newerId)
-                    assertThat(body.data().totalElements()).isEqualTo(2)
-                    assertThat(body.data().totalPages()).isEqualTo(2)
+                    assertThat(body.data().totalElements).isEqualTo(2)
+                    assertThat(body.data().totalPages).isEqualTo(2)
                     assertThat(body.data().isLast).isFalse()
                 }
 
@@ -1267,7 +1267,7 @@ class SeriesControllerE2ETest {
                     checkNotNull(body)
                     assertThat(body.resultCode()).isEqualTo("200-1")
                     assertThat(body.data().content).isEmpty()
-                    assertThat(body.data().totalElements()).isZero()
+                    assertThat(body.data().totalElements).isZero()
                 }
         }
 
@@ -1390,7 +1390,7 @@ class SeriesControllerE2ETest {
                 .value { body ->
                     checkNotNull(body)
                     assertThat(body.data().content).isEmpty()
-                    assertThat(body.data().totalElements()).isZero()
+                    assertThat(body.data().totalElements).isZero()
                 }
         }
 
