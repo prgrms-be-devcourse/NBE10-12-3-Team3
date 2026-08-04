@@ -154,7 +154,7 @@ class PostControllerE2ETest {
                 .expectBody<ApiResponse<PostResponse>>()
                 .returnResult()
                 .responseBody,
-        ).data().id()
+        ).data.id
 
     private fun getPost(
         id: Any,
@@ -237,8 +237,8 @@ class PostControllerE2ETest {
             .expectBody(ApiResponse.VOID_BODY)
             .value { body ->
                 checkNotNull(body)
-                assertThat(body.resultCode()).isEqualTo("401-1")
-                assertThat(body.msg()).isEqualTo("로그인 후 이용해주세요.")
+                assertThat(body.resultCode).isEqualTo("401-1")
+                assertThat(body.msg).isEqualTo("로그인 후 이용해주세요.")
             }
     }
 
@@ -272,18 +272,18 @@ class PostControllerE2ETest {
                 .expectBody<ApiResponse<PostResponse>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("201-1")
-                    assertThat(body.msg()).isEqualTo("게시글이 생성되었습니다.")
-                    assertThat(body.data().id()).isNotNull()
-                    assertThat(body.data().title()).isEqualTo("e2e 생성 글")
-                    assertThat(body.data().body()).isEqualTo("e2e 생성 본문")
-                    assertThat(body.data().publishStatus()).isEqualTo(PublishStatus.PUBLIC)
-                    assertThat(body.data().accessLevel()).isEqualTo(PostAccessLevel.FREE)
-                    assertThat(body.data().viewCount()).isZero()
-                    assertThat(body.data().likeCount()).isZero()
-                    assertThat(body.data().isLiked).isFalse()
-                    assertThat(body.data().isBookmarked).isFalse()
-                    createdId = body.data().id()
+                    assertThat(body.resultCode).isEqualTo("201-1")
+                    assertThat(body.msg).isEqualTo("게시글이 생성되었습니다.")
+                    assertThat(body.data.id).isNotNull()
+                    assertThat(body.data.title).isEqualTo("e2e 생성 글")
+                    assertThat(body.data.body).isEqualTo("e2e 생성 본문")
+                    assertThat(body.data.publishStatus).isEqualTo(PublishStatus.PUBLIC)
+                    assertThat(body.data.accessLevel).isEqualTo(PostAccessLevel.FREE)
+                    assertThat(body.data.viewCount).isZero()
+                    assertThat(body.data.likeCount).isZero()
+                    assertThat(body.data.isLiked).isFalse()
+                    assertThat(body.data.isBookmarked).isFalse()
+                    createdId = body.data.id
                 }
 
             // 생성이라는 부작용 자체를 DB에서 되짚어 확인한다.
@@ -298,7 +298,7 @@ class PostControllerE2ETest {
                 .expectBody<ApiResponse<PostResponse>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data().title()).isEqualTo("e2e 생성 글")
+                    assertThat(body.data.title).isEqualTo("e2e 생성 글")
                 }
         }
 
@@ -313,7 +313,7 @@ class PostControllerE2ETest {
                 .expectBody<ApiResponse<PostResponse>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data().publishStatus()).isEqualTo(PublishStatus.DRAFT)
+                    assertThat(body.data.publishStatus).isEqualTo(PublishStatus.DRAFT)
                 }
         }
 
@@ -333,7 +333,7 @@ class PostControllerE2ETest {
                 .expectBody(ApiResponse.VOID_BODY)
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("500-1")
+                    assertThat(body.resultCode).isEqualTo("500-1")
                 }
         }
 
@@ -354,8 +354,8 @@ class PostControllerE2ETest {
                 .expectBody(ApiResponse.VOID_BODY)
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("400-1")
-                    assertThat(body.msg()).isEqualTo("올바른 JSON 요청 형식이 아닙니다.")
+                    assertThat(body.resultCode).isEqualTo("400-1")
+                    assertThat(body.msg).isEqualTo("올바른 JSON 요청 형식이 아닙니다.")
                 }
         }
     }
@@ -385,7 +385,7 @@ class PostControllerE2ETest {
                 .expectBody<ApiResponse<PostResponse>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data().viewCount()).isEqualTo(1)
+                    assertThat(body.data.viewCount).isEqualTo(1)
                 }
 
             getPost(postId, accessToken)
@@ -394,7 +394,7 @@ class PostControllerE2ETest {
                 .expectBody<ApiResponse<PostResponse>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data().viewCount()).isEqualTo(2)
+                    assertThat(body.data.viewCount).isEqualTo(2)
                 }
         }
 
@@ -410,10 +410,10 @@ class PostControllerE2ETest {
                 .expectBody<ApiResponse<PostResponse>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("200-1")
-                    assertThat(body.msg()).isEqualTo("게시글 상세 정보입니다.")
-                    assertThat(body.data().isLocked).isFalse()
-                    assertThat(body.data().body()).isEqualTo("본문 내용")
+                    assertThat(body.resultCode).isEqualTo("200-1")
+                    assertThat(body.msg).isEqualTo("게시글 상세 정보입니다.")
+                    assertThat(body.data.isLocked).isFalse()
+                    assertThat(body.data.body).isEqualTo("본문 내용")
                 }
         }
 
@@ -439,7 +439,7 @@ class PostControllerE2ETest {
                 .expectBody<ApiResponse<PostResponse>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data().id()).isEqualTo(postId)
+                    assertThat(body.data.id).isEqualTo(postId)
                 }
         }
 
@@ -456,8 +456,8 @@ class PostControllerE2ETest {
                 .expectBody<ApiResponse<PostResponse>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data().isLocked).isTrue()
-                    assertThat(body.data().body()).isNull()
+                    assertThat(body.data.isLocked).isTrue()
+                    assertThat(body.data.body).isNull()
                 }
         }
 
@@ -482,8 +482,8 @@ class PostControllerE2ETest {
                 .expectBody<ApiResponse<PostResponse>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data().isLocked).isFalse()
-                    assertThat(body.data().body()).isEqualTo("본문 내용")
+                    assertThat(body.data.isLocked).isFalse()
+                    assertThat(body.data.body).isEqualTo("본문 내용")
                 }
         }
 
@@ -499,7 +499,7 @@ class PostControllerE2ETest {
                 .expectBody<ApiResponse<PostResponse>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data().isLocked).isFalse()
+                    assertThat(body.data.isLocked).isFalse()
                 }
         }
     }
@@ -537,10 +537,10 @@ class PostControllerE2ETest {
                 .expectBody<ApiResponse<PostResponse>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("200-1")
-                    assertThat(body.msg()).isEqualTo("게시글이 수정되었습니다.")
-                    assertThat(body.data().title()).isEqualTo("수정된 제목")
-                    assertThat(body.data().body()).isEqualTo("수정된 본문")
+                    assertThat(body.resultCode).isEqualTo("200-1")
+                    assertThat(body.msg).isEqualTo("게시글이 수정되었습니다.")
+                    assertThat(body.data.title).isEqualTo("수정된 제목")
+                    assertThat(body.data.body).isEqualTo("수정된 본문")
                 }
 
             // 수정이라는 부작용을 DB와 후속 조회로 각각 되짚는다.
@@ -552,7 +552,7 @@ class PostControllerE2ETest {
                 .expectBody<ApiResponse<PostResponse>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data().title()).isEqualTo("수정된 제목")
+                    assertThat(body.data.title).isEqualTo("수정된 제목")
                 }
         }
 
@@ -578,9 +578,9 @@ class PostControllerE2ETest {
                         .expectBody<ApiResponse<PostResponse>>()
                         .returnResult()
                         .responseBody,
-                ).data()
-            val postId = created.id()
-            val createdUpdatedAt = created.updatedAt()
+                ).data
+            val postId = created.id
+            val createdUpdatedAt = created.updatedAt
 
             val updated =
                 checkNotNull(
@@ -596,22 +596,22 @@ class PostControllerE2ETest {
                         .expectBody<ApiResponse<PostResponse>>()
                         .returnResult()
                         .responseBody,
-                ).data()
+                ).data
 
             // 응답 값: 생성 시점보다 나중이고, 갱신 전 값 그대로가 아니다.
-            assertThat(updated.updatedAt()).isAfter(createdUpdatedAt)
+            assertThat(updated.updatedAt).isAfter(createdUpdatedAt)
 
             // DB 값: 응답과 사실상 같은 시점이 실제로 반영돼 있다(JSON 직렬화의 초 이하 정밀도 손실
             // 감안해 100ms 이내 오차는 허용 — Comment의 스테일 버그처럼 수백 ms~초 단위로 어긋나는
             // 것과는 구분된다).
             val dbUpdatedAtAfter: LocalDateTime = findPost(postId).updatedAt
-            assertThat(Duration.between(updated.updatedAt(), dbUpdatedAtAfter).abs())
+            assertThat(Duration.between(updated.updatedAt, dbUpdatedAtAfter).abs())
                 .isLessThan(Duration.ofMillis(100))
 
             // createdAt은 응답/DB 모두 그대로다. DB가 나노초보다 낮은 정밀도로 저장할 수 있어
             // 완전 일치 대신 오차범위로 비교한다(CommentControllerE2ETest와 동일한 이유).
-            assertThat(updated.createdAt()).isCloseTo(created.createdAt(), within(1, ChronoUnit.MICROS))
-            assertThat(findPost(postId).createdAt).isCloseTo(created.createdAt(), within(1, ChronoUnit.MICROS))
+            assertThat(updated.createdAt).isCloseTo(created.createdAt, within(1, ChronoUnit.MICROS))
+            assertThat(findPost(postId).createdAt).isCloseTo(created.createdAt, within(1, ChronoUnit.MICROS))
         }
 
         @Test
@@ -692,9 +692,9 @@ class PostControllerE2ETest {
                 .expectBody(ApiResponse.VOID_BODY)
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("200-1")
-                    assertThat(body.msg()).isEqualTo("게시글이 삭제되었습니다.")
-                    assertThat(body.data()).isNull()
+                    assertThat(body.resultCode).isEqualTo("200-1")
+                    assertThat(body.msg).isEqualTo("게시글이 삭제되었습니다.")
+                    assertThat(body.data).isNull()
                 }
 
             // 하드 삭제가 아니라 소프트 삭제라는 부작용을 DB에서 직접 확인한다.
@@ -770,7 +770,7 @@ class PostControllerE2ETest {
                         .returnResult()
                         .responseBody,
                 )
-            val mediaId = uploaded.data().id()
+            val mediaId = uploaded.data.id
 
             deletePostRequest(accessToken, postId).expectStatus().isOk()
 
@@ -784,7 +784,8 @@ class PostControllerE2ETest {
             // Media.url = "post/{uuid}_{원본파일명}" — LocalMediaService.uploadFile()이
             // file.path("./build/test-uploads") + url 을 이어붙여 저장하므로, "post/" 다음 부분이
             // POST_UPLOAD_DIR("build/test-uploadspost") 바로 아래의 실제 파일명이 된다.
-            val storedFilename = orphanMedia.url.substring(orphanMedia.url.indexOf('/') + 1)
+            val orphanMediaUrl = checkNotNull(orphanMedia.url)
+            val storedFilename = orphanMediaUrl.substring(orphanMediaUrl.indexOf('/') + 1)
             assertThat(Files.exists(POST_UPLOAD_DIR.resolve(storedFilename))).isTrue()
 
             expectResultCode(
@@ -830,10 +831,10 @@ class PostControllerE2ETest {
                 .expectBody<ApiResponse<PageResult<PostListResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("200-1")
-                    assertThat(body.msg()).isEqualTo("내가 쓴 게시글 목록입니다.")
-                    assertThat(body.data().content).hasSize(2)
-                    assertThat(body.data().content).extracting("title").doesNotContain("남의 글")
+                    assertThat(body.resultCode).isEqualTo("200-1")
+                    assertThat(body.msg).isEqualTo("내가 쓴 게시글 목록입니다.")
+                    assertThat(body.data.content).hasSize(2)
+                    assertThat(body.data.content).extracting("title").doesNotContain("남의 글")
                 }
         }
     }
@@ -859,9 +860,9 @@ class PostControllerE2ETest {
                 .expectBody<ApiResponse<PageResult<PostListResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("200-1")
-                    assertThat(body.msg()).isEqualTo("유저의 게시글 목록입니다.")
-                    assertThat(body.data().content).extracting("title").contains("프로필 공개 글")
+                    assertThat(body.resultCode).isEqualTo("200-1")
+                    assertThat(body.msg).isEqualTo("유저의 게시글 목록입니다.")
+                    assertThat(body.data.content).extracting("title").contains("프로필 공개 글")
                 }
         }
 
@@ -885,7 +886,7 @@ class PostControllerE2ETest {
                 .expectBody<ApiResponse<PageResult<PostListResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data().content).hasSize(3)
+                    assertThat(body.data.content).hasSize(3)
                 }
         }
     }
@@ -911,9 +912,9 @@ class PostControllerE2ETest {
                 .expectBody<ApiResponse<SliceResult<PostListResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("200-1")
-                    assertThat(body.msg()).isEqualTo("게시글 목록입니다.")
-                    assertThat(body.data().content).extracting("title").contains("크리에이터 공개 글")
+                    assertThat(body.resultCode).isEqualTo("200-1")
+                    assertThat(body.msg).isEqualTo("게시글 목록입니다.")
+                    assertThat(body.data.content).extracting("title").contains("크리에이터 공개 글")
                 }
         }
 
@@ -937,7 +938,7 @@ class PostControllerE2ETest {
                 .expectBody<ApiResponse<SliceResult<PostListResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data().content).hasSize(3)
+                    assertThat(body.data.content).hasSize(3)
                 }
         }
 
@@ -960,7 +961,7 @@ class PostControllerE2ETest {
                 .expectBody(ApiResponse.VOID_BODY)
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("500-1")
+                    assertThat(body.resultCode).isEqualTo("500-1")
                 }
         }
     }
@@ -996,10 +997,10 @@ class PostControllerE2ETest {
                 .expectBody<ApiResponse<PageResult<PostListResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("200-1")
-                    assertThat(body.msg()).isEqualTo("게시글 검색 결과입니다.")
-                    assertThat(body.data().content).hasSize(1)
-                    assertThat(body.data().content[0].title()).isEqualTo(keyword)
+                    assertThat(body.resultCode).isEqualTo("200-1")
+                    assertThat(body.msg).isEqualTo("게시글 검색 결과입니다.")
+                    assertThat(body.data.content).hasSize(1)
+                    assertThat(body.data.content[0].title).isEqualTo(keyword)
                 }
         }
 
@@ -1018,8 +1019,8 @@ class PostControllerE2ETest {
                 .expectBody<ApiResponse<PageResult<PostListResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("200-1")
-                    assertThat(body.data().content).isEmpty()
+                    assertThat(body.resultCode).isEqualTo("200-1")
+                    assertThat(body.data.content).isEmpty()
                 }
         }
 
@@ -1041,7 +1042,7 @@ class PostControllerE2ETest {
                 .expectBody<ApiResponse<PageResult<PostListResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data().content).isEmpty()
+                    assertThat(body.data.content).isEmpty()
                 }
         }
     }
@@ -1091,10 +1092,10 @@ class PostControllerE2ETest {
                 .expectBody<ApiResponse<PostMediaResponse>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("201-1")
-                    assertThat(body.msg()).isEqualTo("게시글 미디어가 추가되었습니다.")
-                    assertThat(body.data().type()).isEqualTo(PostMediaType.THUMBNAIL)
-                    mediaId = body.data().id()
+                    assertThat(body.resultCode).isEqualTo("201-1")
+                    assertThat(body.msg).isEqualTo("게시글 미디어가 추가되었습니다.")
+                    assertThat(body.data.type).isEqualTo(PostMediaType.THUMBNAIL)
+                    mediaId = body.data.id
                 }
 
             client
@@ -1107,9 +1108,9 @@ class PostControllerE2ETest {
                 .expectBody<ApiResponse<List<PostMediaResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("200-1")
-                    assertThat(body.msg()).isEqualTo("게시글 미디어 목록입니다.")
-                    assertThat(body.data()).extracting("id").contains(mediaId)
+                    assertThat(body.resultCode).isEqualTo("200-1")
+                    assertThat(body.msg).isEqualTo("게시글 미디어 목록입니다.")
+                    assertThat(body.data).extracting("id").contains(mediaId)
                 }
         }
 
@@ -1147,8 +1148,8 @@ class PostControllerE2ETest {
                 .expectBody<ApiResponse<PostMediaResponse>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data().id()).isEqualTo(first.data().id())
-                    assertThat(body.data().url()).isNotEqualTo(first.data().url())
+                    assertThat(body.data.id).isEqualTo(first.data.id)
+                    assertThat(body.data.url).isNotEqualTo(first.data.url)
                 }
         }
 
@@ -1233,7 +1234,7 @@ class PostControllerE2ETest {
                 .expectBody(ApiResponse.VOID_BODY)
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("415-1")
+                    assertThat(body.resultCode).isEqualTo("415-1")
                 }
         }
 
@@ -1256,9 +1257,9 @@ class PostControllerE2ETest {
                 .expectBody<ApiResponse<PostMediaResponse>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("200-1")
-                    assertThat(body.msg()).isEqualTo("게시글 썸네일입니다.")
-                    assertThat(body.data()).isNull()
+                    assertThat(body.resultCode).isEqualTo("200-1")
+                    assertThat(body.msg).isEqualTo("게시글 썸네일입니다.")
+                    assertThat(body.data).isNull()
                 }
         }
 
@@ -1281,7 +1282,7 @@ class PostControllerE2ETest {
                         .expectBody<ApiResponse<PostMediaResponse>>()
                         .returnResult()
                         .responseBody,
-                ).data().id()
+                ).data.id
 
             client
                 .method(HttpMethod.DELETE)
@@ -1293,8 +1294,8 @@ class PostControllerE2ETest {
                 .expectBody(ApiResponse.VOID_BODY)
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("200-1")
-                    assertThat(body.msg()).isEqualTo("게시글 미디어가 삭제되었습니다.")
+                    assertThat(body.resultCode).isEqualTo("200-1")
+                    assertThat(body.msg).isEqualTo("게시글 미디어가 삭제되었습니다.")
                 }
 
             // PostMedia 행 자체가 지워졌는지(하드 삭제) DB로 직접 확인한다.
@@ -1308,7 +1309,7 @@ class PostControllerE2ETest {
                 .expectBody<ApiResponse<List<PostMediaResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data()).extracting("id").doesNotContain(mediaId)
+                    assertThat(body.data).extracting("id").doesNotContain(mediaId)
                 }
         }
 
@@ -1330,7 +1331,7 @@ class PostControllerE2ETest {
                     ).expectBody<ApiResponse<PostMediaResponse>>()
                         .returnResult()
                         .responseBody,
-                ).data().id()
+                ).data.id
 
             expectResultCode(
                 client
@@ -1368,8 +1369,8 @@ class PostControllerE2ETest {
                 .expectBody<ApiResponse<PostResponse>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data().publishStatus()).isEqualTo(PublishStatus.PUBLIC)
-                    assertThat(body.data().title()).isEqualTo("발행된 글")
+                    assertThat(body.data.publishStatus).isEqualTo(PublishStatus.PUBLIC)
+                    assertThat(body.data.title).isEqualTo("발행된 글")
                 }
         }
 
@@ -1401,7 +1402,7 @@ class PostControllerE2ETest {
 
     private fun signUpAndLoginHolder(): LoginResponseHolder {
         val loginResponse = createUserAndLogin(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
-        return LoginResponseHolder(loginResponse.accessToken(), loginResponse.user().id())
+        return LoginResponseHolder(loginResponse.accessToken, loginResponse.user.id)
     }
 
     companion object {

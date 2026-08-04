@@ -125,7 +125,7 @@ object E2ETestSupport {
         nickname: String,
     ): LoginResponse {
         signUp(client, email, password, nickname)
-        return login(client, email, password).data()
+        return login(client, email, password).data
     }
 
     /**
@@ -136,7 +136,7 @@ object E2ETestSupport {
         email: String,
         password: String,
         nickname: String,
-    ): String = createUserAndLogin(client, email, password, nickname).accessToken()
+    ): String = createUserAndLogin(client, email, password, nickname).accessToken
 
     /**
      * 상태 코드와 `resultCode` 만 확인하는 공통 어서션.
@@ -153,7 +153,7 @@ object E2ETestSupport {
             .expectBody(ApiResponse.VOID_BODY)
             .value { body ->
                 checkNotNull(body)
-                assertThat(body.resultCode()).isEqualTo(resultCode)
+                assertThat(body.resultCode).isEqualTo(resultCode)
             }
     }
 }
