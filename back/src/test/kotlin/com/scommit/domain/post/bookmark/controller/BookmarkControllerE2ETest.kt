@@ -532,21 +532,17 @@ class BookmarkControllerE2ETest {
             assertThat(myBookmarks.content[0].title).isEqualTo("북마크 E2E 게시글")
         }
 
-        // FIXME(#5): @PageableDefault 로 들어온 Sort 의 프로퍼티를 검증하는 곳이 없어서
-        // Spring Data 의 PropertyReferenceException 이 GlobalExceptionHandler 의 Exception 핸들러까지 올라간다.
-        // 클라이언트 입력이 원인인데 500-1(서버 오류)로 응답한다. 400-1 이 기대되는 지점이다.
-        // 상세: docs/like-bookmark-notification-e2e-known-issues.md #5
         @Test
-        @DisplayName("8. 존재하지 않는 정렬 필드를 넘기면 500-1을 반환한다")
-        fun getMyBookmarks_invalidSortProperty_returns500_1() {
+        @DisplayName("8. 존재하지 않는 정렬 필드를 넘기면 400-1을 반환한다")
+        fun getMyBookmarks_invalidSortProperty_returns400_1() {
             val accessToken = createUserAndGetAccessToken(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
             val postId = createPublicPost(accessToken)
             createBookmark(accessToken, postId)
 
             expectResultCode(
                 getMyBookmarksRequest(accessToken, "?sort=notAField,desc"),
-                HttpStatus.INTERNAL_SERVER_ERROR,
-                "500-1",
+                HttpStatus.BAD_REQUEST,
+                "400-1",
             )
         }
     }

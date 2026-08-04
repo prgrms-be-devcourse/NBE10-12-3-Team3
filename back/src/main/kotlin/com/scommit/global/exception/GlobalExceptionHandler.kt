@@ -2,6 +2,7 @@ package com.scommit.global.exception
 
 import com.scommit.global.dto.RsData
 import org.slf4j.LoggerFactory
+import org.springframework.data.core.PropertyReferenceException
 import org.springframework.http.ResponseEntity
 import org.springframework.http.converter.HttpMessageNotReadableException
 import org.springframework.validation.BindException
@@ -86,6 +87,21 @@ class GlobalExceptionHandler {
         val errorCode = ErrorCode.INVALID_INPUT_VALUE
         val rsData: RsData<Void> = RsData(errorCode.code, "올바른 JSON 요청 형식이 아닙니다.")
         return ResponseEntity(rsData, errorCode.httpStatus)
+    }
+
+    /**
+     * 존재하지 않는 정렬 프로퍼티(예: ?sort=notAField)를 요청했을 때
+     * (클라이언트 입력 오류이므로 500이 아닌 400으로 응답한다)
+     */
+    @ExceptionHandler(PropertyReferenceException::class)
+    fun handlePropertyReferenceException(e: PropertyReferenceException): ResponseEntity<RsData<Void>> {
+        log.warn("PropertyReferenceException: {}", e.message)
+        return invalidSortFieldResponse()
+    }
+
+    private fun invalidSortFieldResponse(): ResponseEntity<RsData<Void>> {
+        val errorCode = ErrorCode.INVALID_INPUT_VALUE
+        return ResponseEntity(RsData(errorCode.code, "존재하지 않는 정렬 필드입니다."), errorCode.httpStatus)
     }
 
     /**
