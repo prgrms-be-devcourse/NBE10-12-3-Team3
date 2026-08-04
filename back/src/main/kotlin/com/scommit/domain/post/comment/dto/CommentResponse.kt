@@ -14,9 +14,9 @@ data class CommentResponse(
     val updatedAt: LocalDateTime?,
 ) {
     constructor(comment: Comment) : this(
-        comment.id,
-        comment.post.id,
-        comment.user.id,
+        checkNotNull(comment.id),
+        checkNotNull(comment.post.id),
+        checkNotNull(comment.user.id),
         comment.user.nickname,
         comment.body,
         comment.createdAt,
