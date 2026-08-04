@@ -36,9 +36,8 @@ class CouponPolicyService(
         fixedExpiredAt: LocalDateTime?,
     ): CouponPolicyResponse {
         val user =
-            userRepository
-                .findByIdAndDeletedAtIsNull(actor.id)
-                .orElseThrow { BusinessException(ErrorCode.USER_NOT_FOUND) }
+            userRepository.findByIdAndDeletedAtIsNull(checkNotNull(actor.id))
+                ?: throw BusinessException(ErrorCode.USER_NOT_FOUND)
         if (user.role != UserRole.ADMIN) {
             throw BusinessException(ErrorCode.ACCESS_DENIED)
         }

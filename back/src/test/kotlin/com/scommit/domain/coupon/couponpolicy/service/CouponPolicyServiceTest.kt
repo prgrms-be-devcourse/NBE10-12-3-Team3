@@ -24,7 +24,6 @@ import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
 import org.springframework.test.util.ReflectionTestUtils
 import java.time.LocalDateTime
-import java.util.Optional
 
 // any()는 null을 반환하는데, findAllActive(now: LocalDateTime)처럼 Kotlin에서 선언한
 // non-null 파라미터에 그대로 넘기면 실패한다. UserServiceTest.kt와 동일한 워크어라운드.
@@ -55,22 +54,18 @@ class CouponPolicyServiceTest {
     @BeforeEach
     fun setUp() {
         adminUser =
-            User
-                .builder()
-                .email("admin@example.com")
-                .nickname("관리자")
-                .role(UserRole.ADMIN)
-                .build()
-                .also { ReflectionTestUtils.setField(it, "id", 1L) }
+            User(
+                email = "admin@example.com",
+                nickname = "관리자",
+                role = UserRole.ADMIN,
+            ).also { ReflectionTestUtils.setField(it, "id", 1L) }
 
         normalUser =
-            User
-                .builder()
-                .email("user@example.com")
-                .nickname("유저")
-                .role(UserRole.USER)
-                .build()
-                .also { ReflectionTestUtils.setField(it, "id", 2L) }
+            User(
+                email = "user@example.com",
+                nickname = "유저",
+                role = UserRole.USER,
+            ).also { ReflectionTestUtils.setField(it, "id", 2L) }
     }
 
     private fun buildRequest(
@@ -133,7 +128,7 @@ class CouponPolicyServiceTest {
         @Test
         @DisplayName("성공: 관리자가 RELATIVE 방식 이벤트를 생성한다.")
         fun create_Success_Relative() {
-            given(userRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(Optional.of(adminUser))
+            given(userRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(adminUser)
             given(couponPolicyRepository.save(any<CouponPolicy>())).willAnswer { it.arguments[0] }
 
             val response = callCreate(adminUser, buildRequest())
@@ -147,7 +142,7 @@ class CouponPolicyServiceTest {
         @DisplayName("성공: 관리자가 ABSOLUTE 방식 이벤트를 생성한다.")
         fun create_Success_Absolute() {
             val fixedExpiredAt = LocalDateTime.of(2026, 12, 31, 23, 59, 59)
-            given(userRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(Optional.of(adminUser))
+            given(userRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(adminUser)
             given(couponPolicyRepository.save(any<CouponPolicy>())).willAnswer { it.arguments[0] }
 
             val response =
@@ -163,7 +158,7 @@ class CouponPolicyServiceTest {
         @Test
         @DisplayName("실패: 관리자가 아니면 ACCESS_DENIED 예외를 던진다.")
         fun create_Fail_NotAdmin() {
-            given(userRepository.findByIdAndDeletedAtIsNull(2L)).willReturn(Optional.of(normalUser))
+            given(userRepository.findByIdAndDeletedAtIsNull(2L)).willReturn(normalUser)
 
             assertThatThrownBy { callCreate(normalUser, buildRequest()) }
                 .isInstanceOf(BusinessException::class.java)
@@ -173,7 +168,7 @@ class CouponPolicyServiceTest {
         @Test
         @DisplayName("실패: 존재하지 않는 유저면 USER_NOT_FOUND 예외를 던진다.")
         fun create_Fail_UserNotFound() {
-            given(userRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(Optional.empty())
+            given(userRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(null)
 
             assertThatThrownBy { callCreate(adminUser, buildRequest()) }
                 .isInstanceOf(BusinessException::class.java)
@@ -183,7 +178,7 @@ class CouponPolicyServiceTest {
         @Test
         @DisplayName("실패: RELATIVE인데 validDays가 없으면 INVALID_INPUT_VALUE 예외를 던진다.")
         fun create_Fail_RelativeWithoutValidDays() {
-            given(userRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(Optional.of(adminUser))
+            given(userRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(adminUser)
 
             assertThatThrownBy {
                 callCreate(
@@ -197,7 +192,7 @@ class CouponPolicyServiceTest {
         @Test
         @DisplayName("실패: ABSOLUTE인데 fixedExpiredAt이 없으면 INVALID_INPUT_VALUE 예외를 던진다.")
         fun create_Fail_AbsoluteWithoutFixedExpiredAt() {
-            given(userRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(Optional.of(adminUser))
+            given(userRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(adminUser)
 
             assertThatThrownBy {
                 callCreate(

@@ -45,13 +45,11 @@ class UserCouponServiceTest {
     @BeforeEach
     fun setUp() {
         actor =
-            User
-                .builder()
-                .email("test@example.com")
-                .nickname("테스터")
-                .role(UserRole.USER)
-                .build()
-                .also { ReflectionTestUtils.setField(it, "id", 1L) }
+            User(
+                email = "test@example.com",
+                nickname = "테스터",
+                role = UserRole.USER,
+            ).also { ReflectionTestUtils.setField(it, "id", 1L) }
     }
 
     @Suppress("LongParameterList")
