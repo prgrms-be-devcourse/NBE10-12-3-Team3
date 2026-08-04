@@ -183,6 +183,13 @@ public class BaseInitData implements ApplicationRunner {
                 .nickname("관리자").introduction("사이트 관리자입니다.").role(UserRole.ADMIN)
                 .build());
 
+        // Test Buyer User
+        String testPw = passwordEncoder.encode("123123");
+        User testBuyer = userRepository.save(User.builder()
+                .email("123@123.com").password(testPw)
+                .nickname("test").introduction("결제 테스트용 구매자 계정입니다.").role(UserRole.USER)
+                .build());
+
         // Test users: user1@test.com ~ user10@test.com (heavy users)
         List<User> testUsers = new ArrayList<>();
         for (int i = 0; i < 10; i++) {
