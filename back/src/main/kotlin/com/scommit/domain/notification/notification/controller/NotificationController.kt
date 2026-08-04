@@ -1,6 +1,8 @@
 package com.scommit.domain.notification.notification.controller
 
 import com.scommit.domain.notification.notification.repository.SseEmitterRepository
+import com.scommit.global.exception.BusinessException
+import com.scommit.global.exception.ErrorCode
 import com.scommit.global.security.SecurityHelper
 import org.springframework.http.MediaType
 import org.springframework.web.bind.annotation.GetMapping
@@ -22,7 +24,8 @@ class NotificationController(
     @Suppress("TooGenericExceptionThrown")
     @GetMapping(value = ["/subscribe"], produces = [MediaType.TEXT_EVENT_STREAM_VALUE])
     fun subscribe(): SseEmitter {
-        val userId = checkNotNull(securityHelper.actor.id)
+        val actor = securityHelper.actor ?: throw BusinessException(ErrorCode.UNAUTHORIZED)
+        val userId = checkNotNull(actor.id)
 
         val emitter = SseEmitter(SSE_TIMEOUT_MS)
 

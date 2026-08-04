@@ -74,7 +74,7 @@ class UserController(
         @Valid @RequestBody request: LoginRequest,
     ): RsData<LoginResponse> {
         val user = userService.login(request.email, requireNotNull(request.password))
-        val accessToken = jwtProvider.generateAccessToken(user.id, user.email, user.nickname, user.role)
+        val accessToken = jwtProvider.generateAccessToken(checkNotNull(user.id), user.email, user.nickname, user.role)
 
         securityHelper.setCookie("accessToken", accessToken)
         securityHelper.setCookie("refreshToken", user.refreshToken)

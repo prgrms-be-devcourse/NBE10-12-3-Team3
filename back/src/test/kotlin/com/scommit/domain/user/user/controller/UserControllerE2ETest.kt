@@ -256,7 +256,7 @@ class UserControllerE2ETest {
         nickname: String,
         role: UserRole,
     ): String {
-        val key = Keys.hmacShaKeyFor(Decoders.BASE64.decode(authTokenProperties.accessToken.secretKey()))
+        val key = Keys.hmacShaKeyFor(Decoders.BASE64.decode(authTokenProperties.accessToken.secretKey))
         val issuedAt = Date(System.currentTimeMillis() - Duration.ofMinutes(31).toMillis())
         val expiration = Date(System.currentTimeMillis() - Duration.ofMinutes(1).toMillis())
         return Jwts
