@@ -21,6 +21,7 @@ class BookmarkService(
     private val postRepository: PostRepository,
     private val likeRepository: LikeRepository,
 ) {
+    @Suppress("ThrowsCount")
     @Transactional
     fun createBookmark(
         postId: Long,

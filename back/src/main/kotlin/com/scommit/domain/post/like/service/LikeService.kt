@@ -16,6 +16,7 @@ class LikeService(
     private val likeRepository: LikeRepository,
     private val postRepository: PostRepository,
 ) {
+    @Suppress("ThrowsCount")
     @Transactional
     fun createLike(
         postId: Long,

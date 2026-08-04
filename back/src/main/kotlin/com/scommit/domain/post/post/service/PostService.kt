@@ -79,7 +79,9 @@ class PostService
                 val slice = postRepository.findSliceByUserAndDeletedAtIsNull(creator, pageable)
                 val liked = likedPostIds(slice.content, actor)
                 val bookmarked = bookmarkedPostIds(slice.content, actor)
-                return slice.map { post -> PostListResponse(post, liked.contains(post.id), bookmarked.contains(post.id)) }
+                return slice.map { post ->
+                    PostListResponse(post, liked.contains(post.id), bookmarked.contains(post.id))
+                }
             }
             val slice = postRepository.findAllByDeletedAtIsNullAndPublishStatus(PublishStatus.PUBLIC, pageable)
             val liked = likedPostIds(slice.content, actor)

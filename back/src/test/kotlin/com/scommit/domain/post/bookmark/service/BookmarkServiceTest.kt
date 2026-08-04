@@ -185,7 +185,8 @@ class BookmarkServiceTest {
             val pageable: Pageable = PageRequest.of(0, 10)
             val bookmark = Bookmark(post = post, user = actor)
             val page: Page<Bookmark> = PageImpl(listOf(bookmark))
-            given(bookmarkRepository.findByUserIdAndPostDeletedAtIsNull(1L, PublishStatus.PUBLIC, pageable)).willReturn(page)
+            given(bookmarkRepository.findByUserIdAndPostDeletedAtIsNull(1L, PublishStatus.PUBLIC, pageable))
+                .willReturn(page)
 
             // when
             val result: Page<PostListResponse> = bookmarkService.getMyBookmarks(actor, pageable)
@@ -201,7 +202,8 @@ class BookmarkServiceTest {
             // given
             val pageable: Pageable = PageRequest.of(0, 10)
             val emptyPage: Page<Bookmark> = PageImpl(emptyList())
-            given(bookmarkRepository.findByUserIdAndPostDeletedAtIsNull(1L, PublishStatus.PUBLIC, pageable)).willReturn(emptyPage)
+            given(bookmarkRepository.findByUserIdAndPostDeletedAtIsNull(1L, PublishStatus.PUBLIC, pageable))
+                .willReturn(emptyPage)
 
             // when
             val result: Page<PostListResponse> = bookmarkService.getMyBookmarks(actor, pageable)
@@ -217,7 +219,8 @@ class BookmarkServiceTest {
             val pageable: Pageable = PageRequest.of(0, 10)
             val bookmark = Bookmark(post = post, user = actor)
             val page: Page<Bookmark> = PageImpl(listOf(bookmark))
-            given(bookmarkRepository.findByUserIdAndPostDeletedAtIsNull(1L, PublishStatus.PUBLIC, pageable)).willReturn(page)
+            given(bookmarkRepository.findByUserIdAndPostDeletedAtIsNull(1L, PublishStatus.PUBLIC, pageable))
+                .willReturn(page)
 
             // when
             val result: Page<PostListResponse> = bookmarkService.getMyBookmarks(actor, pageable)
@@ -233,7 +236,8 @@ class BookmarkServiceTest {
             val pageable: Pageable = PageRequest.of(0, 10)
             val bookmark = Bookmark(post = post, user = actor)
             val page: Page<Bookmark> = PageImpl(listOf(bookmark))
-            given(bookmarkRepository.findByUserIdAndPostDeletedAtIsNull(1L, PublishStatus.PUBLIC, pageable)).willReturn(page)
+            given(bookmarkRepository.findByUserIdAndPostDeletedAtIsNull(1L, PublishStatus.PUBLIC, pageable))
+                .willReturn(page)
             given(likeRepository.findPostIdsByPostIdInAndUserId(listOf(10L), 1L)).willReturn(listOf(10L))
 
             // when
@@ -250,7 +254,8 @@ class BookmarkServiceTest {
             val pageable: Pageable = PageRequest.of(0, 10)
             val bookmark = Bookmark(post = post, user = actor)
             val page: Page<Bookmark> = PageImpl(listOf(bookmark))
-            given(bookmarkRepository.findByUserIdAndPostDeletedAtIsNull(1L, PublishStatus.PUBLIC, pageable)).willReturn(page)
+            given(bookmarkRepository.findByUserIdAndPostDeletedAtIsNull(1L, PublishStatus.PUBLIC, pageable))
+                .willReturn(page)
             given(likeRepository.findPostIdsByPostIdInAndUserId(listOf(10L), 1L)).willReturn(emptyList())
 
             // when
@@ -276,7 +281,8 @@ class BookmarkServiceTest {
                 ).also { ReflectionTestUtils.setField(it, "id", 11L) }
             val bookmarks = listOf(Bookmark(post = post, user = actor), Bookmark(post = otherPost, user = actor))
             val page: Page<Bookmark> = PageImpl(bookmarks)
-            given(bookmarkRepository.findByUserIdAndPostDeletedAtIsNull(1L, PublishStatus.PUBLIC, pageable)).willReturn(page)
+            given(bookmarkRepository.findByUserIdAndPostDeletedAtIsNull(1L, PublishStatus.PUBLIC, pageable))
+                .willReturn(page)
             given(likeRepository.findPostIdsByPostIdInAndUserId(listOf(10L, 11L), 1L)).willReturn(listOf(11L))
 
             // when

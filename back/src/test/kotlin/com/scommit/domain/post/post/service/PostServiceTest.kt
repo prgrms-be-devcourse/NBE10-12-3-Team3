@@ -266,7 +266,8 @@ class PostServiceTest {
 
             val result = postService.getPosts(null, mockUser, pageable)
 
-            assertThat(result.content).extracting("id", "isLiked", "isBookmarked")
+            assertThat(result.content)
+                .extracting("id", "isLiked", "isBookmarked")
                 .containsExactly(
                     tuple(1L, false, true),
                     tuple(2L, true, false),
