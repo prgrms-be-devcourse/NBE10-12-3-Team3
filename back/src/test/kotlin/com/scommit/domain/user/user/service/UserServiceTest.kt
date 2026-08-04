@@ -1,4 +1,4 @@
-    package com.scommit.domain.user.user.service
+package com.scommit.domain.user.user.service
 
 import com.scommit.domain.user.user.dto.UserSearchResponse
 import com.scommit.domain.user.user.entity.User
