@@ -189,7 +189,7 @@ class BookmarkControllerE2ETest {
                 .exchange()
                 .expectStatus()
                 .isCreated()
-                .expectBody(ApiResponse.VOID_BODY)
+                .expectBody<ApiResponse<Void>>()
                 .value { body ->
                     checkNotNull(body)
                     assertThat(body.resultCode).isEqualTo("201-1")
@@ -289,7 +289,7 @@ class BookmarkControllerE2ETest {
                 .exchange()
                 .expectStatus()
                 .isEqualTo(HttpStatus.CONFLICT)
-                .expectBody(ApiResponse.VOID_BODY)
+                .expectBody<ApiResponse<Void>>()
                 .value { body ->
                     checkNotNull(body)
                     assertThat(body.resultCode).isEqualTo("409-8")
@@ -586,7 +586,7 @@ class BookmarkControllerE2ETest {
                 .exchange()
                 .expectStatus()
                 .isOk()
-                .expectBody(ApiResponse.VOID_BODY)
+                .expectBody<ApiResponse<Void>>()
                 .value { body ->
                     checkNotNull(body)
                     assertThat(body.resultCode).isEqualTo("200-1")
@@ -666,7 +666,7 @@ class BookmarkControllerE2ETest {
                 .exchange()
                 .expectStatus()
                 .isNotFound()
-                .expectBody(ApiResponse.VOID_BODY)
+                .expectBody<ApiResponse<Void>>()
                 .value { body ->
                     checkNotNull(body)
                     assertThat(body.resultCode).isEqualTo("404-8")

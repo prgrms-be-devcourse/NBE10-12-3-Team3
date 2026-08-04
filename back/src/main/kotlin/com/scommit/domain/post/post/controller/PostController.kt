@@ -9,6 +9,8 @@ import com.scommit.domain.post.postmedia.dto.PostMediaResponse
 import com.scommit.domain.post.postmedia.entity.PostMediaType
 import com.scommit.domain.post.postmedia.service.PostMediaService
 import com.scommit.global.dto.RsData
+import com.scommit.global.exception.BusinessException
+import com.scommit.global.exception.ErrorCode
 import com.scommit.global.security.SecurityHelper
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
@@ -47,7 +49,7 @@ class PostController(
     fun getMyPosts(
         @PageableDefault(size = 10, sort = ["id"], direction = Sort.Direction.DESC) pageable: Pageable,
     ): RsData<Page<PostListResponse>> {
-        val actor = securityHelper.actor
+        val actor = securityHelper.actor ?: throw BusinessException(ErrorCode.UNAUTHORIZED)
         val response = postService.getMyPosts(actor, pageable)
         return RsData("200-1", "내가 쓴 게시글 목록입니다.", response)
     }
@@ -59,7 +61,7 @@ class PostController(
     fun createPost(
         @RequestBody request: PostCreateRequest,
     ): RsData<PostResponse> {
-        val actor = securityHelper.actor
+        val actor = securityHelper.actor ?: throw BusinessException(ErrorCode.UNAUTHORIZED)
         val response =
             postService.createPost(
                 actor,
@@ -128,7 +130,7 @@ class PostController(
         @PathVariable id: Long,
         @RequestBody request: PostUpdateRequest,
     ): RsData<PostResponse> {
-        val actor = securityHelper.actor
+        val actor = securityHelper.actor ?: throw BusinessException(ErrorCode.UNAUTHORIZED)
         val response =
             postService.updatePost(
                 actor,
@@ -148,7 +150,7 @@ class PostController(
     fun deletePost(
         @PathVariable id: Long,
     ): RsData<Void> {
-        val actor = securityHelper.actor
+        val actor = securityHelper.actor ?: throw BusinessException(ErrorCode.UNAUTHORIZED)
         postService.deletePost(actor, id)
         return RsData("200-1", "게시글이 삭제되었습니다.")
     }
