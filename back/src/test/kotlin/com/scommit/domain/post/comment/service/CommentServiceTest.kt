@@ -88,14 +88,14 @@ internal class CommentServiceTest {
         ReflectionTestUtils.setField(otherUser, "id", 2L)
 
         mockPost =
-            Post
-                .builder()
-                .user(mockUser)
-                .title("테스트 게시글")
-                .body("내용")
-                .publishStatus(PublishStatus.PUBLIC)
-                .accessLevel(PostAccessLevel.FREE)
-                .build()
+            Post(
+                user = mockUser,
+                series = null,
+                title = "테스트 게시글",
+                body = "내용",
+                publishStatus = PublishStatus.PUBLIC,
+                accessLevel = PostAccessLevel.FREE,
+            )
         ReflectionTestUtils.setField(mockPost, "id", 10L)
     }
 

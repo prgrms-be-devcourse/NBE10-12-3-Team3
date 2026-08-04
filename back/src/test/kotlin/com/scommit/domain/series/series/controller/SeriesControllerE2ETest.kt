@@ -299,19 +299,21 @@ class SeriesControllerE2ETest {
         accessLevel: PostAccessLevel = PostAccessLevel.FREE,
     ): Long =
         checkNotNull(
-            client
-                .post()
-                .uri("/api/posts")
-                .header("Authorization", bearer(accessToken))
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(PostCreateRequest(null, title, body, publishStatus, accessLevel))
-                .exchange()
-                .expectStatus()
-                .isCreated()
-                .expectBody<ApiResponse<PostResponse>>()
-                .returnResult()
-                .responseBody,
-        ).data.id
+            checkNotNull(
+                client
+                    .post()
+                    .uri("/api/posts")
+                    .header("Authorization", bearer(accessToken))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(PostCreateRequest(null, title, body, publishStatus, accessLevel))
+                    .exchange()
+                    .expectStatus()
+                    .isCreated()
+                    .expectBody<ApiResponse<PostResponse>>()
+                    .returnResult()
+                    .responseBody,
+            ).data.id,
+        )
 
     /** 시리즈에 편입된 포스트를 만든다. 두 API를 잇는 픽스처라 각 단계의 성공을 확인하고 넘어간다. */
     private fun createPostInSeries(
@@ -377,7 +379,7 @@ class SeriesControllerE2ETest {
                 .expectBody<ApiResponse<List<PostListResponse>>>()
                 .returnResult()
                 .responseBody,
-        ).data.map(PostListResponse::id)
+        ).data.map { checkNotNull(it.id) }
 
     /** 키 집합 검증용 — DTO로 받으면 "응답에만 있고 DTO에 없는 키"를 볼 수 없다(계획서 C-3). */
     private fun firstSeriesPostNode(response: RestTestClient.ResponseSpec): JsonNode {

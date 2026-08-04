@@ -21,9 +21,8 @@ class LikeService(
         actor: User,
     ) {
         val post =
-            postRepository
-                .findByIdAndDeletedAtIsNull(postId)
-                .orElseThrow { BusinessException(ErrorCode.POST_NOT_FOUND) }
+            postRepository.findByIdAndDeletedAtIsNull(postId)
+                ?: throw BusinessException(ErrorCode.POST_NOT_FOUND)
 
         try {
             likeRepository.save(Like(post, actor))
@@ -38,9 +37,8 @@ class LikeService(
         postId: Long,
         actor: User,
     ) {
-        postRepository
-            .findByIdAndDeletedAtIsNull(postId)
-            .orElseThrow { BusinessException(ErrorCode.POST_NOT_FOUND) }
+        postRepository.findByIdAndDeletedAtIsNull(postId)
+            ?: throw BusinessException(ErrorCode.POST_NOT_FOUND)
 
         val actorId = requireNotNull(actor.id)
         val like =
