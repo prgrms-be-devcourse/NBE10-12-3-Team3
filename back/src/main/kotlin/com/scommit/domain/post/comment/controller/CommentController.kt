@@ -5,6 +5,8 @@ import com.scommit.domain.post.comment.dto.CommentResponse
 import com.scommit.domain.post.comment.dto.CommentUpdateRequest
 import com.scommit.domain.post.comment.service.CommentService
 import com.scommit.global.dto.RsData
+import com.scommit.global.exception.BusinessException
+import com.scommit.global.exception.ErrorCode
 import com.scommit.global.security.SecurityHelper
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
@@ -36,7 +38,7 @@ class CommentController(
         @PathVariable postId: Long,
         @RequestBody request: CommentCreateRequest,
     ): RsData<CommentResponse> {
-        val actor = securityHelper.actor
+        val actor = securityHelper.actor ?: throw BusinessException(ErrorCode.UNAUTHORIZED)
         val response = commentService.createComment(actor, postId, request.body)
         return RsData("201-1", "댓글이 작성되었습니다.", response)
     }
@@ -59,7 +61,7 @@ class CommentController(
         @PathVariable id: Long,
         @RequestBody request: CommentUpdateRequest,
     ): RsData<CommentResponse> {
-        val actor = securityHelper.actor
+        val actor = securityHelper.actor ?: throw BusinessException(ErrorCode.UNAUTHORIZED)
         val response = commentService.updateComment(actor, id, request.body)
         return RsData("200-1", "댓글이 수정되었습니다.", response)
     }
@@ -71,7 +73,7 @@ class CommentController(
         @PathVariable postId: Long,
         @PathVariable id: Long,
     ): RsData<Void> {
-        val actor = securityHelper.actor
+        val actor = securityHelper.actor ?: throw BusinessException(ErrorCode.UNAUTHORIZED)
         commentService.deleteComment(actor, id)
         return RsData("200-1", "댓글이 삭제되었습니다.")
     }

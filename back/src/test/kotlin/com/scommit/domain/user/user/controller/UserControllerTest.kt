@@ -13,6 +13,7 @@ import com.scommit.domain.user.usermedia.dto.UserMediaResponse
 import com.scommit.domain.user.usermedia.service.UserMediaService
 import com.scommit.global.exception.BusinessException
 import com.scommit.global.exception.ErrorCode
+import com.scommit.global.security.JsonUtility
 import com.scommit.global.security.SecurityConfig
 import com.scommit.global.security.SecurityHelper
 import com.scommit.global.security.jwt.JwtFilter
@@ -96,6 +97,10 @@ class UserControllerTest {
 
     @MockitoBean
     private lateinit var securityHelper: SecurityHelper
+
+    @MockitoBean
+    @Suppress("UnusedPrivateProperty")
+    private lateinit var jsonUtility: JsonUtility
 
     @Nested
     @DisplayName("POST /api/users/signup 회원가입")
