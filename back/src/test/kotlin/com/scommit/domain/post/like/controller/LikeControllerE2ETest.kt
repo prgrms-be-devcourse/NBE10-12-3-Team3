@@ -287,48 +287,43 @@ class LikeControllerE2ETest {
             assertThat(likeRepository.existsByPostIdAndUserId(postId, session.user.id)).isTrue()
         }
 
-        // FIXME(#3): LikeService.createLike 는 findByIdAndDeletedAtIsNull 만 보고 publishStatus 를 검사하지 않는다.
-        // PostService.getPost 는 PRIVATE 게시글을 작성자 외에게 403-1 로 막는데, 좋아요는 뚫려 있다.
-        // 상세: docs/like-bookmark-notification-e2e-known-issues.md #3
         @Test
-        @DisplayName("7. 타인의 PRIVATE 게시글에도 좋아요가 된다")
-        fun createLike_onOthersPrivatePost_returns201() {
+        @DisplayName("7. 타인의 PRIVATE 게시글에는 좋아요할 수 없고 403-1을 반환한다")
+        fun createLike_onOthersPrivatePost_returns403_1() {
             val authorToken = createUserAndGetAccessToken(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
             val postId = createPost(authorToken, PublishStatus.PRIVATE, PostAccessLevel.FREE)
 
             val other = createUserAndLogin(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
 
-            // 게시글 상세는 403-1 로 막힌다.
-            expectResultCode(
-                client
-                    .get()
-                    .uri("/api/posts/$postId")
-                    .header("Authorization", bearer(other.accessToken))
-                    .exchange(),
-                HttpStatus.FORBIDDEN,
-                "403-1",
-            )
+            expectResultCode(createLikeRequest(other.accessToken, postId), HttpStatus.FORBIDDEN, "403-1")
 
-            // 그런데 좋아요는 통과한다.
-            expectResultCode(createLikeRequest(other.accessToken, postId), HttpStatus.CREATED, "201-1")
-
-            assertThat(findLike(postId, other.user.id)).isNotNull()
-            assertThat(likeCountOf(postId)).isEqualTo(1L)
+            assertThat(findLike(postId, other.user.id)).isNull()
+            assertThat(likeCountOf(postId)).isZero()
         }
 
-        // FIXME(#3): 바로 위 케이스와 같은 원인. 아직 발행되지 않은(DRAFT) 게시글에도 제3자가 좋아요를 누를 수 있다.
         @Test
-        @DisplayName("8. 타인의 DRAFT 게시글에도 좋아요가 된다")
-        fun createLike_onOthersDraftPost_returns201() {
+        @DisplayName("8. 타인의 DRAFT 게시글에는 좋아요할 수 없고 403-1을 반환한다")
+        fun createLike_onOthersDraftPost_returns403_1() {
             val authorToken = createUserAndGetAccessToken(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
             val postId = createPost(authorToken, PublishStatus.DRAFT, PostAccessLevel.FREE)
 
             val other = createUserAndLogin(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
 
-            expectResultCode(createLikeRequest(other.accessToken, postId), HttpStatus.CREATED, "201-1")
+            expectResultCode(createLikeRequest(other.accessToken, postId), HttpStatus.FORBIDDEN, "403-1")
 
-            assertThat(findLike(postId, other.user.id)).isNotNull()
-            assertThat(likeCountOf(postId)).isEqualTo(1L)
+            assertThat(findLike(postId, other.user.id)).isNull()
+            assertThat(likeCountOf(postId)).isZero()
+        }
+
+        @Test
+        @DisplayName("9. 작성자는 자신의 PRIVATE/DRAFT 게시글에도 좋아요할 수 있다")
+        fun createLike_onOwnNonPublicPost_returns201() {
+            val session = createUserAndLogin(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
+            val postId = createPost(session.accessToken, PublishStatus.PRIVATE, PostAccessLevel.FREE)
+
+            expectResultCode(createLikeRequest(session.accessToken, postId), HttpStatus.CREATED, "201-1")
+
+            assertThat(findLike(postId, session.user.id)).isNotNull()
         }
     }
 

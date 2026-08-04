@@ -2,6 +2,7 @@ package com.scommit.domain.post.like.service
 
 import com.scommit.domain.post.like.entity.Like
 import com.scommit.domain.post.like.repository.LikeRepository
+import com.scommit.domain.post.post.entity.PublishStatus
 import com.scommit.domain.post.post.repository.PostRepository
 import com.scommit.domain.user.user.entity.User
 import com.scommit.global.exception.BusinessException
@@ -23,6 +24,11 @@ class LikeService(
         val post =
             postRepository.findByIdAndDeletedAtIsNull(postId)
                 ?: throw BusinessException(ErrorCode.POST_NOT_FOUND)
+
+        val isOwner = post.user.id == actor.id
+        if (post.publishStatus != PublishStatus.PUBLIC && !isOwner) {
+            throw BusinessException(ErrorCode.ACCESS_DENIED)
+        }
 
         try {
             likeRepository.save(Like(post, actor))
