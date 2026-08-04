@@ -53,7 +53,7 @@ class SeriesController(
         @RequestBody @Valid request: SeriesCreateRequest,
     ): RsData<SeriesResponse> {
         val actor = securityHelper.actor ?: throw BusinessException(ErrorCode.UNAUTHORIZED)
-        val response = seriesService.createSeries(checkNotNull(request.title), request.body, actor.id)
+        val response = seriesService.createSeries(checkNotNull(request.title), request.body, checkNotNull(actor.id))
         return RsData("201-1", "시리즈를 생성하였습니다.", response)
     }
 
@@ -92,7 +92,7 @@ class SeriesController(
         @PageableDefault(size = 10, sort = ["id"], direction = Sort.Direction.DESC) pageable: Pageable,
     ): RsData<PageResponse<SeriesListResponse>> {
         val actor = securityHelper.actor ?: throw BusinessException(ErrorCode.UNAUTHORIZED)
-        val response = PageResponse(seriesService.getSeriesList(actor.id, pageable))
+        val response = PageResponse(seriesService.getSeriesList(checkNotNull(actor.id), pageable))
         return RsData("200-1", "내 시리즈를 조회하였습니다.", response)
     }
 
@@ -144,7 +144,8 @@ class SeriesController(
         @RequestBody @Valid request: SeriesUpdateRequest,
     ): RsData<SeriesResponse> {
         val actor = securityHelper.actor ?: throw BusinessException(ErrorCode.UNAUTHORIZED)
-        val response = seriesService.updateSeries(id, checkNotNull(request.title), request.body, actor.id, actor.role)
+        val response =
+            seriesService.updateSeries(id, checkNotNull(request.title), request.body, checkNotNull(actor.id), actor.role)
         return RsData("200-1", "시리즈를 수정하였습니다.", response)
     }
 
@@ -154,7 +155,7 @@ class SeriesController(
         @PathVariable id: Long,
     ): RsData<Void> {
         val actor = securityHelper.actor ?: throw BusinessException(ErrorCode.UNAUTHORIZED)
-        seriesService.deleteSeries(id, actor.id, actor.role)
+        seriesService.deleteSeries(id, checkNotNull(actor.id), actor.role)
         return RsData("200-1", "시리즈가 삭제되었습니다.")
     }
 
@@ -166,7 +167,7 @@ class SeriesController(
         @RequestPart file: MultipartFile,
     ): RsData<SeriesMediaResponse> {
         val actor = securityHelper.actor ?: throw BusinessException(ErrorCode.UNAUTHORIZED)
-        val response = seriesMediaService.uploadMedia(id, file, actor.id, actor.role)
+        val response = seriesMediaService.uploadMedia(id, file, checkNotNull(actor.id), actor.role)
         return RsData("201-1", "썸네일을 생성하였습니다.", response)
     }
 
@@ -185,7 +186,7 @@ class SeriesController(
         @PathVariable id: Long,
     ): RsData<Void> {
         val actor = securityHelper.actor ?: throw BusinessException(ErrorCode.UNAUTHORIZED)
-        seriesMediaService.deleteMedia(id, actor.id, actor.role)
+        seriesMediaService.deleteMedia(id, checkNotNull(actor.id), actor.role)
         return RsData("200-1", "썸네일이 삭제되었습니다.")
     }
 }
