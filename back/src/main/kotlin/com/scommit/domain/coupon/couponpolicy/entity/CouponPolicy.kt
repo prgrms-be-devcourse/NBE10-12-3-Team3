@@ -8,6 +8,7 @@ import jakarta.persistence.Enumerated
 import jakarta.persistence.Table
 import java.time.LocalDateTime
 
+@Suppress("LongParameterList")
 @Entity
 @Table(name = "coupon_policies")
 class CouponPolicy(
@@ -48,8 +49,10 @@ class CouponPolicy(
 
     fun isSoldOut(): Boolean = issuedQuantity >= totalQuantity
 
-    fun isActive(now: LocalDateTime = LocalDateTime.now()): Boolean =
-        deletedAt == null && !now.isBefore(startAt) && !now.isAfter(endAt)
+    fun isActive(now: LocalDateTime = LocalDateTime.now()): Boolean {
+        val withinPeriod = !now.isBefore(startAt) && !now.isAfter(endAt)
+        return deletedAt == null && withinPeriod
+    }
 
     // 발급 시점에 실제 만료 시각을 계산해 UserCoupon에 고정 저장할 때 쓴다.
     fun calculateExpiredAt(issuedAt: LocalDateTime): LocalDateTime =

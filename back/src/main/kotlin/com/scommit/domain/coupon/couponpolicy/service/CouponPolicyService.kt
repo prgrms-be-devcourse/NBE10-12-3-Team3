@@ -20,7 +20,7 @@ class CouponPolicyService(
     private val couponPolicyRepository: CouponPolicyRepository,
     private val userRepository: UserRepository,
 ) {
-    @Suppress("LongParameterList")
+    @Suppress("LongParameterList", "ThrowsCount")
     @Transactional
     fun createCouponPolicy(
         actor: User,
@@ -36,16 +36,20 @@ class CouponPolicyService(
         fixedExpiredAt: LocalDateTime?,
     ): CouponPolicyResponse {
         val user =
-            userRepository.findByIdAndDeletedAtIsNull(actor.id)
+            userRepository
+                .findByIdAndDeletedAtIsNull(actor.id)
                 .orElseThrow { BusinessException(ErrorCode.USER_NOT_FOUND) }
         if (user.role != UserRole.ADMIN) {
             throw BusinessException(ErrorCode.ACCESS_DENIED)
         }
         when (expiryType) {
-            ExpiryType.RELATIVE ->
+            ExpiryType.RELATIVE -> {
                 if (validDays == null) throw BusinessException(ErrorCode.INVALID_INPUT_VALUE)
-            ExpiryType.ABSOLUTE ->
+            }
+
+            ExpiryType.ABSOLUTE -> {
                 if (fixedExpiredAt == null) throw BusinessException(ErrorCode.INVALID_INPUT_VALUE)
+            }
         }
 
         val couponPolicy =

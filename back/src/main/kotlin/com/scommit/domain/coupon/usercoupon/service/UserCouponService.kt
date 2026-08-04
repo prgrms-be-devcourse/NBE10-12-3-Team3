@@ -17,6 +17,7 @@ class UserCouponService(
     private val couponPolicyRepository: CouponPolicyRepository,
     private val userCouponRepository: UserCouponRepository,
 ) {
+    @Suppress("ThrowsCount")
     @Transactional
     fun issueCoupon(
         actor: User,
@@ -32,8 +33,6 @@ class UserCouponService(
         if (userCouponRepository.existsByUserAndCouponPolicy(actor, couponPolicy)) {
             throw BusinessException(ErrorCode.COUPON_ALREADY_ISSUED)
         }
-        // TODO: 동시성 제어 없음 — 다음 단계에서 비관적 락 적용 예정.
-        // 지금은 여러 요청이 동시에 들어오면 issuedQuantity가 totalQuantity를 넘어설 수 있다.
         if (couponPolicy.isSoldOut()) {
             throw BusinessException(ErrorCode.COUPON_SOLD_OUT)
         }
@@ -45,6 +44,8 @@ class UserCouponService(
         return UserCouponResponse(userCoupon)
     }
 
-    fun getMyCoupons(actor: User): List<UserCouponResponse> =
-        userCouponRepository.findAllByUser(actor).map { UserCouponResponse(it) }
+    fun getMyCoupons(actor: User): List<UserCouponResponse> {
+        val coupons = userCouponRepository.findAllByUser(actor)
+        return coupons.map { UserCouponResponse(it) }
+    }
 }

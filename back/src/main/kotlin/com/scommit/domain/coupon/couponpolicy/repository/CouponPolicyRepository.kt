@@ -11,7 +11,7 @@ interface CouponPolicyRepository : JpaRepository<CouponPolicy, Long> {
 
     @Query(
         "SELECT c FROM CouponPolicy c " +
-                "WHERE c.deletedAt IS NULL AND c.startAt <= :now AND c.endAt >= :now",
+            "WHERE c.deletedAt IS NULL AND c.startAt <= :now AND c.endAt >= :now",
     )
     fun findAllActive(
         @Param("now") now: LocalDateTime,

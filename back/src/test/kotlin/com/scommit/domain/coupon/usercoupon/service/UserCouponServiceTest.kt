@@ -54,6 +54,7 @@ class UserCouponServiceTest {
                 .also { ReflectionTestUtils.setField(it, "id", 1L) }
     }
 
+    @Suppress("LongParameterList")
     private fun buildPolicy(
         id: Long,
         totalQuantity: Int = 100,
@@ -101,7 +102,8 @@ class UserCouponServiceTest {
         @DisplayName("성공: ABSOLUTE 정책이면 고정된 날짜로 만료일이 설정된다.")
         fun issue_Success_Absolute() {
             val fixedExpiredAt = LocalDateTime.of(2026, 12, 31, 23, 59, 59)
-            val policy = buildPolicy(1L, expiryType = ExpiryType.ABSOLUTE, validDays = null, fixedExpiredAt = fixedExpiredAt)
+            val policy =
+                buildPolicy(1L, expiryType = ExpiryType.ABSOLUTE, validDays = null, fixedExpiredAt = fixedExpiredAt)
             given(couponPolicyRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(policy)
             given(userCouponRepository.existsByUserAndCouponPolicy(actor, policy)).willReturn(false)
 
