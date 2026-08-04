@@ -1,0 +1,22 @@
+# Prometheus 글로벌 설정
+global:
+  scrape_interval: 15s  # 메트릭 수집 간격
+
+# 메트릭 수집 대상
+scrape_configs:
+  # 스프링 부트 앱 메트릭
+  - job_name: 'spring-boot'
+    metrics_path: '/actuator/prometheus'
+    scheme: 'https'
+    static_configs:
+      - targets: ['api.scommit.store']
+
+  # MySQL 데이터베이스 메트릭 (mysql-exporter)
+  - job_name: 'mysql'
+    static_configs:
+      - targets: ['13.238.245.254:9104']
+
+  # 호스트 시스템 메트릭 (node-exporter)
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
