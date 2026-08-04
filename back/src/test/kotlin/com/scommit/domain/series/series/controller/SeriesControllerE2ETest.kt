@@ -960,8 +960,8 @@ class SeriesControllerE2ETest {
             assertThat(series.deletedAt).isNotNull()
 
             val seriesMediaAfterDelete = seriesMediaRepository.findBySeries(series)
-            assertThat(seriesMediaAfterDelete).isPresent()
-            assertThat(seriesMediaAfterDelete.get().id).isEqualTo(uploaded.id)
+            assertThat(seriesMediaAfterDelete).isNotNull()
+            assertThat(checkNotNull(seriesMediaAfterDelete).id).isEqualTo(uploaded.id)
             assertThat(mediaRepository.count()).isEqualTo(mediaCountBeforeDelete)
             assertThat(Files.exists(uploadedFilePath(requireNotNull(uploaded.url)))).isTrue()
         }

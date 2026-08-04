@@ -49,9 +49,17 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
+import org.springframework.web.multipart.MultipartFile
 import tools.jackson.databind.ObjectMapper
 import java.time.LocalDateTime
 import com.scommit.domain.media.media.entity.MediaType as MediaFileType
+
+// any() returns null at runtime, which fails Kotlin's non-null check on Kotlin-declared repository params.
+private fun <T> anyOfType(): T {
+    any<T>()
+    @Suppress("UNCHECKED_CAST")
+    return null as T
+}
 
 @WebMvcTest(
     controllers = [UserController::class],
@@ -500,7 +508,7 @@ class UserControllerTest {
             given(securityHelper.actor).willReturn(actor)
             given(userService.getUser(1L)).willReturn(actor)
             given(userMediaService.getMedia(1L)).willReturn(
-                UserMediaResponse(1L, 1L, null, null),
+                UserMediaResponse(1L, 1L, null, MediaFileType.IMAGE),
             )
 
             mvc
@@ -586,7 +594,7 @@ class UserControllerTest {
             given(updatedUser.createdAt).willReturn(LocalDateTime.now())
             given(userService.updateUser(1L, newNickname, newIntroduction)).willReturn(updatedUser)
             given(userMediaService.getMedia(1L)).willReturn(
-                UserMediaResponse(1L, 1L, "user/uuid.png", null),
+                UserMediaResponse(1L, 1L, "user/uuid.png", MediaFileType.IMAGE),
             )
 
             val request = UserUpdateRequest(newNickname, newIntroduction)
@@ -905,7 +913,7 @@ class UserControllerTest {
 
             val response = UserMediaResponse(1L, 1L, "user/uuid.png", MediaFileType.IMAGE)
             val file = MockMultipartFile("file", "profile.png", "image/png", "content".toByteArray())
-            given(userMediaService.uploadMedia(anyLong(), any())).willReturn(response)
+            given(userMediaService.uploadMedia(anyLong(), anyOfType<MultipartFile>())).willReturn(response)
 
             mvc
                 .perform(

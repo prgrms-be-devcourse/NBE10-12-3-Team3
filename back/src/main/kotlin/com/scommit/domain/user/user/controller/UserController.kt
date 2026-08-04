@@ -113,7 +113,7 @@ class UserController(
     fun getMyInfo(): RsData<UserMeResponse> {
         val actor = securityHelper.actor ?: throw BusinessException(ErrorCode.UNAUTHORIZED)
         val user = userService.getUser(checkNotNull(actor.id)) ?: throw BusinessException(ErrorCode.USER_NOT_FOUND)
-        val profileImageUrl = userMediaService.getMedia(checkNotNull(actor.id))?.url()
+        val profileImageUrl = userMediaService.getMedia(checkNotNull(actor.id))?.url
 
         return RsData(
             "200-1",
@@ -133,9 +133,9 @@ class UserController(
         val updatedUser = userService.updateUser(checkNotNull(actor.id), request.nickname, request.introduction)
         val profileImageUrl =
             if (profileImage != null) {
-                userMediaService.uploadMedia(checkNotNull(actor.id), profileImage).url()
+                userMediaService.uploadMedia(checkNotNull(actor.id), profileImage).url
             } else {
-                userMediaService.getMedia(checkNotNull(actor.id))?.url()
+                userMediaService.getMedia(checkNotNull(actor.id))?.url
             }
 
         return RsData("200-1", "내 정보를 수정하였습니다.", UserUpdateResponse(updatedUser, profileImageUrl))
@@ -172,7 +172,7 @@ class UserController(
     ): RsData<UserProfileResponse> {
         val user = userService.getUser(id) ?: throw BusinessException(ErrorCode.USER_NOT_FOUND)
         val followerCount = subscriptionService.getFollowerCount(id).toInt()
-        val profileImageUrl = userMediaService.getMedia(id)?.url()
+        val profileImageUrl = userMediaService.getMedia(id)?.url
         return RsData(
             "200-1",
             "유저 정보를 조회하였습니다.",
