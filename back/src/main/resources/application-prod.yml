@@ -1,7 +1,10 @@
 server:
   forward-headers-strategy: native
+  shutdown: graceful
 
 spring:
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
   datasource:
     url: "jdbc:mysql://db:3306/${DB_NAME}?useSSL=false&serverTimezone=Asia/Seoul&characterEncoding=UTF-8&allowPublicKeyRetrieval=true"
     driver-class-name: com.mysql.cj.jdbc.Driver

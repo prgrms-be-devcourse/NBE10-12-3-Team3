@@ -57,6 +57,7 @@ import java.util.concurrent.BlockingQueue
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
 import java.util.stream.Stream
+import kotlin.jvm.optionals.getOrNull
 
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
@@ -172,7 +173,7 @@ class NotificationControllerE2ETest {
             }
 
         assertThat(response.statusCode()).isEqualTo(HttpStatus.OK.value())
-        assertThat(response.headers().firstValue("Content-Type").orElseThrow())
+        assertThat(checkNotNull(response.headers().firstValue("Content-Type").getOrNull()))
             .startsWith(MediaType.TEXT_EVENT_STREAM_VALUE)
         return SseConnection(httpClient, response.body())
     }
@@ -197,7 +198,7 @@ class NotificationControllerE2ETest {
                 .expectBody<ApiResponse<PostResponse>>()
                 .returnResult()
                 .responseBody,
-        ).data().id()
+        ).data.id
 
     private fun createPublicPost(accessToken: String): Long =
         createPost(accessToken, PublishStatus.PUBLIC, PostAccessLevel.FREE)
@@ -295,8 +296,8 @@ class NotificationControllerE2ETest {
                     // 401-1 은 AuthenticationEntryPoint 와 BusinessException(UNAUTHORIZED)이 공유하는
                     // 코드라 msg 까지 본다(컨벤션 6장). 깨진 토큰은 JwtFilter 가 조용히 익명으로 흘려보내고
                     // EntryPoint 가 응답하므로 "로그인 후 이용해주세요." 쪽이다.
-                    assertThat(body.resultCode()).isEqualTo("401-1")
-                    assertThat(body.msg()).isEqualTo("로그인 후 이용해주세요.")
+                    assertThat(body.resultCode).isEqualTo("401-1")
+                    assertThat(body.msg).isEqualTo("로그인 후 이용해주세요.")
                 }
         }
 
@@ -305,10 +306,10 @@ class NotificationControllerE2ETest {
         fun subscribe_receivesCommentNotification() {
             val author = createUserAndLogin(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
             val commenter = createUserAndLogin(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
-            val postId = createPublicPost(author.accessToken())
+            val postId = createPublicPost(author.accessToken)
 
-            subscribe(author.accessToken()).use { connection ->
-                createComment(commenter.accessToken(), postId, "알림을 만드는 댓글")
+            subscribe(author.accessToken).use { connection ->
+                createComment(commenter.accessToken, postId, "알림을 만드는 댓글")
 
                 val event = connection.nextEvent()
                 assertThat(event).isNotNull()
@@ -316,7 +317,7 @@ class NotificationControllerE2ETest {
                 assertThat(event.name).isEqualTo("notification")
                 assertThat(event.data)
                     .contains("\"type\":\"${NotificationType.COMMENT}\"")
-                    .contains("\"message\":\"${commenter.user().nickname()}님이 댓글을 작성했습니다.\"")
+                    .contains("\"message\":\"${commenter.user.nickname}님이 댓글을 작성했습니다.\"")
                     // targetId 는 알림을 눌렀을 때 이동할 대상 — 댓글이 아니라 게시글 id 다.
                     .contains("\"targetId\":$postId")
             }
@@ -327,14 +328,14 @@ class NotificationControllerE2ETest {
         fun subscribe_ownCommentDoesNotNotify() {
             val author = createUserAndLogin(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
             val commenter = createUserAndLogin(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
-            val postId = createPublicPost(author.accessToken())
+            val postId = createPublicPost(author.accessToken)
 
-            subscribe(author.accessToken()).use { connection ->
-                createComment(author.accessToken(), postId, "내가 내 글에 다는 댓글")
+            subscribe(author.accessToken).use { connection ->
+                createComment(author.accessToken, postId, "내가 내 글에 다는 댓글")
                 connection.expectSilence()
 
                 // 연결이 죽어서 조용한 것이 아님을 같은 연결로 확인한다.
-                createComment(commenter.accessToken(), postId, "남이 다는 댓글")
+                createComment(commenter.accessToken, postId, "남이 다는 댓글")
                 val event = connection.nextEvent()
                 assertThat(event).isNotNull()
                 checkNotNull(event)
@@ -348,8 +349,8 @@ class NotificationControllerE2ETest {
             val creator = createUserAndLogin(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
             val follower = createUserAndLogin(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
 
-            subscribe(creator.accessToken()).use { connection ->
-                follow(follower.accessToken(), creator.user().id())
+            subscribe(creator.accessToken).use { connection ->
+                follow(follower.accessToken, creator.user.id)
 
                 val event = connection.nextEvent()
                 assertThat(event).isNotNull()
@@ -357,9 +358,9 @@ class NotificationControllerE2ETest {
                 assertThat(event.name).isEqualTo("notification")
                 assertThat(event.data)
                     .contains("\"type\":\"${NotificationType.FOLLOW}\"")
-                    .contains("\"message\":\"${follower.user().nickname()}님이 팔로우했습니다.\"")
+                    .contains("\"message\":\"${follower.user.nickname}님이 팔로우했습니다.\"")
                     // FOLLOW 의 targetId 는 팔로우한 사람의 유저 id 다.
-                    .contains("\"targetId\":${follower.user().id()}")
+                    .contains("\"targetId\":${follower.user.id}")
             }
         }
 
@@ -369,16 +370,16 @@ class NotificationControllerE2ETest {
             val creator = createUserAndLogin(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
             val member = createUserAndLogin(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
 
-            subscribe(creator.accessToken()).use { connection ->
-                joinMembership(member.accessToken(), creator.user().id())
+            subscribe(creator.accessToken).use { connection ->
+                joinMembership(member.accessToken, creator.user.id)
 
                 val event = connection.nextEvent()
                 assertThat(event).isNotNull()
                 checkNotNull(event)
                 assertThat(event.data)
                     .contains("\"type\":\"${NotificationType.MEMBERSHIP}\"")
-                    .contains("\"message\":\"${member.user().nickname()}님이 멤버십에 가입했습니다.\"")
-                    .contains("\"targetId\":${member.user().id()}")
+                    .contains("\"message\":\"${member.user.nickname}님이 멤버십에 가입했습니다.\"")
+                    .contains("\"targetId\":${member.user.id}")
             }
         }
 
@@ -387,17 +388,17 @@ class NotificationControllerE2ETest {
         fun subscribe_receivesNewPostNotification() {
             val creator = createUserAndLogin(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
             val follower = createUserAndLogin(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
-            follow(follower.accessToken(), creator.user().id())
+            follow(follower.accessToken, creator.user.id)
 
-            subscribe(follower.accessToken()).use { connection ->
-                val postId = createPublicPost(creator.accessToken())
+            subscribe(follower.accessToken).use { connection ->
+                val postId = createPublicPost(creator.accessToken)
 
                 val event = connection.nextEvent()
                 assertThat(event).isNotNull()
                 checkNotNull(event)
                 assertThat(event.data)
                     .contains("\"type\":\"${NotificationType.NEW_POST}\"")
-                    .contains("\"message\":\"${creator.user().nickname()}님이 새 게시글을 작성했습니다.\"")
+                    .contains("\"message\":\"${creator.user.nickname}님이 새 게시글을 작성했습니다.\"")
                     .contains("\"targetId\":$postId")
             }
         }
@@ -407,15 +408,15 @@ class NotificationControllerE2ETest {
         fun subscribe_draftPostDoesNotNotify() {
             val creator = createUserAndLogin(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
             val follower = createUserAndLogin(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
-            follow(follower.accessToken(), creator.user().id())
+            follow(follower.accessToken, creator.user.id)
 
-            subscribe(follower.accessToken()).use { connection ->
+            subscribe(follower.accessToken).use { connection ->
                 // PostService.createPost 는 publishStatus == PUBLIC 일 때만 sendSse 를 부른다.
-                createPost(creator.accessToken(), PublishStatus.DRAFT, PostAccessLevel.FREE)
+                createPost(creator.accessToken, PublishStatus.DRAFT, PostAccessLevel.FREE)
                 connection.expectSilence()
 
                 // 같은 연결로 PUBLIC 을 하나 더 써서 "연결이 살아 있었다"를 확인한다.
-                val publicPostId = createPublicPost(creator.accessToken())
+                val publicPostId = createPublicPost(creator.accessToken)
                 val event = connection.nextEvent()
                 assertThat(event).isNotNull()
                 checkNotNull(event)
@@ -428,15 +429,15 @@ class NotificationControllerE2ETest {
         fun subscribe_paidPostNotifiesMembersOnly() {
             val creator = createUserAndLogin(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
             val follower = createUserAndLogin(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
-            follow(follower.accessToken(), creator.user().id())
+            follow(follower.accessToken, creator.user.id)
 
-            subscribe(follower.accessToken()).use { connection ->
+            subscribe(follower.accessToken).use { connection ->
                 // PAID 글의 수신자는 findByCreatorIdAndTierAndDeletedAtIsNull(..., MEMBERSHIP) 로만 뽑는다.
-                createPost(creator.accessToken(), PublishStatus.PUBLIC, PostAccessLevel.PAID)
+                createPost(creator.accessToken, PublishStatus.PUBLIC, PostAccessLevel.PAID)
                 connection.expectSilence()
 
                 // FREE 글은 같은 구독자에게도 간다 — 등급 필터가 원인임을 대비로 보인다.
-                val freePostId = createPublicPost(creator.accessToken())
+                val freePostId = createPublicPost(creator.accessToken)
                 val event = connection.nextEvent()
                 assertThat(event).isNotNull()
                 checkNotNull(event)
@@ -453,9 +454,9 @@ class NotificationControllerE2ETest {
         fun subscribe_likeAndBookmarkDoNotNotify() {
             val author = createUserAndLogin(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
             val readerToken = createUserAndGetAccessToken(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
-            val postId = createPublicPost(author.accessToken())
+            val postId = createPublicPost(author.accessToken)
 
-            subscribe(author.accessToken()).use { connection ->
+            subscribe(author.accessToken).use { connection ->
                 client
                     .post()
                     .uri("/api/posts/$postId/likes")
@@ -486,15 +487,15 @@ class NotificationControllerE2ETest {
             val bystander = createUserAndLogin(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
             val author = createUserAndLogin(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
             val commenterToken = createUserAndGetAccessToken(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
-            val postId = createPublicPost(author.accessToken())
+            val postId = createPublicPost(author.accessToken)
 
-            subscribe(bystander.accessToken()).use { connection ->
+            subscribe(bystander.accessToken).use { connection ->
                 // 알림 수신자는 게시글 작성자다. 구경꾼의 연결에는 아무것도 오면 안 된다.
                 createComment(commenterToken, postId, "남의 글에 다는 댓글")
                 connection.expectSilence()
 
                 // 구경꾼을 팔로우하면 그때는 온다.
-                follow(commenterToken, bystander.user().id())
+                follow(commenterToken, bystander.user.id)
                 val event = connection.nextEvent()
                 assertThat(event).isNotNull()
                 checkNotNull(event)
@@ -511,11 +512,11 @@ class NotificationControllerE2ETest {
         fun subscribe_secondSubscriptionSilentlyReplacesFirst() {
             val creator = createUserAndLogin(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
             val follower = createUserAndLogin(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
-            follow(follower.accessToken(), creator.user().id())
+            follow(follower.accessToken, creator.user.id)
 
-            subscribe(follower.accessToken()).use { first ->
-                subscribe(follower.accessToken()).use { second ->
-                    val postId = createPublicPost(creator.accessToken())
+            subscribe(follower.accessToken).use { first ->
+                subscribe(follower.accessToken).use { second ->
+                    val postId = createPublicPost(creator.accessToken)
 
                     // 나중에 연 연결만 받는다.
                     val event = second.nextEvent()
@@ -540,19 +541,19 @@ class NotificationControllerE2ETest {
             val creator = createUserAndLogin(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
             val fan = createUserAndLogin(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
 
-            val myPostId = createPublicPost(me.accessToken())
-            follow(me.accessToken(), creator.user().id())
+            val myPostId = createPublicPost(me.accessToken)
+            follow(me.accessToken, creator.user.id)
 
-            subscribe(me.accessToken()).use { connection ->
+            subscribe(me.accessToken).use { connection ->
                 // 1) 누가 나를 팔로우
-                follow(fan.accessToken(), me.user().id())
+                follow(fan.accessToken, me.user.id)
                 val followEvent = connection.nextEvent()
                 assertThat(followEvent).isNotNull()
                 checkNotNull(followEvent)
                 assertThat(followEvent.data).contains("\"type\":\"${NotificationType.FOLLOW}\"")
 
                 // 2) 내가 팔로우한 창작자가 글을 씀
-                val creatorPostId = createPublicPost(creator.accessToken())
+                val creatorPostId = createPublicPost(creator.accessToken)
                 val newPostEvent = connection.nextEvent()
                 assertThat(newPostEvent).isNotNull()
                 checkNotNull(newPostEvent)
@@ -561,7 +562,7 @@ class NotificationControllerE2ETest {
                     .contains("\"targetId\":$creatorPostId")
 
                 // 3) 내 글에 누가 댓글
-                createComment(fan.accessToken(), myPostId, "마지막 알림")
+                createComment(fan.accessToken, myPostId, "마지막 알림")
                 val commentEvent = connection.nextEvent()
                 assertThat(commentEvent).isNotNull()
                 checkNotNull(commentEvent)

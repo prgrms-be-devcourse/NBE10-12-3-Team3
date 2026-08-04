@@ -256,7 +256,7 @@ class UserControllerE2ETest {
         nickname: String,
         role: UserRole,
     ): String {
-        val key = Keys.hmacShaKeyFor(Decoders.BASE64.decode(authTokenProperties.accessToken().secretKey()))
+        val key = Keys.hmacShaKeyFor(Decoders.BASE64.decode(authTokenProperties.accessToken.secretKey()))
         val issuedAt = Date(System.currentTimeMillis() - Duration.ofMinutes(31).toMillis())
         val expiration = Date(System.currentTimeMillis() - Duration.ofMinutes(1).toMillis())
         return Jwts
@@ -282,14 +282,14 @@ class UserControllerE2ETest {
 
             val result = signUp(client, email, DEFAULT_PASSWORD, nickname)
 
-            assertThat(result.resultCode()).isEqualTo("201-1")
-            assertThat(result.data().id()).isNotNull()
-            assertThat(result.data().email()).isEqualTo(email)
-            assertThat(result.data().nickname()).isEqualTo(nickname)
-            assertThat(result.data().createdAt()).isNotNull()
+            assertThat(result.resultCode).isEqualTo("201-1")
+            assertThat(result.data.id).isNotNull()
+            assertThat(result.data.email).isEqualTo(email)
+            assertThat(result.data.nickname).isEqualTo(nickname)
+            assertThat(result.data.createdAt).isNotNull()
 
             val saved = userRepository.findByEmailAndDeletedAtIsNull(email).orElseThrow()
-            assertThat(saved.id).isEqualTo(result.data().id())
+            assertThat(saved.id).isEqualTo(result.data.id)
             assertThat(saved.role).isEqualTo(UserRole.USER)
             assertThat(saved.refreshToken).isNotBlank()
             assertThat(passwordEncoder.matches(DEFAULT_PASSWORD, saved.password)).isTrue()
@@ -386,8 +386,8 @@ class UserControllerE2ETest {
                 .expectBody(ApiResponse.VOID_BODY)
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("400-1")
-                    assertThat(body.msg()).isEqualTo("올바른 JSON 요청 형식이 아닙니다.")
+                    assertThat(body.resultCode).isEqualTo("400-1")
+                    assertThat(body.msg).isEqualTo("올바른 JSON 요청 형식이 아닙니다.")
                 }
         }
     }
@@ -417,13 +417,13 @@ class UserControllerE2ETest {
                 .expectBody<ApiResponse<LoginResponse>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("200-1")
-                    assertThat(body.data().accessToken()).isNotBlank()
-                    assertThat(body.data().refreshToken()).isNotBlank()
-                    assertThat(body.data().expiresIn()).isEqualTo(1800)
-                    assertThat(body.data().user().email()).isEqualTo(email)
-                    assertThat(body.data().user().nickname()).isEqualTo(nickname)
-                    assertThat(body.data().user().role()).isEqualTo(UserRole.USER)
+                    assertThat(body.resultCode).isEqualTo("200-1")
+                    assertThat(body.data.accessToken).isNotBlank()
+                    assertThat(body.data.refreshToken).isNotBlank()
+                    assertThat(body.data.expiresIn).isEqualTo(1800)
+                    assertThat(body.data.user.email).isEqualTo(email)
+                    assertThat(body.data.user.nickname).isEqualTo(nickname)
+                    assertThat(body.data.user.role).isEqualTo(UserRole.USER)
                 }
         }
 
@@ -502,14 +502,14 @@ class UserControllerE2ETest {
         @DisplayName("1. 성공하면 200을 반환하고 refreshToken을 무효화하며 쿠키를 삭제한다")
         fun logout_success_returns200AndInvalidatesRefreshToken() {
             val session = createUserAndLogin(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
-            val originalRefreshToken = session.refreshToken()
-            val userId = session.user().id()
+            val originalRefreshToken = session.refreshToken
+            val userId = session.user.id
 
             val response =
                 client
                     .post()
                     .uri("/api/users/logout")
-                    .header("Authorization", bearer(session.accessToken()))
+                    .header("Authorization", bearer(session.accessToken))
                     .exchange()
                     .expectCookie()
                     .maxAge("accessToken", Duration.ZERO)
@@ -534,8 +534,8 @@ class UserControllerE2ETest {
                 .expectBody(ApiResponse.VOID_BODY)
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("401-1")
-                    assertThat(body.msg()).isEqualTo("로그인 후 이용해주세요.")
+                    assertThat(body.resultCode).isEqualTo("401-1")
+                    assertThat(body.msg).isEqualTo("로그인 후 이용해주세요.")
                 }
         }
 
@@ -557,9 +557,9 @@ class UserControllerE2ETest {
                 .expectBody(ApiResponse.VOID_BODY)
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("401-2")
-                    assertThat(body.msg()).isEqualTo("Authorization 헤더가 Bearer 형식이 아닙니다.")
-                    assertThat(body.data()).isNull()
+                    assertThat(body.resultCode).isEqualTo("401-2")
+                    assertThat(body.msg).isEqualTo("Authorization 헤더가 Bearer 형식이 아닙니다.")
+                    assertThat(body.data).isNull()
                 }
         }
 
@@ -593,8 +593,8 @@ class UserControllerE2ETest {
         fun deleteAccount_success_returns200_thenLoginFails_andReDeleteStillReturns200() {
             val email = uniqueEmail()
             val session = createUserAndLogin(client, email, DEFAULT_PASSWORD, uniqueNickname())
-            val accessToken = session.accessToken()
-            val userId = session.user().id()
+            val accessToken = session.accessToken
+            val userId = session.user.id
 
             val response =
                 deleteAccount(accessToken, DEFAULT_PASSWORD)
@@ -664,11 +664,11 @@ class UserControllerE2ETest {
                 .expectBody<ApiResponse<UserMeResponse>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("200-1")
-                    assertThat(body.data().email()).isEqualTo(email)
-                    assertThat(body.data().profile().nickname()).isEqualTo(nickname)
-                    assertThat(body.data().profile().introduction()).isNull()
-                    assertThat(body.data().profile().profileImageUrl()).isNull()
+                    assertThat(body.resultCode).isEqualTo("200-1")
+                    assertThat(body.data.email).isEqualTo(email)
+                    assertThat(body.data.profile.nickname).isEqualTo(nickname)
+                    assertThat(body.data.profile.introduction).isNull()
+                    assertThat(body.data.profile.profileImageUrl).isNull()
                 }
         }
 
@@ -692,7 +692,7 @@ class UserControllerE2ETest {
             val email = uniqueEmail()
             val nickname = uniqueNickname()
             val signUpResult = signUp(client, email, DEFAULT_PASSWORD, nickname)
-            val expiredToken = expiredAccessToken(signUpResult.data().id(), email, nickname, UserRole.USER)
+            val expiredToken = expiredAccessToken(signUpResult.data.id, email, nickname, UserRole.USER)
 
             expectResultCode(getMe(expiredToken), HttpStatus.UNAUTHORIZED, "401-1")
         }
@@ -721,10 +721,10 @@ class UserControllerE2ETest {
                 .expectBody<ApiResponse<UserUpdateResponse>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("200-1")
-                    assertThat(body.data().profile().nickname()).isEqualTo(newNickname)
-                    assertThat(body.data().profile().introduction()).isEqualTo(newIntroduction)
-                    assertThat(body.data().profile().profileImageUrl()).isNull()
+                    assertThat(body.resultCode).isEqualTo("200-1")
+                    assertThat(body.data.profile.nickname).isEqualTo(newNickname)
+                    assertThat(body.data.profile.introduction).isEqualTo(newIntroduction)
+                    assertThat(body.data.profile.profileImageUrl).isNull()
                 }
 
             val updated = userRepository.findByEmailAndDeletedAtIsNull(email).orElseThrow()
@@ -736,8 +736,8 @@ class UserControllerE2ETest {
         @DisplayName("2. 프로필 이미지를 함께 업로드하면 200과 profileImageUrl을 반환하고, 그 URL이 실제로 조회된다")
         fun updateMe_successWithProfileImage_returns200WithImageUrl() {
             val session = createUserAndLogin(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
-            val accessToken = session.accessToken()
-            val userId = session.user().id()
+            val accessToken = session.accessToken
+            val userId = session.user.id
 
             val multipartBody: MultiValueMap<String, HttpEntity<*>> =
                 LinkedMultiValueMap<String, HttpEntity<*>>().apply {
@@ -752,10 +752,10 @@ class UserControllerE2ETest {
                 .expectBody<ApiResponse<UserUpdateResponse>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("200-1")
-                    assertThat(body.data().profile().profileImageUrl()).isNotBlank()
-                    assertThat(body.data().profile().introduction()).isEqualTo("with image")
-                    uploadedUrl = body.data().profile().profileImageUrl()
+                    assertThat(body.resultCode).isEqualTo("200-1")
+                    assertThat(body.data.profile.profileImageUrl).isNotBlank()
+                    assertThat(body.data.profile.introduction).isEqualTo("with image")
+                    uploadedUrl = body.data.profile.profileImageUrl
                 }
 
             // 응답에 실린 URL이 실제로 저장된 미디어인지 되짚어 확인한다.
@@ -766,9 +766,9 @@ class UserControllerE2ETest {
                 .expectBody<ApiResponse<UserMediaResponse>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data()).isNotNull()
-                    assertThat(body.data().url()).isEqualTo(uploadedUrl)
-                    assertThat(body.data().userId()).isEqualTo(userId)
+                    assertThat(body.data).isNotNull()
+                    assertThat(body.data.url).isEqualTo(uploadedUrl)
+                    assertThat(body.data.userId).isEqualTo(userId)
                 }
 
             // 내 정보 조회에도 같은 URL이 실린다.
@@ -778,7 +778,7 @@ class UserControllerE2ETest {
                 .expectBody<ApiResponse<UserMeResponse>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data().profile().profileImageUrl()).isEqualTo(uploadedUrl)
+                    assertThat(body.data.profile.profileImageUrl).isEqualTo(uploadedUrl)
                 }
         }
 
@@ -868,11 +868,11 @@ class UserControllerE2ETest {
                 .expectBody<ApiResponse<UserPasswordUpdateResponse>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("200-1")
-                    assertThat(body.data().accessToken()).isNotBlank()
-                    assertThat(body.data().refreshToken()).isNotBlank()
-                    assertThat(body.data().expiresIn()).isEqualTo(1800)
-                    newAccessToken = body.data().accessToken()
+                    assertThat(body.resultCode).isEqualTo("200-1")
+                    assertThat(body.data.accessToken).isNotBlank()
+                    assertThat(body.data.refreshToken).isNotBlank()
+                    assertThat(body.data.expiresIn).isEqualTo(1800)
+                    newAccessToken = body.data.accessToken
                 }
 
             val afterChange = userRepository.findByEmailAndDeletedAtIsNull(email).orElseThrow()
@@ -884,8 +884,8 @@ class UserControllerE2ETest {
                 .expectBody<ApiResponse<UserMeResponse>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("200-1")
-                    assertThat(body.data().email()).isEqualTo(email)
+                    assertThat(body.resultCode).isEqualTo("200-1")
+                    assertThat(body.data.email).isEqualTo(email)
                 }
         }
 
@@ -952,10 +952,10 @@ class UserControllerE2ETest {
                 .expectBody<ApiResponse<UserProfileResponse>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("200-1")
-                    assertThat(body.data().id()).isEqualTo(followerCountFixture.creatorId)
-                    assertThat(body.data().followerCount()).isEqualTo(followerCountFixture.followerCount)
-                    assertThat(body.data().profile()).isNotNull()
+                    assertThat(body.resultCode).isEqualTo("200-1")
+                    assertThat(body.data.id).isEqualTo(followerCountFixture.creatorId)
+                    assertThat(body.data.followerCount).isEqualTo(followerCountFixture.followerCount)
+                    assertThat(body.data.profile).isNotNull()
                 }
         }
 
@@ -975,11 +975,11 @@ class UserControllerE2ETest {
                 .expectBody<ApiResponse<UserProfileResponse>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("200-1")
-                    assertThat(body.data().id()).isEqualTo(followerCountFixture.creatorId)
-                    assertThat(body.data().followerCount()).isEqualTo(followerCountFixture.followerCount)
-                    assertThat(body.data().profile()).isNotNull()
-                    assertThat(body.data().profile().nickname()).isNotBlank()
+                    assertThat(body.resultCode).isEqualTo("200-1")
+                    assertThat(body.data.id).isEqualTo(followerCountFixture.creatorId)
+                    assertThat(body.data.followerCount).isEqualTo(followerCountFixture.followerCount)
+                    assertThat(body.data.profile).isNotNull()
+                    assertThat(body.data.profile.nickname).isNotBlank()
                 }
         }
 
@@ -994,9 +994,9 @@ class UserControllerE2ETest {
         fun getUserProfile_softDeletedUserId_returns404_2() {
             val session = createUserAndLogin(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
 
-            deleteAccount(session.accessToken(), DEFAULT_PASSWORD).expectStatus().isOk()
+            deleteAccount(session.accessToken, DEFAULT_PASSWORD).expectStatus().isOk()
 
-            expectResultCode(getUserProfile(session.user().id()), HttpStatus.NOT_FOUND, "404-2")
+            expectResultCode(getUserProfile(session.user.id), HttpStatus.NOT_FOUND, "404-2")
         }
 
         // FIXME: SecurityConfig의 permitAll이 GET /api/users/{id:\d+}로 숫자 id만 허용해서,
@@ -1022,20 +1022,20 @@ class UserControllerE2ETest {
         @DisplayName("1. 성공하면 201과 업로드된 이미지 URL·mediaType을 반환하고, 그 URL이 실제로 조회된다")
         fun uploadMedia_success_returns201WithUrlAndImageType() {
             val session = createUserAndLogin(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
-            val userId = session.user().id()
+            val userId = session.user.id
 
             var uploadedUrl: String? = null
-            uploadMedia(session.accessToken(), mediaFilePart(PNG_BYTES, "profile.png", MediaType.IMAGE_PNG))
+            uploadMedia(session.accessToken, mediaFilePart(PNG_BYTES, "profile.png", MediaType.IMAGE_PNG))
                 .expectStatus()
                 .isCreated()
                 .expectBody<ApiResponse<UserMediaResponse>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("201-1")
-                    assertThat(body.data().url()).isNotBlank()
-                    assertThat(body.data().userId()).isEqualTo(userId)
-                    assertThat(body.data().mediaType()).isEqualTo(DomainMediaType.IMAGE)
-                    uploadedUrl = body.data().url()
+                    assertThat(body.resultCode).isEqualTo("201-1")
+                    assertThat(body.data.url).isNotBlank()
+                    assertThat(body.data.userId).isEqualTo(userId)
+                    assertThat(body.data.mediaType).isEqualTo(DomainMediaType.IMAGE)
+                    uploadedUrl = body.data.url
                 }
 
             // 응답만 그럴듯한 게 아니라 실제로 저장되었는지 조회로 확인한다.
@@ -1045,8 +1045,8 @@ class UserControllerE2ETest {
                 .expectBody<ApiResponse<UserMediaResponse>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data()).isNotNull()
-                    assertThat(body.data().url()).isEqualTo(uploadedUrl)
+                    assertThat(body.data).isNotNull()
+                    assertThat(body.data.url).isEqualTo(uploadedUrl)
                 }
         }
 
@@ -1096,9 +1096,9 @@ class UserControllerE2ETest {
         @DisplayName("1. 미디어가 있으면 200과 이미지 URL을 반환한다")
         fun getMedia_withMedia_returns200WithUrl() {
             val session = createUserAndLogin(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
-            val userId = session.user().id()
+            val userId = session.user.id
 
-            uploadMedia(session.accessToken(), mediaFilePart(PNG_BYTES, "profile.png", MediaType.IMAGE_PNG))
+            uploadMedia(session.accessToken, mediaFilePart(PNG_BYTES, "profile.png", MediaType.IMAGE_PNG))
                 .expectStatus()
                 .isCreated()
 
@@ -1108,9 +1108,9 @@ class UserControllerE2ETest {
                 .expectBody<ApiResponse<UserMediaResponse>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("200-1")
-                    assertThat(body.data().url()).isNotBlank()
-                    assertThat(body.data().userId()).isEqualTo(userId)
+                    assertThat(body.resultCode).isEqualTo("200-1")
+                    assertThat(body.data.url).isNotBlank()
+                    assertThat(body.data.userId).isEqualTo(userId)
                 }
         }
 
@@ -1119,14 +1119,14 @@ class UserControllerE2ETest {
         fun getMedia_withoutMedia_returns200WithNullData() {
             val session = createUserAndLogin(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
 
-            getMedia(session.user().id())
+            getMedia(session.user.id)
                 .expectStatus()
                 .isOk()
                 .expectBody<ApiResponse<UserMediaResponse>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("200-1")
-                    assertThat(body.data()).isNull()
+                    assertThat(body.resultCode).isEqualTo("200-1")
+                    assertThat(body.data).isNull()
                 }
         }
 
@@ -1149,9 +1149,9 @@ class UserControllerE2ETest {
                 .expectBody<ApiResponse<PageResult<UserSearchResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("200-1")
-                    assertThat(body.data().totalElements).isEqualTo(searchPagingFixture.userIds.size.toLong())
-                    assertThat(body.data().content)
+                    assertThat(body.resultCode).isEqualTo("200-1")
+                    assertThat(body.data.totalElements).isEqualTo(searchPagingFixture.userIds.size.toLong())
+                    assertThat(body.data.content)
                         .extracting<String>(UserSearchResponse::nickname)
                         .contains("${searchPagingFixture.nicknamePrefix}1")
                 }
@@ -1166,9 +1166,9 @@ class UserControllerE2ETest {
                 .expectBody<ApiResponse<PageResult<UserSearchResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("200-1")
-                    assertThat(body.data().content).isEmpty()
-                    assertThat(body.data().totalElements).isZero()
+                    assertThat(body.resultCode).isEqualTo("200-1")
+                    assertThat(body.data.content).isEmpty()
+                    assertThat(body.data.totalElements).isZero()
                 }
         }
 
@@ -1183,9 +1183,9 @@ class UserControllerE2ETest {
                 .expectBody<ApiResponse<PageResult<UserSearchResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("200-1")
-                    assertThat(body.data().content).isEmpty()
-                    assertThat(body.data().totalElements).isZero()
+                    assertThat(body.resultCode).isEqualTo("200-1")
+                    assertThat(body.data.content).isEmpty()
+                    assertThat(body.data.totalElements).isZero()
                 }
         }
 
@@ -1198,11 +1198,11 @@ class UserControllerE2ETest {
                 .expectBody<ApiResponse<PageResult<UserSearchResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("200-1")
-                    assertThat(body.data().content).hasSize(2)
-                    assertThat(body.data().totalElements).isEqualTo(searchPagingFixture.userIds.size.toLong())
-                    assertThat(body.data().size).isEqualTo(2)
-                    assertThat(body.data().number).isZero()
+                    assertThat(body.resultCode).isEqualTo("200-1")
+                    assertThat(body.data.content).hasSize(2)
+                    assertThat(body.data.totalElements).isEqualTo(searchPagingFixture.userIds.size.toLong())
+                    assertThat(body.data.size).isEqualTo(2)
+                    assertThat(body.data.number).isZero()
                 }
         }
     }
@@ -1221,8 +1221,8 @@ class UserControllerE2ETest {
         @DisplayName("1. 성공하면 200을 반환하고, 이후 조회하면 data=null이 된다")
         fun deleteMedia_success_returns200_andMediaIsGone() {
             val session = createUserAndLogin(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
-            val accessToken = session.accessToken()
-            val userId = session.user().id()
+            val accessToken = session.accessToken
+            val userId = session.user.id
 
             uploadMedia(accessToken, mediaFilePart(PNG_BYTES, "profile.png", MediaType.IMAGE_PNG))
                 .expectStatus()
@@ -1233,7 +1233,7 @@ class UserControllerE2ETest {
                 .expectBody<ApiResponse<UserMediaResponse>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data()).isNotNull()
+                    assertThat(body.data).isNotNull()
                 }
 
             expectResultCode(deleteProfileMedia(accessToken), HttpStatus.OK, "200-1")
@@ -1246,8 +1246,8 @@ class UserControllerE2ETest {
                 .expectBody<ApiResponse<UserMediaResponse>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("200-1")
-                    assertThat(body.data()).isNull()
+                    assertThat(body.resultCode).isEqualTo("200-1")
+                    assertThat(body.data).isNull()
                 }
         }
 
@@ -1280,8 +1280,8 @@ class UserControllerE2ETest {
             val nickname = uniqueNickname()
 
             val session = createUserAndLogin(client, email, DEFAULT_PASSWORD, nickname)
-            val userId = session.user().id()
-            val accessToken = session.accessToken()
+            val userId = session.user.id
+            val accessToken = session.accessToken
             assertThat(userId).isNotNull()
 
             // 수정 전 상태를 GET /me로 확인한다.
@@ -1291,11 +1291,11 @@ class UserControllerE2ETest {
                 .expectBody<ApiResponse<UserMeResponse>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("200-1")
-                    assertThat(body.data().id()).isEqualTo(userId)
-                    assertThat(body.data().email()).isEqualTo(email)
-                    assertThat(body.data().profile().nickname()).isEqualTo(nickname)
-                    assertThat(body.data().profile().introduction()).isNull()
+                    assertThat(body.resultCode).isEqualTo("200-1")
+                    assertThat(body.data.id).isEqualTo(userId)
+                    assertThat(body.data.email).isEqualTo(email)
+                    assertThat(body.data.profile.nickname).isEqualTo(nickname)
+                    assertThat(body.data.profile.introduction).isNull()
                 }
 
             val newNickname = uniqueNickname()
@@ -1306,10 +1306,10 @@ class UserControllerE2ETest {
                 .expectBody<ApiResponse<UserUpdateResponse>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("200-1")
-                    assertThat(body.data().id()).isEqualTo(userId)
-                    assertThat(body.data().profile().nickname()).isEqualTo(newNickname)
-                    assertThat(body.data().profile().introduction()).isEqualTo(newIntroduction)
+                    assertThat(body.resultCode).isEqualTo("200-1")
+                    assertThat(body.data.id).isEqualTo(userId)
+                    assertThat(body.data.profile.nickname).isEqualTo(newNickname)
+                    assertThat(body.data.profile.introduction).isEqualTo(newIntroduction)
                 }
 
             // 같은 토큰으로 다시 조회해도 바뀐 값이 보인다.
@@ -1319,8 +1319,8 @@ class UserControllerE2ETest {
                 .expectBody<ApiResponse<UserMeResponse>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data().profile().nickname()).isEqualTo(newNickname)
-                    assertThat(body.data().profile().introduction()).isEqualTo(newIntroduction)
+                    assertThat(body.data.profile.nickname).isEqualTo(newNickname)
+                    assertThat(body.data.profile.introduction).isEqualTo(newIntroduction)
                 }
 
             // 공개 프로필(비로그인 조회)에도 같은 값이 반영된다.
@@ -1330,10 +1330,10 @@ class UserControllerE2ETest {
                 .expectBody<ApiResponse<UserProfileResponse>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("200-1")
-                    assertThat(body.data().id()).isEqualTo(userId)
-                    assertThat(body.data().profile().nickname()).isEqualTo(newNickname)
-                    assertThat(body.data().profile().introduction()).isEqualTo(newIntroduction)
+                    assertThat(body.resultCode).isEqualTo("200-1")
+                    assertThat(body.data.id).isEqualTo(userId)
+                    assertThat(body.data.profile.nickname).isEqualTo(newNickname)
+                    assertThat(body.data.profile.introduction).isEqualTo(newIntroduction)
                 }
         }
 
@@ -1359,17 +1359,17 @@ class UserControllerE2ETest {
 
             // 새 비밀번호로는 로그인되고, 그 토큰으로 GET /me도 통과한다.
             val reLogin = login(client, email, newPassword)
-            assertThat(reLogin.resultCode()).isEqualTo("200-1")
-            assertThat(reLogin.data().accessToken()).isNotBlank()
-            assertThat(reLogin.data().user().email()).isEqualTo(email)
+            assertThat(reLogin.resultCode).isEqualTo("200-1")
+            assertThat(reLogin.data.accessToken).isNotBlank()
+            assertThat(reLogin.data.user.email).isEqualTo(email)
 
-            getMe(reLogin.data().accessToken())
+            getMe(reLogin.data.accessToken)
                 .expectStatus()
                 .isOk()
                 .expectBody<ApiResponse<UserMeResponse>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data().email()).isEqualTo(email)
+                    assertThat(body.data.email).isEqualTo(email)
                 }
         }
 
@@ -1382,7 +1382,7 @@ class UserControllerE2ETest {
             val nickname = uniqueNickname()
 
             val session = createUserAndLogin(client, email, DEFAULT_PASSWORD, nickname)
-            val userId = session.user().id()
+            val userId = session.user.id
 
             // 탈퇴 전에는 프로필도 보이고 검색에도 잡힌다.
             getUserProfile(userId).expectStatus().isOk()
@@ -1392,13 +1392,13 @@ class UserControllerE2ETest {
                 .expectBody<ApiResponse<PageResult<UserSearchResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.data().totalElements).isEqualTo(1L)
-                    assertThat(body.data().content)
+                    assertThat(body.data.totalElements).isEqualTo(1L)
+                    assertThat(body.data.content)
                         .extracting<Long>(UserSearchResponse::id)
                         .containsExactly(userId)
                 }
 
-            deleteAccount(session.accessToken(), DEFAULT_PASSWORD).expectStatus().isOk()
+            deleteAccount(session.accessToken, DEFAULT_PASSWORD).expectStatus().isOk()
 
             expectResultCode(
                 loginRequest(client, email, DEFAULT_PASSWORD),
@@ -1413,9 +1413,9 @@ class UserControllerE2ETest {
                 .expectBody<ApiResponse<PageResult<UserSearchResponse>>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode()).isEqualTo("200-1")
-                    assertThat(body.data().content).isEmpty()
-                    assertThat(body.data().totalElements).isZero()
+                    assertThat(body.resultCode).isEqualTo("200-1")
+                    assertThat(body.data.content).isEmpty()
+                    assertThat(body.data.totalElements).isZero()
                 }
         }
     }
