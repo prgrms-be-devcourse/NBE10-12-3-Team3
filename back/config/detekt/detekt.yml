@@ -7,3 +7,14 @@
 #     active: false
 #   MaxLineLength:
 #     maxLineLength: 140
+
+complexity:
+  # E2E 테스트는 여러 단계를 순서대로 검증하는 시나리오 특성상 클래스/메서드가 길어지고
+  # 헬퍼 함수 파라미터가 많아지는 것이 자연스럽다. 프로덕션 코드 복잡도 기준을 그대로
+  # 적용하면 테스트 가독성을 해치므로 test 소스셋에 한해 제외한다.
+  LargeClass:
+    excludes: ['**/src/test/**']
+  LongMethod:
+    excludes: ['**/src/test/**']
+  LongParameterList:
+    excludes: ['**/src/test/**']

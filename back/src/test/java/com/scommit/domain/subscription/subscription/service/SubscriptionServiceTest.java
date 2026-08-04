@@ -55,18 +55,10 @@ class SubscriptionServiceTest {
 
     @BeforeEach
     void setUp() {
-        subscriber = User.builder()
-                .email("sub@test.com")
-                .nickname("Subscriber")
-                .role(UserRole.USER)
-                .build();
+        subscriber = new User("sub@test.com", null, "Subscriber", null, UserRole.USER);
         ReflectionTestUtils.setField(subscriber, "id", 1L);
 
-        creator = User.builder()
-                .email("creator@test.com")
-                .nickname("Creator")
-                .role(UserRole.USER)
-                .build();
+        creator = new User("creator@test.com", null, "Creator", null, UserRole.USER);
         ReflectionTestUtils.setField(creator, "id", 2L);
 
         followSubscription = Subscription.builder()
