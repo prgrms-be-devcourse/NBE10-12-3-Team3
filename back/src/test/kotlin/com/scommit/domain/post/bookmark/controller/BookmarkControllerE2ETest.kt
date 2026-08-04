@@ -163,7 +163,7 @@ class BookmarkControllerE2ETest {
     private fun findBookmark(
         postId: Long,
         userId: Long,
-    ): Optional<Bookmark> = bookmarkRepository.findByPostIdAndUserId(postId, userId)
+    ): Optional<Bookmark> = Optional.ofNullable(bookmarkRepository.findByPostIdAndUserId(postId, userId))
 
     private fun bookmarkCountOf(postId: Long): Long = checkNotNull(postRepository.findByIdOrNull(postId)).bookmarkCount
 

@@ -99,11 +99,7 @@ class PostServiceTest {
     }
 
     private Series buildSeries(Long id, User owner) {
-        Series series = Series.builder()
-                .user(owner)
-                .title("시리즈")
-                .body("설명")
-                .build();
+        Series series = new Series(owner, "시리즈", "설명");
         ReflectionTestUtils.setField(series, "id", id);
         return series;
     }
@@ -237,8 +233,8 @@ class PostServiceTest {
 
             assertThat(result.getContent().get(0).isLiked()).isFalse();
             assertThat(result.getContent().get(0).isBookmarked()).isFalse();
-            verify(likeRepository, never()).existsByPostIdAndUserId(any(), any());
-            verify(bookmarkRepository, never()).existsByPostIdAndUserId(any(), any());
+            verify(likeRepository, never()).existsByPostIdAndUserId(anyLong(), anyLong());
+            verify(bookmarkRepository, never()).existsByPostIdAndUserId(anyLong(), anyLong());
         }
     }
 
@@ -379,7 +375,7 @@ class PostServiceTest {
         void create_Draft_NoSse() {
             postService.createPost(mockUser, "제목", "내용", PublishStatus.DRAFT, PostAccessLevel.FREE, null);
 
-            verify(sseEmitterRepository, never()).sendToUser(any(), any());
+            verify(sseEmitterRepository, never()).sendToUser(anyLong(), any());
         }
 
         // 없는 시리즈 ID를 넘기면 저장 전에 예외가 발생해야 함
@@ -438,7 +434,7 @@ class PostServiceTest {
 
             postService.updatePost(mockUser, 1L, "수정제목", "수정내용", PublishStatus.PUBLIC, PostAccessLevel.FREE, null);
 
-            verify(sseEmitterRepository, never()).sendToUser(any(), any());
+            verify(sseEmitterRepository, never()).sendToUser(anyLong(), any());
         }
 
         // 없는 게시글 ID → 조회 시점에 예외 발생
@@ -612,8 +608,8 @@ class PostServiceTest {
 
             assertThat(response.isLiked()).isFalse();
             assertThat(response.isBookmarked()).isFalse();
-            verify(likeRepository, never()).existsByPostIdAndUserId(any(), any());
-            verify(bookmarkRepository, never()).existsByPostIdAndUserId(any(), any());
+            verify(likeRepository, never()).existsByPostIdAndUserId(anyLong(), anyLong());
+            verify(bookmarkRepository, never()).existsByPostIdAndUserId(anyLong(), anyLong());
         }
     }
 
@@ -628,7 +624,7 @@ class PostServiceTest {
             Post post = buildPost(10L, mockUser, null);
 
             when(postRepository.findByIdAndDeletedAtIsNull(10L)).thenReturn(Optional.of(post));
-            when(seriesRepository.findByIdAndDeletedAtIsNull(5L)).thenReturn(Optional.of(series));
+            when(seriesRepository.findByIdAndDeletedAtIsNull(5L)).thenReturn(series);
 
             postService.addPostToSeries(10L, 5L, mockUser);
 
@@ -645,7 +641,7 @@ class PostServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .hasFieldOrPropertyWithValue("errorCode", ErrorCode.POST_NOT_FOUND);
 
-            verify(seriesRepository, never()).findByIdAndDeletedAtIsNull(any());
+            verify(seriesRepository, never()).findByIdAndDeletedAtIsNull(anyLong());
         }
 
         // 포스트 주인이 아니면 시리즈 조회 전에 차단해야 함
@@ -659,7 +655,7 @@ class PostServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .hasFieldOrPropertyWithValue("errorCode", ErrorCode.ACCESS_DENIED);
 
-            verify(seriesRepository, never()).findByIdAndDeletedAtIsNull(any());
+            verify(seriesRepository, never()).findByIdAndDeletedAtIsNull(anyLong());
         }
 
         @Test
@@ -667,7 +663,7 @@ class PostServiceTest {
         void add_SeriesNotFound() {
             Post post = buildPost(10L, mockUser, null);
             when(postRepository.findByIdAndDeletedAtIsNull(10L)).thenReturn(Optional.of(post));
-            when(seriesRepository.findByIdAndDeletedAtIsNull(999L)).thenReturn(Optional.empty());
+            when(seriesRepository.findByIdAndDeletedAtIsNull(999L)).thenReturn(null);
 
             assertThatThrownBy(() -> postService.addPostToSeries(10L, 999L, mockUser))
                     .isInstanceOf(BusinessException.class)
@@ -681,7 +677,7 @@ class PostServiceTest {
             Post post = buildPost(10L, mockUser, null);
 
             when(postRepository.findByIdAndDeletedAtIsNull(10L)).thenReturn(Optional.of(post));
-            when(seriesRepository.findByIdAndDeletedAtIsNull(5L)).thenReturn(Optional.of(series));
+            when(seriesRepository.findByIdAndDeletedAtIsNull(5L)).thenReturn(series);
 
             assertThatThrownBy(() -> postService.addPostToSeries(10L, 5L, mockUser))
                     .isInstanceOf(BusinessException.class)
@@ -808,8 +804,8 @@ class PostServiceTest {
 
             assertThat(result.get(0).isLiked()).isFalse();
             assertThat(result.get(0).isBookmarked()).isFalse();
-            verify(likeRepository, never()).existsByPostIdAndUserId(any(), any());
-            verify(bookmarkRepository, never()).existsByPostIdAndUserId(any(), any());
+            verify(likeRepository, never()).existsByPostIdAndUserId(anyLong(), anyLong());
+            verify(bookmarkRepository, never()).existsByPostIdAndUserId(anyLong(), anyLong());
         }
     }
 }
