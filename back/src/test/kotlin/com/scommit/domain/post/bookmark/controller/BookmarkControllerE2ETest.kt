@@ -16,6 +16,7 @@ import com.scommit.domain.post.bookmark.repository.BookmarkRepository
 import com.scommit.domain.post.post.dto.PostCreateRequest
 import com.scommit.domain.post.post.dto.PostListResponse
 import com.scommit.domain.post.post.dto.PostResponse
+import com.scommit.domain.post.post.dto.PostUpdateRequest
 import com.scommit.domain.post.post.entity.PostAccessLevel
 import com.scommit.domain.post.post.entity.PublishStatus
 import com.scommit.domain.post.post.repository.PostRepository
@@ -499,20 +500,28 @@ class BookmarkControllerE2ETest {
                 .containsExactly(theirs)
         }
 
-        // FIXME(#4): 목록 쿼리 findByUserIdAndPostDeletedAtIsNull 이 publishStatus 를 보지 않는다.
-        // #3 으로 비공개 글을 북마크할 수 있고, 그 뒤에는 작성자가 상세를 403-1 로 막아 둔 글의 제목·작성자·
-        // 조회수·좋아요 수가 북마크 목록을 통해 계속 보인다(본문은 PostListResponse 에 없어 노출되지 않는다).
-        // 상세: docs/like-bookmark-notification-e2e-known-issues.md #4
         @Test
-        @DisplayName("7. 타인의 PRIVATE 게시글도 내 북마크 목록에 그대로 노출된다")
-        fun getMyBookmarks_showsOthersPrivatePost() {
+        @DisplayName("7. 북마크 이후 PRIVATE로 전환된 타인의 게시글은 내 북마크 목록에서 빠지지만 행은 남는다")
+        fun getMyBookmarks_excludesOthersPostUnpublishedAfterBookmark() {
             val authorToken = createUserAndGetAccessToken(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
-            val postId = createPost(authorToken, PublishStatus.PRIVATE, PostAccessLevel.FREE)
+            val postId = createPost(authorToken, PublishStatus.PUBLIC, PostAccessLevel.FREE)
 
-            val otherToken = createUserAndGetAccessToken(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
+            val other = createUserAndLogin(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
+            val otherToken = other.accessToken
             createBookmark(otherToken, postId)
 
-            // 상세 조회는 여전히 막혀 있는데
+            // 작성자가 사후에 비공개로 전환
+            client
+                .put()
+                .uri("/api/posts/$postId")
+                .header("Authorization", bearer(authorToken))
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(PostUpdateRequest(null, "북마크 E2E 게시글", "게시글 본문", PublishStatus.PRIVATE, PostAccessLevel.FREE))
+                .exchange()
+                .expectStatus()
+                .isOk()
+
+            // 상세 조회는 이제 막혀 있고
             expectResultCode(
                 client
                     .get()
@@ -523,17 +532,27 @@ class BookmarkControllerE2ETest {
                 "403-1",
             )
 
-            // 북마크 목록에는 그대로 실려 온다.
+            // 북마크 목록에서도 빠진다 — 단, 북마크 행 자체는 지워지지 않는다(작성자가 다시 공개하면 복귀).
             val myBookmarks = getMyBookmarks(otherToken)
-            assertThat(myBookmarks.content)
-                .extracting<Long>(PostListResponse::id)
-                .containsExactly(postId)
-            assertThat(myBookmarks.content[0].publishStatus).isEqualTo(PublishStatus.PRIVATE)
-            assertThat(myBookmarks.content[0].title).isEqualTo("북마크 E2E 게시글")
+            assertThat(myBookmarks.content).isEmpty()
+            assertThat(findBookmark(postId, other.user.id)).isPresent()
         }
 
         @Test
-        @DisplayName("8. 존재하지 않는 정렬 필드를 넘기면 400-1을 반환한다")
+        @DisplayName("8. 자신의 PRIVATE/DRAFT 게시글을 북마크하면 목록에 그대로 남는다")
+        fun getMyBookmarks_includesOwnNonPublicPost() {
+            val session = createUserAndLogin(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
+            val postId = createPost(session.accessToken, PublishStatus.PRIVATE, PostAccessLevel.FREE)
+            createBookmark(session.accessToken, postId)
+
+            val myBookmarks = getMyBookmarks(session.accessToken)
+            assertThat(myBookmarks.content)
+                .extracting<Long>(PostListResponse::id)
+                .containsExactly(postId)
+        }
+
+        @Test
+        @DisplayName("9. 존재하지 않는 정렬 필드를 넘기면 400-1을 반환한다")
         fun getMyBookmarks_invalidSortProperty_returns400_1() {
             val accessToken = createUserAndGetAccessToken(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
             val postId = createPublicPost(accessToken)

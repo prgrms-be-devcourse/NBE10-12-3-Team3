@@ -49,7 +49,7 @@ class BookmarkService(
         pageable: Pageable,
     ): Page<PostListResponse> {
         val actorId = requireNotNull(actor.id)
-        val page = bookmarkRepository.findByUserIdAndPostDeletedAtIsNull(actorId, pageable)
+        val page = bookmarkRepository.findByUserIdAndPostDeletedAtIsNull(actorId, PublishStatus.PUBLIC, pageable)
 
         // 항목마다 existsByPostIdAndUserId를 부르는 N+1 대신 postId 목록으로 한 번에 조회한다.
         val postIds = page.content.mapNotNull { it.post.id }
