@@ -22,7 +22,7 @@ class NotificationController(
     @Suppress("TooGenericExceptionThrown")
     @GetMapping(value = ["/subscribe"], produces = [MediaType.TEXT_EVENT_STREAM_VALUE])
     fun subscribe(): SseEmitter {
-        val userId = securityHelper.actor.id
+        val userId = checkNotNull(securityHelper.actor.id)
 
         val emitter = SseEmitter(SSE_TIMEOUT_MS)
 
