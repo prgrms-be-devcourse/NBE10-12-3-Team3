@@ -7,5 +7,5 @@ data class UserSearchResponse(
     val nickname: String,
     val introduction: String?,
 ) {
-    constructor(user: User) : this(user.id, user.nickname, user.introduction)
+    constructor(user: User) : this(checkNotNull(user.id), user.nickname, user.introduction)
 }

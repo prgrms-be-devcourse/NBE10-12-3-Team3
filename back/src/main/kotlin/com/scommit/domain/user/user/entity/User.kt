@@ -54,7 +54,7 @@ class User(
         nickname = nickname,
         role = UserRole.USER,
     ) {
-        setId(id)
+        this.id = id
     }
 
     constructor(id: Long, email: String, nickname: String, role: UserRole) : this(id, email, nickname) {

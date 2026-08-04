@@ -11,10 +11,10 @@ data class UserUpdateResponse(
     val updatedAt: LocalDateTime?,
 ) {
     constructor(user: User, profileImage: String?) : this(
-        user.id,
+        checkNotNull(user.id),
         user.email,
         UserProfileDto(user, profileImage),
-        user.createdAt,
+        checkNotNull(user.createdAt),
         user.updatedAt,
     )
 }

@@ -9,5 +9,5 @@ data class SignupResponse(
     val nickname: String,
     val createdAt: LocalDateTime,
 ) {
-    constructor(user: User) : this(user.id, user.email, user.nickname, user.createdAt)
+    constructor(user: User) : this(checkNotNull(user.id), user.email, user.nickname, checkNotNull(user.createdAt))
 }

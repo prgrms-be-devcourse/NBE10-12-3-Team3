@@ -15,7 +15,7 @@ data class LoginResponse(
         val nickname: String,
         val role: UserRole,
     ) {
-        constructor(user: User) : this(user.id, user.email, user.nickname, user.role)
+        constructor(user: User) : this(checkNotNull(user.id), user.email, user.nickname, user.role)
     }
 
     constructor(accessToken: String, refreshToken: String?, expiresIn: Int, user: User) :

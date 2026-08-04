@@ -8,7 +8,7 @@ data class UserProfileResponse(
     val profile: UserProfileDto,
 ) {
     constructor(user: User, followerCount: Int, profileImageUrl: String?) : this(
-        user.id,
+        checkNotNull(user.id),
         followerCount,
         UserProfileDto(user, profileImageUrl),
     )

@@ -92,7 +92,7 @@ class UserController(
         val actor = securityHelper.actor ?: throw BusinessException(ErrorCode.UNAUTHORIZED)
         securityHelper.deleteCookie("accessToken")
         securityHelper.deleteCookie("refreshToken")
-        userService.logout(actor.id)
+        userService.logout(checkNotNull(actor.id))
         return RsData("200-1", "로그아웃에 성공했습니다.")
     }
 
@@ -102,7 +102,7 @@ class UserController(
         @Valid @RequestBody request: UserDeleteRequest,
     ): RsData<Unit> {
         val actor = securityHelper.actor ?: throw BusinessException(ErrorCode.UNAUTHORIZED)
-        userService.deleteUser(actor.id, requireNotNull(request.password))
+        userService.deleteUser(checkNotNull(actor.id), requireNotNull(request.password))
         securityHelper.deleteCookie("accessToken")
         securityHelper.deleteCookie("refreshToken")
         return RsData("200-1", "회원탈퇴에 성공했습니다.")
@@ -112,8 +112,8 @@ class UserController(
     @Operation(summary = "내 정보 조회", description = "로그인한 유저의 정보를 조회합니다.")
     fun getMyInfo(): RsData<UserMeResponse> {
         val actor = securityHelper.actor ?: throw BusinessException(ErrorCode.UNAUTHORIZED)
-        val user = userService.getUser(actor.id) ?: throw BusinessException(ErrorCode.USER_NOT_FOUND)
-        val profileImageUrl = userMediaService.getMedia(actor.id)?.url()
+        val user = userService.getUser(checkNotNull(actor.id)) ?: throw BusinessException(ErrorCode.USER_NOT_FOUND)
+        val profileImageUrl = userMediaService.getMedia(checkNotNull(actor.id))?.url()
 
         return RsData(
             "200-1",
@@ -130,12 +130,12 @@ class UserController(
     ): RsData<UserUpdateResponse> {
         val actor = securityHelper.actor ?: throw BusinessException(ErrorCode.UNAUTHORIZED)
 
-        val updatedUser = userService.updateUser(actor.id, request.nickname, request.introduction)
+        val updatedUser = userService.updateUser(checkNotNull(actor.id), request.nickname, request.introduction)
         val profileImageUrl =
             if (profileImage != null) {
-                userMediaService.uploadMedia(actor.id, profileImage).url()
+                userMediaService.uploadMedia(checkNotNull(actor.id), profileImage).url()
             } else {
-                userMediaService.getMedia(actor.id)?.url()
+                userMediaService.getMedia(checkNotNull(actor.id))?.url()
             }
 
         return RsData("200-1", "내 정보를 수정하였습니다.", UserUpdateResponse(updatedUser, profileImageUrl))
@@ -147,10 +147,11 @@ class UserController(
         @Valid @RequestBody request: UserPasswordUpdateRequest,
     ): RsData<UserPasswordUpdateResponse> {
         val actor = securityHelper.actor ?: throw BusinessException(ErrorCode.UNAUTHORIZED)
-        userService.updatePassword(actor.id, requireNotNull(request.currentPassword), request.newPassword)
+        userService.updatePassword(checkNotNull(actor.id), requireNotNull(request.currentPassword), request.newPassword)
 
-        val user = userService.getUser(actor.id) ?: throw BusinessException(ErrorCode.USER_NOT_FOUND)
-        val accessToken = jwtProvider.generateAccessToken(actor.id, actor.email, actor.nickname, user.role)
+        val user = userService.getUser(checkNotNull(actor.id)) ?: throw BusinessException(ErrorCode.USER_NOT_FOUND)
+        val accessToken =
+            jwtProvider.generateAccessToken(checkNotNull(actor.id), actor.email, actor.nickname, user.role)
         securityHelper.setCookie("accessToken", accessToken)
         securityHelper.setCookie("refreshToken", user.refreshToken)
         return RsData(
@@ -199,7 +200,7 @@ class UserController(
         @RequestPart file: MultipartFile,
     ): RsData<UserMediaResponse> {
         val actor = securityHelper.actor ?: throw BusinessException(ErrorCode.UNAUTHORIZED)
-        val response = userMediaService.uploadMedia(actor.id, file)
+        val response = userMediaService.uploadMedia(checkNotNull(actor.id), file)
         return RsData("201-1", "프로필 이미지를 생성하였습니다.", response)
     }
 
@@ -216,7 +217,7 @@ class UserController(
     @Operation(summary = "프로필 이미지 삭제")
     fun deleteMedia(): RsData<Unit> {
         val actor = securityHelper.actor ?: throw BusinessException(ErrorCode.UNAUTHORIZED)
-        userMediaService.deleteMedia(actor.id)
+        userMediaService.deleteMedia(checkNotNull(actor.id))
         return RsData("200-1", "프로필 이미지가 삭제되었습니다.")
     }
 }
