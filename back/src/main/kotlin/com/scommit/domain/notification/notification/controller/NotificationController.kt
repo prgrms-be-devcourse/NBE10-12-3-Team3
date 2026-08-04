@@ -31,8 +31,8 @@ class NotificationController(
 
         sseEmitterRepository.add(userId, emitter)
 
-        emitter.onTimeout { sseEmitterRepository.remove(userId) }
-        emitter.onCompletion { sseEmitterRepository.remove(userId) }
+        emitter.onTimeout { sseEmitterRepository.remove(userId, emitter) }
+        emitter.onCompletion { sseEmitterRepository.remove(userId, emitter) }
 
         try {
             emitter.send(
@@ -42,7 +42,7 @@ class NotificationController(
                     .data("connected!"),
             )
         } catch (e: IOException) {
-            sseEmitterRepository.remove(userId)
+            sseEmitterRepository.remove(userId, emitter)
             throw RuntimeException(e)
         }
 
