@@ -114,12 +114,9 @@ class PostService
             if (post.accessLevel == PostAccessLevel.PAID && !isOwner) {
                 val isMember =
                     actor != null &&
-                        checkNotNull(
-                            subscriptionRepository
-                                .findByUserIdAndCreatorId(checkNotNull(actor.id), checkNotNull(post.user.id))
-                                .map { sub -> sub.tier == SubscriptionTier.MEMBERSHIP }
-                                .orElse(false),
-                        )
+                        subscriptionRepository
+                            .findByUserIdAndCreatorId(checkNotNull(actor.id), checkNotNull(post.user.id))
+                            ?.tier == SubscriptionTier.MEMBERSHIP
                 if (!isMember) {
                     return PostResponse(post, true, isLiked(id, actor), isBookmarked(id, actor))
                 }

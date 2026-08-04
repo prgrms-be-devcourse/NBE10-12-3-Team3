@@ -366,7 +366,7 @@ class PostServiceTest {
             postService.createPost(mockUser, "제목", "내용", PublishStatus.PUBLIC, PostAccessLevel.PAID, null)
 
             verify(sseEmitterRepository).sendToUser(eq(2L), anyOfType<NotificationResponse>())
-            verify(subscriptionRepository, never()).findByCreatorIdAndDeletedAtIsNull(any())
+            verify(subscriptionRepository, never()).findByCreatorIdAndDeletedAtIsNull(anyLong())
         }
 
         @Test
@@ -555,8 +555,9 @@ class PostServiceTest {
             val post = buildPost(1L, mockUser, null)
             ReflectionTestUtils.setField(post, "accessLevel", PostAccessLevel.PAID)
             given(postRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(post)
-            given(subscriptionRepository.findByUserIdAndCreatorId(otherUser.id, mockUser.id))
-                .willReturn(Optional.empty())
+            given(
+                subscriptionRepository.findByUserIdAndCreatorId(checkNotNull(otherUser.id), checkNotNull(mockUser.id)),
+            ).willReturn(null)
 
             val response: PostResponse = postService.getPost(1L, otherUser)
 
