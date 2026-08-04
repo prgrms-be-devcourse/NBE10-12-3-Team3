@@ -121,13 +121,29 @@ class UserCouponServiceTest {
         }
 
         @Test
-        @DisplayName("실패: 발급 가능 기간이 아니면 COUPON_NOT_ACTIVE 예외를 던진다.")
-        fun issue_Fail_NotActive() {
+        @DisplayName("실패: 아직 시작 전이면 COUPON_NOT_ACTIVE 예외를 던진다.")
+        fun issue_Fail_NotActive_NotStarted() {
             val policy =
                 buildPolicy(
                     1L,
                     startAt = LocalDateTime.now().plusDays(1),
                     endAt = LocalDateTime.now().plusDays(10),
+                )
+            given(couponPolicyRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(policy)
+
+            assertThatThrownBy { userCouponService.issueCoupon(actor, 1L) }
+                .isInstanceOf(BusinessException::class.java)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.COUPON_NOT_ACTIVE)
+        }
+
+        @Test
+        @DisplayName("실패: 이미 종료된 이벤트면 COUPON_NOT_ACTIVE 예외를 던진다.")
+        fun issue_Fail_NotActive_Expired() {
+            val policy =
+                buildPolicy(
+                    1L,
+                    startAt = LocalDateTime.now().minusDays(10),
+                    endAt = LocalDateTime.now().minusDays(1),
                 )
             given(couponPolicyRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(policy)
 
