@@ -11,7 +11,6 @@ import com.scommit.global.exception.ErrorCode
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.multipart.MultipartFile
-import kotlin.jvm.optionals.getOrNull
 
 @Service
 class SeriesMediaService(
@@ -27,7 +26,7 @@ class SeriesMediaService(
         actorRole: UserRole?,
     ): SeriesMediaResponse {
         val series =
-            seriesRepository.findByIdAndDeletedAtIsNull(seriesId).getOrNull()
+            seriesRepository.findByIdAndDeletedAtIsNull(seriesId)
                 ?: throw BusinessException(ErrorCode.SERIES_NOT_FOUND)
 
         if (actorRole != UserRole.ADMIN && series.user.id != actorId) {
@@ -51,7 +50,7 @@ class SeriesMediaService(
     @Transactional(readOnly = true)
     fun getMedia(seriesId: Long): SeriesMediaResponse? {
         val series =
-            seriesRepository.findByIdAndDeletedAtIsNull(seriesId).getOrNull()
+            seriesRepository.findByIdAndDeletedAtIsNull(seriesId)
                 ?: throw BusinessException(ErrorCode.SERIES_NOT_FOUND)
 
         val seriesMedia = seriesMediaRepository.findBySeries(series) ?: return null
@@ -66,7 +65,7 @@ class SeriesMediaService(
         actorRole: UserRole?,
     ) {
         val series =
-            seriesRepository.findByIdAndDeletedAtIsNull(seriesId).getOrNull()
+            seriesRepository.findByIdAndDeletedAtIsNull(seriesId)
                 ?: throw BusinessException(ErrorCode.SERIES_NOT_FOUND)
 
         if (actorRole != UserRole.ADMIN && series.user.id != actorId) {

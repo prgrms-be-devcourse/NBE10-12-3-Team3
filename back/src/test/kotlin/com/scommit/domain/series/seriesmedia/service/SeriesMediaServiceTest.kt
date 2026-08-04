@@ -28,7 +28,6 @@ import org.mockito.Mockito.verify
 import org.mockito.junit.jupiter.MockitoExtension
 import org.springframework.mock.web.MockMultipartFile
 import org.springframework.web.multipart.MultipartFile
-import java.util.Optional
 
 // Mockito ArgumentMatchers.any()는 null을 반환하는데, Kotlin에서 선언된 non-null 파라미터에
 // 직접 전달하면 플랫폼 타입 널 체크가 삽입되어 NPE가 발생한다. mockito-kotlin 미사용 환경의 표준 우회책.
@@ -69,7 +68,7 @@ class SeriesMediaServiceTest {
             val media = mock(Media::class.java)
             val seriesMedia = mock(SeriesMedia::class.java)
 
-            given(seriesRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(Optional.of(series))
+            given(seriesRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(series)
             given(series.user).willReturn(owner)
             given(owner.id).willReturn(1L)
             given(seriesMediaRepository.findBySeries(series)).willReturn(null)
@@ -105,7 +104,7 @@ class SeriesMediaServiceTest {
 
             val newMedia = mock(Media::class.java)
 
-            given(seriesRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(Optional.of(series))
+            given(seriesRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(series)
             given(series.user).willReturn(owner)
             given(owner.id).willReturn(1L)
             given(seriesMediaRepository.findBySeries(series)).willReturn(existingSeriesMedia)
@@ -122,7 +121,7 @@ class SeriesMediaServiceTest {
         @Test
         @DisplayName("실패: 존재하지 않는 seriesId로 업로드 시 예외를 던진다")
         fun uploadMedia_SeriesNotFound_Fail() {
-            given(seriesRepository.findByIdAndDeletedAtIsNull(999L)).willReturn(Optional.empty())
+            given(seriesRepository.findByIdAndDeletedAtIsNull(999L)).willReturn(null)
 
             assertThatThrownBy { seriesMediaService.uploadMedia(999L, file, 1L, UserRole.USER) }
                 .isInstanceOf(BusinessException::class.java)
@@ -133,7 +132,7 @@ class SeriesMediaServiceTest {
         @Test
         @DisplayName("실패: 소프트삭제된 시리즈에 업로드 시도 시 예외를 던진다")
         fun uploadMedia_DeletedSeries_Fail() {
-            given(seriesRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(Optional.empty())
+            given(seriesRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(null)
 
             assertThatThrownBy { seriesMediaService.uploadMedia(1L, file, 1L, UserRole.USER) }
                 .isInstanceOf(BusinessException::class.java)
@@ -147,7 +146,7 @@ class SeriesMediaServiceTest {
             val series = mock(Series::class.java)
             val owner = mock(User::class.java)
 
-            given(seriesRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(Optional.of(series))
+            given(seriesRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(series)
             given(series.user).willReturn(owner)
             given(owner.id).willReturn(1L)
 
@@ -165,7 +164,7 @@ class SeriesMediaServiceTest {
             val media = mock(Media::class.java)
             val seriesMedia = mock(SeriesMedia::class.java)
 
-            given(seriesRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(Optional.of(series))
+            given(seriesRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(series)
             given(seriesMediaRepository.findBySeries(series)).willReturn(null)
             given(mediaService.uploadMedia(file, "series")).willReturn(media)
             given(seriesMediaRepository.save(any<SeriesMedia>())).willReturn(seriesMedia)
@@ -190,7 +189,7 @@ class SeriesMediaServiceTest {
             val media = mock(Media::class.java)
             val seriesMedia = mock(SeriesMedia::class.java)
 
-            given(seriesRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(Optional.of(series))
+            given(seriesRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(series)
             given(seriesMediaRepository.findBySeries(series)).willReturn(seriesMedia)
             given(seriesMedia.series).willReturn(series)
             given(seriesMedia.media).willReturn(media)
@@ -206,7 +205,7 @@ class SeriesMediaServiceTest {
         @Test
         @DisplayName("실패: 존재하지 않는 seriesId로 조회 시 예외를 던진다")
         fun getMedia_SeriesNotFound_Fail() {
-            given(seriesRepository.findByIdAndDeletedAtIsNull(999L)).willReturn(Optional.empty())
+            given(seriesRepository.findByIdAndDeletedAtIsNull(999L)).willReturn(null)
 
             assertThatThrownBy { seriesMediaService.getMedia(999L) }
                 .isInstanceOf(BusinessException::class.java)
@@ -217,7 +216,7 @@ class SeriesMediaServiceTest {
         fun getMedia_NoMedia_Success() {
             val series = mock(Series::class.java)
 
-            given(seriesRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(Optional.of(series))
+            given(seriesRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(series)
             given(seriesMediaRepository.findBySeries(series)).willReturn(null)
 
             val result = seriesMediaService.getMedia(1L)
@@ -239,7 +238,7 @@ class SeriesMediaServiceTest {
             val seriesMedia = mock(SeriesMedia::class.java)
             given(seriesMedia.media).willReturn(media)
 
-            given(seriesRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(Optional.of(series))
+            given(seriesRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(series)
             given(series.user).willReturn(owner)
             given(owner.id).willReturn(1L)
             given(seriesMediaRepository.findBySeries(series)).willReturn(seriesMedia)
@@ -253,7 +252,7 @@ class SeriesMediaServiceTest {
         @Test
         @DisplayName("실패: 존재하지 않는 seriesId로 삭제 시 예외를 던진다")
         fun deleteMedia_SeriesNotFound_Fail() {
-            given(seriesRepository.findByIdAndDeletedAtIsNull(999L)).willReturn(Optional.empty())
+            given(seriesRepository.findByIdAndDeletedAtIsNull(999L)).willReturn(null)
 
             assertThatThrownBy { seriesMediaService.deleteMedia(999L, 1L, UserRole.USER) }
                 .isInstanceOf(BusinessException::class.java)
@@ -267,7 +266,7 @@ class SeriesMediaServiceTest {
             val series = mock(Series::class.java)
             val owner = mock(User::class.java)
 
-            given(seriesRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(Optional.of(series))
+            given(seriesRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(series)
             given(series.user).willReturn(owner)
             given(owner.id).willReturn(1L)
 
@@ -284,7 +283,7 @@ class SeriesMediaServiceTest {
             val series = mock(Series::class.java)
             val owner = mock(User::class.java)
 
-            given(seriesRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(Optional.of(series))
+            given(seriesRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(series)
             given(series.user).willReturn(owner)
             given(owner.id).willReturn(1L)
             given(seriesMediaRepository.findBySeries(series)).willReturn(null)
@@ -298,7 +297,7 @@ class SeriesMediaServiceTest {
         @Test
         @DisplayName("실패: 소프트삭제된 시리즈 삭제 시도 시 예외를 던진다")
         fun deleteMedia_DeletedSeries_Fail() {
-            given(seriesRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(Optional.empty())
+            given(seriesRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(null)
 
             assertThatThrownBy { seriesMediaService.deleteMedia(1L, 1L, UserRole.USER) }
                 .isInstanceOf(BusinessException::class.java)
@@ -315,7 +314,7 @@ class SeriesMediaServiceTest {
 
             given(media.id).willReturn(10L)
             given(seriesMedia.media).willReturn(media)
-            given(seriesRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(Optional.of(series))
+            given(seriesRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(series)
             given(seriesMediaRepository.findBySeries(series)).willReturn(seriesMedia)
 
             seriesMediaService.deleteMedia(1L, 99L, UserRole.ADMIN)

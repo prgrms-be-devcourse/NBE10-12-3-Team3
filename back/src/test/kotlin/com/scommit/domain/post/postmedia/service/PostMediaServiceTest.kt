@@ -17,6 +17,7 @@ import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.ArgumentMatchers.any
+import org.mockito.ArgumentMatchers.anyLong
 import org.mockito.BDDMockito.given
 import org.mockito.InjectMocks
 import org.mockito.Mock
@@ -101,7 +102,7 @@ class PostMediaServiceTest {
             postMediaService.uploadMedia(postId, file, PostMediaType.THUMBNAIL)
 
             verify(postMediaRepository, never()).delete(any(PostMedia::class.java))
-            verify(mediaService, never()).deleteMedia(any())
+            verify(mediaService, never()).deleteMedia(anyLong())
         }
 
         @Test
@@ -142,7 +143,7 @@ class PostMediaServiceTest {
             assertThatThrownBy { postMediaService.uploadMedia(999L, file, PostMediaType.BODY) }
                 .isInstanceOf(BusinessException::class.java)
 
-            verify(mediaService, never()).uploadMedia(any(), any())
+            verify(mediaService, never()).uploadMedia(any(), anyOfType<String>())
         }
 
         @Test
@@ -157,7 +158,7 @@ class PostMediaServiceTest {
             assertThatThrownBy { postMediaService.uploadMedia(postId, file, PostMediaType.BODY) }
                 .isInstanceOf(BusinessException::class.java)
 
-            verify(mediaService, never()).uploadMedia(any(), any())
+            verify(mediaService, never()).uploadMedia(any(), anyOfType<String>())
         }
     }
 
@@ -350,7 +351,7 @@ class PostMediaServiceTest {
                 .isInstanceOf(BusinessException::class.java)
 
             verify(postMediaRepository, never()).delete(any())
-            verify(mediaService, never()).deleteMedia(any())
+            verify(mediaService, never()).deleteMedia(anyLong())
         }
 
         @Test
@@ -371,7 +372,7 @@ class PostMediaServiceTest {
                 .isInstanceOf(BusinessException::class.java)
 
             verify(postMediaRepository, never()).delete(any())
-            verify(mediaService, never()).deleteMedia(any())
+            verify(mediaService, never()).deleteMedia(anyLong())
         }
     }
 }
