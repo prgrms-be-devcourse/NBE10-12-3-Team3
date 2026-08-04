@@ -204,7 +204,7 @@ class CommentServiceTest {
 
             commentService.createComment(mockUser, 10L, "댓글");
 
-            verify(sseEmitterRepository, never()).sendToUser(any(), any());
+            verify(sseEmitterRepository, never()).sendToUser(anyLong(), any());
         }
 
         // softDelete된 게시글에는 댓글 작성 불가

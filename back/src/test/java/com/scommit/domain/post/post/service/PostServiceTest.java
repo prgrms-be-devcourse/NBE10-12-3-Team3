@@ -387,7 +387,7 @@ class PostServiceTest {
         void create_Draft_NoSse() {
             postService.createPost(mockUser, "제목", "내용", PublishStatus.DRAFT, PostAccessLevel.FREE, null);
 
-            verify(sseEmitterRepository, never()).sendToUser(any(), any());
+            verify(sseEmitterRepository, never()).sendToUser(anyLong(), any());
         }
 
         // 없는 시리즈 ID를 넘기면 저장 전에 예외가 발생해야 함
@@ -446,7 +446,7 @@ class PostServiceTest {
 
             postService.updatePost(mockUser, 1L, "수정제목", "수정내용", PublishStatus.PUBLIC, PostAccessLevel.FREE, null);
 
-            verify(sseEmitterRepository, never()).sendToUser(any(), any());
+            verify(sseEmitterRepository, never()).sendToUser(anyLong(), any());
         }
 
         // 없는 게시글 ID → 조회 시점에 예외 발생
