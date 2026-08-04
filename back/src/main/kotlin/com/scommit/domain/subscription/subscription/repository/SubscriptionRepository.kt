@@ -1,5 +1,6 @@
 package com.scommit.domain.subscription.subscription.repository
 
+import com.scommit.domain.subscription.subscription.dto.CreatorFollowerIncrease
 import com.scommit.domain.subscription.subscription.entity.Subscription
 import com.scommit.domain.subscription.subscription.entity.SubscriptionTier
 import org.springframework.data.domain.Page
@@ -84,12 +85,13 @@ interface SubscriptionRepository : JpaRepository<Subscription, Long> {
 
     // 관리자 대시보드: 인기 창작자 TOP 5 (followerIncrease 기준)
     @Query(
-        "SELECT s.creator, COUNT(s) as followerIncrease FROM Subscription s " +
-            "WHERE s.createdAt >= :createdAt AND s.deletedAt IS NULL GROUP BY s.creator ORDER BY COUNT(s) DESC",
+        "SELECT new com.scommit.domain.subscription.subscription.dto.CreatorFollowerIncrease(s.creator, COUNT(s)) " +
+            "FROM Subscription s WHERE s.createdAt >= :createdAt AND s.deletedAt IS NULL " +
+            "GROUP BY s.creator ORDER BY COUNT(s) DESC",
     )
     fun findTopCreatorsByFollowerIncreaseAndPeriod(
         @Param("createdAt") createdAt: LocalDateTime,
-    ): List<Array<Any>>
+    ): List<CreatorFollowerIncrease>
 
     // 전체 통계
     @Query("SELECT COUNT(CASE WHEN s.tier = 'MEMBERSHIP' THEN 1 END) FROM Subscription s WHERE s.deletedAt IS NULL")

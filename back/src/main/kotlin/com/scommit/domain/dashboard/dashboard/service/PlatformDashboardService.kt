@@ -11,7 +11,6 @@ import com.scommit.domain.post.post.entity.PostAccessLevel
 import com.scommit.domain.post.post.repository.PostRepository
 import com.scommit.domain.series.series.repository.SeriesRepository
 import com.scommit.domain.subscription.subscription.repository.SubscriptionRepository
-import com.scommit.domain.user.user.entity.User
 import com.scommit.domain.user.user.repository.UserRepository
 import com.scommit.domain.user.usermedia.repository.UserMediaRepository
 import org.springframework.data.domain.PageRequest
@@ -114,20 +113,32 @@ class PlatformDashboardService(
     }
 
     private fun buildSuperCreators(periodStart: LocalDateTime): List<SuperCreator> {
-        val rawData = subscriptionRepository.findTopCreatorsByFollowerIncreaseAndPeriod(periodStart)
+        val topCreators =
+            subscriptionRepository.findTopCreatorsByFollowerIncreaseAndPeriod(periodStart).take(TOP_N)
+        if (topCreators.isEmpty()) return emptyList()
 
-        return rawData.take(TOP_N).map { row ->
-            val creator = row[0] as User
-            val followerIncrease = (row[1] as Number).toLong()
-            val totalFollowers = subscriptionRepository.countByCreatorIdAndDeletedAtIsNull(checkNotNull(creator.id))
-            val profileImageUrl = userMediaRepository.findByUser(creator)?.media?.url
+        val creators = topCreators.map { it.creator }
+        val creatorIds = creators.map { checkNotNull(it.id) }
+
+        // N+1 방지: 팔로워 수/프로필 이미지를 창작자별로 조회하지 않고 한 번에 조회
+        val followerCountByCreatorId =
+            subscriptionRepository
+                .countFollowersGroupedByCreatorIds(creatorIds)
+                .associate { (it[0] as Long) to (it[1] as Long) }
+        val profileImageUrlByUserId =
+            userMediaRepository
+                .findAllByUserIn(creators)
+                .associate { checkNotNull(it.user.id) to it.media.url }
+
+        return topCreators.map { (creator, followerIncrease) ->
+            val creatorId = checkNotNull(creator.id)
 
             SuperCreator(
-                id = checkNotNull(creator.id),
+                id = creatorId,
                 nickname = creator.nickname,
-                subscriberCount = totalFollowers,
+                subscriberCount = followerCountByCreatorId[creatorId] ?: 0L,
                 followerIncrease = followerIncrease,
-                profileImageUrl = profileImageUrl,
+                profileImageUrl = profileImageUrlByUserId[creatorId],
                 introduction = creator.introduction,
             )
         }
