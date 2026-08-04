@@ -145,7 +145,13 @@ class SeriesController(
     ): RsData<SeriesResponse> {
         val actor = securityHelper.actor ?: throw BusinessException(ErrorCode.UNAUTHORIZED)
         val response =
-            seriesService.updateSeries(id, checkNotNull(request.title), request.body, checkNotNull(actor.id), actor.role)
+            seriesService.updateSeries(
+                id,
+                checkNotNull(request.title),
+                request.body,
+                checkNotNull(actor.id),
+                actor.role,
+            )
         return RsData("200-1", "시리즈를 수정하였습니다.", response)
     }
 
