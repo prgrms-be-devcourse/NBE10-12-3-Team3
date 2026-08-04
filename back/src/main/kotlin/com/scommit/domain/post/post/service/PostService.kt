@@ -76,19 +76,15 @@ class PostService
                 val creator =
                     userRepository.findByIdAndDeletedAtIsNull(creatorId)
                         ?: throw BusinessException(ErrorCode.USER_NOT_FOUND)
-                return postRepository
-                    .findSliceByUserAndDeletedAtIsNull(creator, pageable)
-                    .map { post ->
-                        val postId = checkNotNull(post.id)
-                        PostListResponse(post, isLiked(postId, actor), isBookmarked(postId, actor))
-                    }
+                val slice = postRepository.findSliceByUserAndDeletedAtIsNull(creator, pageable)
+                val liked = likedPostIds(slice.content, actor)
+                val bookmarked = bookmarkedPostIds(slice.content, actor)
+                return slice.map { post -> PostListResponse(post, liked.contains(post.id), bookmarked.contains(post.id)) }
             }
-            return postRepository
-                .findAllByDeletedAtIsNullAndPublishStatus(PublishStatus.PUBLIC, pageable)
-                .map { post ->
-                    val postId = checkNotNull(post.id)
-                    PostListResponse(post, isLiked(postId, actor), isBookmarked(postId, actor))
-                }
+            val slice = postRepository.findAllByDeletedAtIsNullAndPublishStatus(PublishStatus.PUBLIC, pageable)
+            val liked = likedPostIds(slice.content, actor)
+            val bookmarked = bookmarkedPostIds(slice.content, actor)
+            return slice.map { post -> PostListResponse(post, liked.contains(post.id), bookmarked.contains(post.id)) }
         }
 
         // 게시글 상세 조회
@@ -192,12 +188,10 @@ class PostService
             val user =
                 userRepository.findByIdAndDeletedAtIsNull(userId)
                     ?: throw BusinessException(ErrorCode.USER_NOT_FOUND)
-            return postRepository
-                .findByUserAndDeletedAtIsNull(user, pageable)
-                .map { post ->
-                    val postId = checkNotNull(post.id)
-                    PostListResponse(post, isLiked(postId, actor), isBookmarked(postId, actor))
-                }
+            val page = postRepository.findByUserAndDeletedAtIsNull(user, pageable)
+            val liked = likedPostIds(page.content, actor)
+            val bookmarked = bookmarkedPostIds(page.content, actor)
+            return page.map { post -> PostListResponse(post, liked.contains(post.id), bookmarked.contains(post.id)) }
         }
 
         // 키워드 검색
@@ -213,13 +207,12 @@ class PostService
         fun getMyPosts(
             actor: User,
             pageable: Pageable,
-        ): Page<PostListResponse> =
-            postRepository
-                .findByUserAndDeletedAtIsNull(actor, pageable)
-                .map { post ->
-                    val postId = checkNotNull(post.id)
-                    PostListResponse(post, isLiked(postId, actor), isBookmarked(postId, actor))
-                }
+        ): Page<PostListResponse> {
+            val page = postRepository.findByUserAndDeletedAtIsNull(actor, pageable)
+            val liked = likedPostIds(page.content, actor)
+            val bookmarked = bookmarkedPostIds(page.content, actor)
+            return page.map { post -> PostListResponse(post, liked.contains(post.id), bookmarked.contains(post.id)) }
+        }
 
         // 시리즈에 포스트 추가
         @Suppress("ThrowsCount")
@@ -273,13 +266,12 @@ class PostService
         fun getPostsBySeriesId(
             seriesId: Long,
             actor: User?,
-        ): List<PostListResponse> =
-            postRepository
-                .findBySeriesIdAndDeletedAtIsNull(seriesId)
-                .map { post ->
-                    val postId = checkNotNull(post.id)
-                    PostListResponse(post, isLiked(postId, actor), isBookmarked(postId, actor))
-                }
+        ): List<PostListResponse> {
+            val posts = postRepository.findBySeriesIdAndDeletedAtIsNull(seriesId)
+            val liked = likedPostIds(posts, actor)
+            val bookmarked = bookmarkedPostIds(posts, actor)
+            return posts.map { post -> PostListResponse(post, liked.contains(post.id), bookmarked.contains(post.id)) }
+        }
 
         private fun sendSse(post: Post) {
             val creatorId: Long = checkNotNull(post.user.id)
@@ -315,4 +307,23 @@ class PostService
             postId: Long,
             actor: User?,
         ): Boolean = actor != null && bookmarkRepository.existsByPostIdAndUserId(postId, checkNotNull(actor.id))
+
+        // 목록 조회용 — 항목마다 existsByPostIdAndUserId를 부르는 N+1 대신 postId 목록으로 한 번에 조회한다.
+        private fun likedPostIds(
+            posts: List<Post>,
+            actor: User?,
+        ): Set<Long> {
+            if (actor == null || posts.isEmpty()) return emptySet()
+            val postIds = posts.mapNotNull { it.id }
+            return likeRepository.findPostIdsByPostIdInAndUserId(postIds, checkNotNull(actor.id)).toSet()
+        }
+
+        private fun bookmarkedPostIds(
+            posts: List<Post>,
+            actor: User?,
+        ): Set<Long> {
+            if (actor == null || posts.isEmpty()) return emptySet()
+            val postIds = posts.mapNotNull { it.id }
+            return bookmarkRepository.findPostIdsByPostIdInAndUserId(postIds, checkNotNull(actor.id)).toSet()
+        }
     }

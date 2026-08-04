@@ -38,4 +38,10 @@ interface BookmarkRepository : JpaRepository<Bookmark, Long> {
     fun deleteAllByPostId(
         @Param("postId") postId: Long,
     ): Int
+
+    @Query("SELECT b.post.id FROM Bookmark b WHERE b.post.id IN :postIds AND b.user.id = :userId")
+    fun findPostIdsByPostIdInAndUserId(
+        @Param("postIds") postIds: List<Long>,
+        @Param("userId") userId: Long,
+    ): List<Long>
 }

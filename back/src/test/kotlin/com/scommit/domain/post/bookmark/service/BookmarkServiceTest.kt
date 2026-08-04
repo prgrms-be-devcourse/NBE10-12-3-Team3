@@ -14,6 +14,7 @@ import com.scommit.global.exception.BusinessException
 import com.scommit.global.exception.ErrorCode
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
+import org.assertj.core.api.Assertions.tuple
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
@@ -25,6 +26,7 @@ import org.mockito.BDDMockito.given
 import org.mockito.InjectMocks
 import org.mockito.Mock
 import org.mockito.Mockito.never
+import org.mockito.Mockito.times
 import org.mockito.Mockito.verify
 import org.mockito.junit.jupiter.MockitoExtension
 import org.springframework.dao.DataIntegrityViolationException
@@ -33,6 +35,13 @@ import org.springframework.data.domain.PageImpl
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Pageable
 import org.springframework.test.util.ReflectionTestUtils
+
+// any() returns null at runtime, which fails Kotlin's non-null check on Kotlin-declared repository params.
+private fun <T> anyOfType(): T {
+    any<T>()
+    @Suppress("UNCHECKED_CAST")
+    return null as T
+}
 
 @ExtendWith(MockitoExtension::class)
 class BookmarkServiceTest {
@@ -225,7 +234,7 @@ class BookmarkServiceTest {
             val bookmark = Bookmark(post = post, user = actor)
             val page: Page<Bookmark> = PageImpl(listOf(bookmark))
             given(bookmarkRepository.findByUserIdAndPostDeletedAtIsNull(1L, pageable)).willReturn(page)
-            given(likeRepository.existsByPostIdAndUserId(10L, 1L)).willReturn(true)
+            given(likeRepository.findPostIdsByPostIdInAndUserId(listOf(10L), 1L)).willReturn(listOf(10L))
 
             // when
             val result: Page<PostListResponse> = bookmarkService.getMyBookmarks(actor, pageable)
@@ -242,13 +251,42 @@ class BookmarkServiceTest {
             val bookmark = Bookmark(post = post, user = actor)
             val page: Page<Bookmark> = PageImpl(listOf(bookmark))
             given(bookmarkRepository.findByUserIdAndPostDeletedAtIsNull(1L, pageable)).willReturn(page)
-            given(likeRepository.existsByPostIdAndUserId(10L, 1L)).willReturn(false)
+            given(likeRepository.findPostIdsByPostIdInAndUserId(listOf(10L), 1L)).willReturn(emptyList())
 
             // when
             val result: Page<PostListResponse> = bookmarkService.getMyBookmarks(actor, pageable)
 
             // then
             assertThat(result.content[0].isLiked).isFalse()
+        }
+
+        @Test
+        @DisplayName("성공: 북마크가 여러 건이어도 좋아요 여부는 배치 조회 1번으로 해결한다(N+1 방지)")
+        fun getMyBookmarks_multipleItems_batchesLikeLookup() {
+            // given
+            val pageable: Pageable = PageRequest.of(0, 10)
+            val otherPost =
+                Post(
+                    user = actor,
+                    series = null,
+                    title = "다른 게시글",
+                    body = "내용",
+                    publishStatus = PublishStatus.PUBLIC,
+                    accessLevel = PostAccessLevel.FREE,
+                ).also { ReflectionTestUtils.setField(it, "id", 11L) }
+            val bookmarks = listOf(Bookmark(post = post, user = actor), Bookmark(post = otherPost, user = actor))
+            val page: Page<Bookmark> = PageImpl(bookmarks)
+            given(bookmarkRepository.findByUserIdAndPostDeletedAtIsNull(1L, pageable)).willReturn(page)
+            given(likeRepository.findPostIdsByPostIdInAndUserId(listOf(10L, 11L), 1L)).willReturn(listOf(11L))
+
+            // when
+            val result: Page<PostListResponse> = bookmarkService.getMyBookmarks(actor, pageable)
+
+            // then
+            assertThat(result.content)
+                .extracting("id", "isLiked")
+                .containsExactly(tuple(10L, false), tuple(11L, true))
+            verify(likeRepository, times(1)).findPostIdsByPostIdInAndUserId(anyOfType(), anyLong())
         }
     }
 }
