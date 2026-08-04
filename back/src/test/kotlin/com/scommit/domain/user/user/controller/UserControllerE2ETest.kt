@@ -383,7 +383,7 @@ class UserControllerE2ETest {
                 .exchange()
                 .expectStatus()
                 .isBadRequest()
-                .expectBody(ApiResponse.VOID_BODY)
+                .expectBody<ApiResponse<Void>>()
                 .value { body ->
                     checkNotNull(body)
                     assertThat(body.resultCode).isEqualTo("400-1")
@@ -531,7 +531,7 @@ class UserControllerE2ETest {
                 .exchange()
                 .expectStatus()
                 .isUnauthorized()
-                .expectBody(ApiResponse.VOID_BODY)
+                .expectBody<ApiResponse<Void>>()
                 .value { body ->
                     checkNotNull(body)
                     assertThat(body.resultCode).isEqualTo("401-1")
@@ -554,7 +554,7 @@ class UserControllerE2ETest {
                 .isUnauthorized()
                 .expectHeader()
                 .contentTypeCompatibleWith(MediaType.APPLICATION_JSON)
-                .expectBody(ApiResponse.VOID_BODY)
+                .expectBody<ApiResponse<Void>>()
                 .value { body ->
                     checkNotNull(body)
                     assertThat(body.resultCode).isEqualTo("401-2")

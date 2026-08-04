@@ -150,7 +150,7 @@ object E2ETestSupport {
         response
             .expectStatus()
             .isEqualTo(status)
-            .expectBody(ApiResponse.VOID_BODY)
+            .expectBody<ApiResponse<Void>>()
             .value { body ->
                 checkNotNull(body)
                 assertThat(body.resultCode).isEqualTo(resultCode)

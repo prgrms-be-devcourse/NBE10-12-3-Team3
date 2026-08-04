@@ -292,7 +292,7 @@ class NotificationControllerE2ETest {
                 .exchange()
                 .expectStatus()
                 .isUnauthorized()
-                .expectBody(ApiResponse.VOID_BODY)
+                .expectBody<ApiResponse<Void>>()
                 .value { body ->
                     checkNotNull(body)
                     // 401-1 은 AuthenticationEntryPoint 와 BusinessException(UNAUTHORIZED)이 공유하는
