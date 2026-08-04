@@ -14,6 +14,7 @@ import {useAuth} from "@/providers/auth-provider";
 import {useHasMounted} from "@/hooks/use-has-mounted";
 
 import {apiDelete, apiFetch, apiPost} from "@/lib/api";
+import {getMainpage, TopPost as DashboardTopPost} from "@/lib/dashboard-api";
 
 interface PostItem {
   id: number;
@@ -42,7 +43,21 @@ interface CreatorItem {
     profileImageUrl?: string;
 }
 
-const TOP_CREATOR_IDS = [2, 3, 4, 5, 6];
+function toPostItem(post: DashboardTopPost): PostItem {
+  return {
+    id: post.id,
+    userId: post.authorId ?? 0,
+    nickname: post.authorNickname ?? "",
+    title: post.title,
+    accessLevel: post.accessLevel,
+    viewCount: post.viewCount,
+    likeCount: post.likeCount,
+    bookmarkCount: post.bookmarkCount,
+    isLiked: false,
+    isBookmarked: false,
+    createdAt: post.createdAt ?? "",
+  };
+}
 
 function toCardProps(post: PostItem) {
   return {
@@ -88,30 +103,18 @@ export default function Home() {
       setHeroIdx((prev) => (prev + 1) % HERO_ITEMS.length);
     }, 3000);
 
-      // 창작자 카드 (ID 2~6 고정)
-      Promise.all(
-          TOP_CREATOR_IDS.map((id) =>
-              apiFetch<{
-                  id: number;
-                  followerCount: number;
-                  profile: { nickname: string; introduction?: string; profileImageUrl?: string }
-              }>(`/api/users/${id}`)
-                  .then((res) => ({
-                      id: res.id,
-                      nickname: res.profile.nickname,
-                      subscriberCount: res.followerCount,
-                      introduction: res.profile.introduction,
-                      profileImageUrl: res.profile.profileImageUrl,
-                  }))
-                  .catch(() => null)
-          )
-      ).then((results) => setTopCreators(results.filter(Boolean) as CreatorItem[]));
-
-      // 캐러셀용 데이터 (viewCount 정렬 상위 200개를 조회하여  FREE/PAID 분리)
-      apiFetch<SliceResponse>("/api/posts?size=200&sort=viewCount,desc")
+      // 메인페이지 실데이터 (지금 뜨는 창작자 TOP 5 + 인기 멤버십/무료 포스트 TOP 5)
+      getMainpage()
       .then((data) => {
-        setTrendingPaidPosts(data.content.filter(p => p.accessLevel === "PAID").slice(0, 15));
-        setFreePosts(data.content.filter(p => p.accessLevel === "FREE").slice(0, 10));
+        setTopCreators(data.trendingCreators.map((c) => ({
+          id: c.id,
+          nickname: c.nickname,
+          subscriberCount: c.subscriberCount,
+          introduction: c.introduction,
+          profileImageUrl: c.profileImageUrl,
+        })));
+        setTrendingPaidPosts(data.popularPaidPosts.map(toPostItem));
+        setFreePosts(data.popularFreePosts.map(toPostItem));
       })
       .catch(console.error)
       .finally(() => setIsLoading(false));
