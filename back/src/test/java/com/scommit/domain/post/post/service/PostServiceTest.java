@@ -107,11 +107,7 @@ class PostServiceTest {
     }
 
     private Series buildSeries(Long id, User owner) {
-        Series series = Series.builder()
-                .user(owner)
-                .title("시리즈")
-                .body("설명")
-                .build();
+        Series series = new Series(owner, "시리즈", "설명");
         ReflectionTestUtils.setField(series, "id", id);
         return series;
     }
@@ -636,7 +632,7 @@ class PostServiceTest {
             Post post = buildPost(10L, mockUser, null);
 
             when(postRepository.findByIdAndDeletedAtIsNull(10L)).thenReturn(Optional.of(post));
-            when(seriesRepository.findByIdAndDeletedAtIsNull(5L)).thenReturn(Optional.of(series));
+            when(seriesRepository.findByIdAndDeletedAtIsNull(5L)).thenReturn(series);
 
             postService.addPostToSeries(10L, 5L, mockUser);
 
@@ -653,7 +649,7 @@ class PostServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .hasFieldOrPropertyWithValue("errorCode", ErrorCode.POST_NOT_FOUND);
 
-            verify(seriesRepository, never()).findByIdAndDeletedAtIsNull(any());
+            verify(seriesRepository, never()).findByIdAndDeletedAtIsNull(anyLong());
         }
 
         // 포스트 주인이 아니면 시리즈 조회 전에 차단해야 함
@@ -667,7 +663,7 @@ class PostServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .hasFieldOrPropertyWithValue("errorCode", ErrorCode.ACCESS_DENIED);
 
-            verify(seriesRepository, never()).findByIdAndDeletedAtIsNull(any());
+            verify(seriesRepository, never()).findByIdAndDeletedAtIsNull(anyLong());
         }
 
         @Test
@@ -675,7 +671,7 @@ class PostServiceTest {
         void add_SeriesNotFound() {
             Post post = buildPost(10L, mockUser, null);
             when(postRepository.findByIdAndDeletedAtIsNull(10L)).thenReturn(Optional.of(post));
-            when(seriesRepository.findByIdAndDeletedAtIsNull(999L)).thenReturn(Optional.empty());
+            when(seriesRepository.findByIdAndDeletedAtIsNull(999L)).thenReturn(null);
 
             assertThatThrownBy(() -> postService.addPostToSeries(10L, 999L, mockUser))
                     .isInstanceOf(BusinessException.class)
@@ -689,7 +685,7 @@ class PostServiceTest {
             Post post = buildPost(10L, mockUser, null);
 
             when(postRepository.findByIdAndDeletedAtIsNull(10L)).thenReturn(Optional.of(post));
-            when(seriesRepository.findByIdAndDeletedAtIsNull(5L)).thenReturn(Optional.of(series));
+            when(seriesRepository.findByIdAndDeletedAtIsNull(5L)).thenReturn(series);
 
             assertThatThrownBy(() -> postService.addPostToSeries(10L, 5L, mockUser))
                     .isInstanceOf(BusinessException.class)
