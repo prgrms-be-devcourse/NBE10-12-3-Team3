@@ -41,8 +41,6 @@ import org.springframework.http.MediaType
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.servlet.client.RestTestClient
 import org.springframework.test.web.servlet.client.expectBody
-import java.util.Optional
-import kotlin.jvm.optionals.getOrNull
 
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
@@ -77,19 +75,21 @@ class LikeControllerE2ETest {
         accessLevel: PostAccessLevel,
     ): Long =
         checkNotNull(
-            client
-                .post()
-                .uri("/api/posts")
-                .header("Authorization", bearer(accessToken))
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(PostCreateRequest(null, "좋아요 E2E 게시글", "게시글 본문", publishStatus, accessLevel))
-                .exchange()
-                .expectStatus()
-                .isCreated()
-                .expectBody<ApiResponse<PostResponse>>()
-                .returnResult()
-                .responseBody,
-        ).data.id
+            checkNotNull(
+                client
+                    .post()
+                    .uri("/api/posts")
+                    .header("Authorization", bearer(accessToken))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(PostCreateRequest(null, "좋아요 E2E 게시글", "게시글 본문", publishStatus, accessLevel))
+                    .exchange()
+                    .expectStatus()
+                    .isCreated()
+                    .expectBody<ApiResponse<PostResponse>>()
+                    .returnResult()
+                    .responseBody,
+            ).data.id,
+        )
 
     private fun createPublicPost(accessToken: String): Long =
         createPost(accessToken, PublishStatus.PUBLIC, PostAccessLevel.FREE)
@@ -139,7 +139,7 @@ class LikeControllerE2ETest {
     private fun findLike(
         postId: Long,
         userId: Long,
-    ): Optional<Like> = likeRepository.findByPostIdAndUserId(postId, userId)
+    ): Like? = likeRepository.findByPostIdAndUserId(postId, userId)
 
     private fun likeCountOf(postId: Long): Long = checkNotNull(postRepository.findByIdOrNull(postId)).likeCount
 
@@ -190,7 +190,7 @@ class LikeControllerE2ETest {
                 }
 
             // 생성이라는 부작용 자체를 DB에서 되짚어 확인한다.
-            val saved = checkNotNull(findLike(postId, userId).getOrNull())
+            val saved = checkNotNull(findLike(postId, userId))
             assertThat(saved.post.id).isEqualTo(postId)
             assertThat(saved.user.id).isEqualTo(userId)
             assertThat(likeCountOf(postId)).isEqualTo(1L)
@@ -211,7 +211,7 @@ class LikeControllerE2ETest {
 
             expectResultCode(createLikeRequest(liker.accessToken, postId), HttpStatus.CREATED, "201-1")
 
-            assertThat(findLike(postId, liker.user.id)).isPresent()
+            assertThat(findLike(postId, liker.user.id)).isNotNull()
             assertThat(likeCountOf(postId)).isEqualTo(1L)
 
             // 좋아요를 누른 사람에게만 isLiked 가 true 다.
@@ -256,7 +256,7 @@ class LikeControllerE2ETest {
 
             expectResultCode(createLikeRequest(accessToken, postId), HttpStatus.NOT_FOUND, "404-3")
 
-            assertThat(findLike(postId, session.user.id)).isEmpty()
+            assertThat(findLike(postId, session.user.id)).isNull()
         }
 
         @Test
@@ -312,7 +312,7 @@ class LikeControllerE2ETest {
             // 그런데 좋아요는 통과한다.
             expectResultCode(createLikeRequest(other.accessToken, postId), HttpStatus.CREATED, "201-1")
 
-            assertThat(findLike(postId, other.user.id)).isPresent()
+            assertThat(findLike(postId, other.user.id)).isNotNull()
             assertThat(likeCountOf(postId)).isEqualTo(1L)
         }
 
@@ -327,7 +327,7 @@ class LikeControllerE2ETest {
 
             expectResultCode(createLikeRequest(other.accessToken, postId), HttpStatus.CREATED, "201-1")
 
-            assertThat(findLike(postId, other.user.id)).isPresent()
+            assertThat(findLike(postId, other.user.id)).isNotNull()
             assertThat(likeCountOf(postId)).isEqualTo(1L)
         }
     }
@@ -373,7 +373,7 @@ class LikeControllerE2ETest {
             // 카운트는 줄었는데
             assertThat(likeCountOf(postId)).isZero()
             // 행은 그대로 남아 있다 — 이 어긋남 자체가 버그다.
-            assertThat(findLike(postId, userId)).isPresent()
+            assertThat(findLike(postId, userId)).isNotNull()
 
             // 사용자 화면에도 "좋아요 0개인데 내가 누른 상태"로 보인다.
             val post = getPost(accessToken, postId)
@@ -395,7 +395,7 @@ class LikeControllerE2ETest {
             )
 
             assertThat(likeCountOf(postId)).isEqualTo(1L)
-            assertThat(findLike(postId, session.user.id)).isPresent()
+            assertThat(findLike(postId, session.user.id)).isNotNull()
         }
 
         @Test
@@ -457,7 +457,7 @@ class LikeControllerE2ETest {
             // 좋아요를 누른 적 없는 사용자의 취소 요청은 자기 기록만 찾으므로 404-9다.
             expectResultCode(deleteLikeRequest(otherToken, postId), HttpStatus.NOT_FOUND, "404-9")
 
-            assertThat(findLike(postId, author.user.id)).isPresent()
+            assertThat(findLike(postId, author.user.id)).isNotNull()
             assertThat(likeCountOf(postId)).isEqualTo(1L)
         }
 
@@ -477,7 +477,7 @@ class LikeControllerE2ETest {
 
             expectResultCode(deleteLikeRequest(accessToken, postId), HttpStatus.OK, "200-1")
             assertThat(likeCountOf(postId)).isZero()
-            assertThat(findLike(postId, session.user.id)).isPresent()
+            assertThat(findLike(postId, session.user.id)).isNotNull()
         }
 
         // FIXME(#1): 취소가 행을 지우지 않으므로(#1) 유니크 제약(uk_post_likes_post_user)이 그대로 살아 있어
@@ -541,7 +541,7 @@ class LikeControllerE2ETest {
             expectResultCode(deleteLikeRequest(other.accessToken, postId), HttpStatus.OK, "200-1")
 
             assertThat(likeCountOf(postId)).isEqualTo(1L)
-            assertThat(findLike(postId, author.user.id)).isPresent()
+            assertThat(findLike(postId, author.user.id)).isNotNull()
             assertThat(getPost(author.accessToken, postId).isLiked).isTrue()
         }
 
@@ -562,7 +562,7 @@ class LikeControllerE2ETest {
             expectResultCode(deleteLikeRequest(accessToken, postId), HttpStatus.NOT_FOUND, "404-3")
 
             assertThat(checkNotNull(postRepository.findByIdOrNull(postId)).deletedAt).isNotNull()
-            assertThat(findLike(postId, session.user.id)).isPresent()
+            assertThat(findLike(postId, session.user.id)).isNotNull()
         }
     }
 

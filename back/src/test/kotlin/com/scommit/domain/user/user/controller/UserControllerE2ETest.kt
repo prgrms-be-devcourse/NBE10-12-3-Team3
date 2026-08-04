@@ -256,7 +256,7 @@ class UserControllerE2ETest {
         nickname: String,
         role: UserRole,
     ): String {
-        val key = Keys.hmacShaKeyFor(Decoders.BASE64.decode(authTokenProperties.accessToken.secretKey()))
+        val key = Keys.hmacShaKeyFor(Decoders.BASE64.decode(authTokenProperties.accessToken.secretKey))
         val issuedAt = Date(System.currentTimeMillis() - Duration.ofMinutes(31).toMillis())
         val expiration = Date(System.currentTimeMillis() - Duration.ofMinutes(1).toMillis())
         return Jwts
@@ -288,7 +288,7 @@ class UserControllerE2ETest {
             assertThat(result.data.nickname).isEqualTo(nickname)
             assertThat(result.data.createdAt).isNotNull()
 
-            val saved = userRepository.findByEmailAndDeletedAtIsNull(email).orElseThrow()
+            val saved = checkNotNull(userRepository.findByEmailAndDeletedAtIsNull(email))
             assertThat(saved.id).isEqualTo(result.data.id)
             assertThat(saved.role).isEqualTo(UserRole.USER)
             assertThat(saved.refreshToken).isNotBlank()
@@ -727,7 +727,7 @@ class UserControllerE2ETest {
                     assertThat(body.data.profile.profileImageUrl).isNull()
                 }
 
-            val updated = userRepository.findByEmailAndDeletedAtIsNull(email).orElseThrow()
+            val updated = checkNotNull(userRepository.findByEmailAndDeletedAtIsNull(email))
             assertThat(updated.nickname).isEqualTo(newNickname)
             assertThat(updated.introduction).isEqualTo(newIntroduction)
         }
@@ -858,7 +858,7 @@ class UserControllerE2ETest {
             val accessToken = createUserAndGetAccessToken(client, email, DEFAULT_PASSWORD, uniqueNickname())
             val newPassword = "newpassword123"
 
-            val beforeChange = userRepository.findByEmailAndDeletedAtIsNull(email).orElseThrow()
+            val beforeChange = checkNotNull(userRepository.findByEmailAndDeletedAtIsNull(email))
             val refreshTokenBeforeChange = beforeChange.refreshToken
 
             var newAccessToken: String? = null
@@ -875,7 +875,7 @@ class UserControllerE2ETest {
                     newAccessToken = body.data.accessToken
                 }
 
-            val afterChange = userRepository.findByEmailAndDeletedAtIsNull(email).orElseThrow()
+            val afterChange = checkNotNull(userRepository.findByEmailAndDeletedAtIsNull(email))
             assertThat(afterChange.refreshToken).isNotEqualTo(refreshTokenBeforeChange)
 
             getMe(requireNotNull(newAccessToken))
