@@ -18,12 +18,21 @@
 
 import http from 'k6/http';
 import { check } from 'k6';
+import { Counter } from 'k6/metrics';
 
 const BASE_URL = __ENV.BASE_URL || 'https://api.scommit.store';
-const POST_ID = '52';
 
 // 단일 테스트 계정 — 동일 유저가 반복 토글하는 상황 재현
 const TEST_ACCOUNT = { email: 'user1@test.com', password: '123456' };
+
+const likeCreated = new Counter('like_created'); // 201
+const likeConflict = new Counter('like_conflict'); // 409
+const cancelOk = new Counter('cancel_ok'); // 200
+const cancelMissing = new Counter('cancel_missing'); // 404
+
+// 모듈 스코프에서 한 번만 생성(이유는 파일 상단 참고)
+const likeResponseCallback = http.expectedStatuses(201, 409);
+const cancelResponseCallback = http.expectedStatuses(200, 404);
 
 // setup()을 사용하는 이유:
 // default function은 VU 수만큼 병렬로 실행되므로 각 VU가 로그인하면 400번 로그인 요청이 발생함
@@ -39,7 +48,32 @@ export function setup() {
   if (!res.cookies.accessToken || res.cookies.accessToken.length === 0) {
     throw new Error(`로그인 실패: ${TEST_ACCOUNT.email} / status: ${res.status}`);
   }
-  return { token: res.cookies.accessToken[0].value };
+  const token = res.cookies.accessToken[0].value;
+
+  // 이 스크립트 전용 더미 게시글 — 실사용자 게시글을 건드리지 않기 위해 매 실행마다 새로 만든다.
+  const postRes = http.post(
+    `${BASE_URL}/api/posts`,
+    JSON.stringify({
+      seriesId: null,
+      title: 'k6 stress test dummy (like-scenario1)',
+      body: 'auto-created by k6, safe to delete',
+      publishStatus: 'PUBLIC',
+      accessLevel: 'FREE',
+    }),
+    { headers: { 'Content-Type': 'application/json', Cookie: `accessToken=${token}` } },
+  );
+  if (postRes.status !== 201) {
+    throw new Error(`더미 게시글 생성 실패: status ${postRes.status}`);
+  }
+
+  return { token, postId: postRes.json('data.id') };
+}
+
+// 측정 구간이 전부 끝난 뒤 딱 한 번 실행 — setup()에서 만든 더미 게시글을 정리한다.
+export function teardown(data) {
+  http.del(`${BASE_URL}/api/posts/${data.postId}`, null, {
+    headers: { Cookie: `accessToken=${data.token}` },
+  });
 }
 
 export const options = {
@@ -64,17 +98,27 @@ export default function (data) {
   // 스트레스 테스트는 한계점 탐색이 목적이므로 대기 없이 연속 요청으로 가혹한 부하를 줌
   // 같은 post_id + user_id row에 반복 락이 걸려 DB 병목 발생 시점을 확인하기 위함
 
-  // 좋아요: existsByPostIdAndUserId → save 순서로 같은 row 반복 접근
-  const likeRes = http.post(`${BASE_URL}/api/posts/${POST_ID}/likes`, null, { headers });
+  // 좋아요: 같은 row 반복 접근
+  const likeRes = http.post(`${BASE_URL}/api/posts/${data.postId}/likes`, null, {
+    headers,
+    responseCallback: likeResponseCallback,
+  });
   check(likeRes, {
-    // 201: 좋아요 성공 / 400: 이미 좋아요 상태 — 둘 다 서버가 정상 처리한 것
-    'like status ok': (r) => r.status === 201 || r.status === 400,
+    // 201: 좋아요 성공 / 409: 이미 좋아요 상태(ErrorCode.ALREADY_LIKED) — 둘 다 서버가 정상 처리한 것
+    'like status ok': (r) => r.status === 201 || r.status === 409,
   });
+  if (likeRes.status === 201) likeCreated.add(1);
+  if (likeRes.status === 409) likeConflict.add(1);
 
-  // 취소: findByPostIdAndUserId → delete 순서로 같은 row 반복 접근
-  const cancelRes = http.del(`${BASE_URL}/api/posts/${POST_ID}/likes`, null, { headers });
-  check(cancelRes, {
-    // 200: 취소 성공 / 400: 좋아요가 없는 상태에서 취소 시도 — 둘 다 정상 처리
-    'cancel status ok': (r) => r.status === 200 || r.status === 400,
+  // 취소: 같은 row 반복 접근
+  const cancelRes = http.del(`${BASE_URL}/api/posts/${data.postId}/likes`, null, {
+    headers,
+    responseCallback: cancelResponseCallback,
   });
+  check(cancelRes, {
+    // 200: 취소 성공 / 404: 좋아요가 없는 상태에서 취소 시도(ErrorCode.LIKE_NOT_FOUND) — 둘 다 정상 처리
+    'cancel status ok': (r) => r.status === 200 || r.status === 404,
+  });
+  if (cancelRes.status === 200) cancelOk.add(1);
+  if (cancelRes.status === 404) cancelMissing.add(1);
 }
