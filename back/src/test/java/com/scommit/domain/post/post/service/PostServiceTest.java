@@ -245,8 +245,8 @@ class PostServiceTest {
 
             assertThat(result.getContent().get(0).isLiked()).isFalse();
             assertThat(result.getContent().get(0).isBookmarked()).isFalse();
-            verify(likeRepository, never()).existsByPostIdAndUserId(any(), any());
-            verify(bookmarkRepository, never()).existsByPostIdAndUserId(any(), any());
+            verify(likeRepository, never()).existsByPostIdAndUserId(anyLong(), anyLong());
+            verify(bookmarkRepository, never()).existsByPostIdAndUserId(anyLong(), anyLong());
         }
     }
 
@@ -620,8 +620,8 @@ class PostServiceTest {
 
             assertThat(response.isLiked()).isFalse();
             assertThat(response.isBookmarked()).isFalse();
-            verify(likeRepository, never()).existsByPostIdAndUserId(any(), any());
-            verify(bookmarkRepository, never()).existsByPostIdAndUserId(any(), any());
+            verify(likeRepository, never()).existsByPostIdAndUserId(anyLong(), anyLong());
+            verify(bookmarkRepository, never()).existsByPostIdAndUserId(anyLong(), anyLong());
         }
     }
 
@@ -816,8 +816,8 @@ class PostServiceTest {
 
             assertThat(result.get(0).isLiked()).isFalse();
             assertThat(result.get(0).isBookmarked()).isFalse();
-            verify(likeRepository, never()).existsByPostIdAndUserId(any(), any());
-            verify(bookmarkRepository, never()).existsByPostIdAndUserId(any(), any());
+            verify(likeRepository, never()).existsByPostIdAndUserId(anyLong(), anyLong());
+            verify(bookmarkRepository, never()).existsByPostIdAndUserId(anyLong(), anyLong());
         }
     }
 }
