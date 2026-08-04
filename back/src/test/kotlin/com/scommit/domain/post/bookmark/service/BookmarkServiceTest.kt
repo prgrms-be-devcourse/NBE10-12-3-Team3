@@ -20,6 +20,7 @@ import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.ArgumentMatchers.any
+import org.mockito.ArgumentMatchers.anyLong
 import org.mockito.BDDMockito.given
 import org.mockito.InjectMocks
 import org.mockito.Mock
@@ -124,31 +125,30 @@ class BookmarkServiceTest {
         fun deleteBookmark_success() {
             // given
             ReflectionTestUtils.setField(post, "bookmarkCount", 1L)
-            val bookmark = Bookmark(post = post, user = actor)
             given(postRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(post)
-            given(bookmarkRepository.findByPostIdAndUserId(10L, 1L)).willReturn(bookmark)
+            given(bookmarkRepository.deleteByPostIdAndUserId(10L, 1L)).willReturn(1)
 
             // when
             bookmarkService.deleteBookmark(10L, actor)
 
             // then
-            verify(bookmarkRepository).delete(bookmark)
+            verify(bookmarkRepository).deleteByPostIdAndUserId(10L, 1L)
             verify(postRepository).decreaseBookmarkCount(10L)
         }
 
         @Test
-        @DisplayName("실패: 북마크가 없는 경우 BOOKMARK_NOT_FOUND 예외를 던진다")
+        @DisplayName("실패: 북마크가 없는 경우 BOOKMARK_NOT_FOUND 예외를 던지고 bookmarkCount를 건드리지 않는다")
         fun deleteBookmark_bookmarkNotFound() {
             // given
             given(postRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(post)
-            given(bookmarkRepository.findByPostIdAndUserId(10L, 1L)).willReturn(null)
+            given(bookmarkRepository.deleteByPostIdAndUserId(10L, 1L)).willReturn(0)
 
             // when & then
             assertThatThrownBy { bookmarkService.deleteBookmark(10L, actor) }
                 .isInstanceOf(BusinessException::class.java)
                 .hasFieldOrPropertyWithValue("errorCode", ErrorCode.BOOKMARK_NOT_FOUND)
 
-            verify(bookmarkRepository, never()).delete(any())
+            verify(postRepository, never()).decreaseBookmarkCount(anyLong())
         }
 
         @Test
@@ -162,7 +162,7 @@ class BookmarkServiceTest {
                 .isInstanceOf(BusinessException::class.java)
                 .hasFieldOrPropertyWithValue("errorCode", ErrorCode.POST_NOT_FOUND)
 
-            verify(bookmarkRepository, never()).delete(any())
+            verify(bookmarkRepository, never()).deleteByPostIdAndUserId(anyLong(), anyLong())
         }
     }
 

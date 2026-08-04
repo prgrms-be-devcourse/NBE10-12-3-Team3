@@ -41,10 +41,10 @@ class LikeService(
             ?: throw BusinessException(ErrorCode.POST_NOT_FOUND)
 
         val actorId = requireNotNull(actor.id)
-        val like =
-            likeRepository.findByPostIdAndUserId(postId, actorId)
-                ?: throw BusinessException(ErrorCode.LIKE_NOT_FOUND)
-        likeRepository.delete(like)
+        val deletedCount = likeRepository.deleteByPostIdAndUserId(postId, actorId)
+        if (deletedCount == 0) {
+            throw BusinessException(ErrorCode.LIKE_NOT_FOUND)
+        }
         postRepository.decreaseLikeCount(postId)
     }
 }

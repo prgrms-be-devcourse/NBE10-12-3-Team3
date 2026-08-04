@@ -5,6 +5,9 @@ import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.EntityGraph
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Modifying
+import org.springframework.data.jpa.repository.Query
+import org.springframework.data.repository.query.Param
 
 interface BookmarkRepository : JpaRepository<Bookmark, Long> {
     fun existsByPostIdAndUserId(
@@ -22,4 +25,11 @@ interface BookmarkRepository : JpaRepository<Bookmark, Long> {
         postId: Long,
         userId: Long,
     ): Bookmark?
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("DELETE FROM Bookmark b WHERE b.post.id = :postId AND b.user.id = :userId")
+    fun deleteByPostIdAndUserId(
+        @Param("postId") postId: Long,
+        @Param("userId") userId: Long,
+    ): Int
 }

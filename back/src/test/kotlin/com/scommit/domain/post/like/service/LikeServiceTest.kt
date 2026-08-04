@@ -17,6 +17,7 @@ import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.ArgumentMatchers.any
+import org.mockito.ArgumentMatchers.anyLong
 import org.mockito.BDDMockito.given
 import org.mockito.InjectMocks
 import org.mockito.Mock
@@ -114,31 +115,30 @@ class LikeServiceTest {
         fun deleteLike_success() {
             // given
             ReflectionTestUtils.setField(post, "likeCount", 1L)
-            val like = Like(post = post, user = actor)
             given(postRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(post)
-            given(likeRepository.findByPostIdAndUserId(10L, 1L)).willReturn(like)
+            given(likeRepository.deleteByPostIdAndUserId(10L, 1L)).willReturn(1)
 
             // when
             likeService.deleteLike(10L, actor)
 
             // then
-            verify(likeRepository).delete(like)
+            verify(likeRepository).deleteByPostIdAndUserId(10L, 1L)
             verify(postRepository).decreaseLikeCount(10L)
         }
 
         @Test
-        @DisplayName("실패: 좋아요가 없는 경우 LIKE_NOT_FOUND 예외를 던진다")
+        @DisplayName("실패: 좋아요가 없는 경우 LIKE_NOT_FOUND 예외를 던지고 likeCount를 건드리지 않는다")
         fun deleteLike_likeNotFound() {
             // given
             given(postRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(post)
-            given(likeRepository.findByPostIdAndUserId(10L, 1L)).willReturn(null)
+            given(likeRepository.deleteByPostIdAndUserId(10L, 1L)).willReturn(0)
 
             // when & then
             assertThatThrownBy { likeService.deleteLike(10L, actor) }
                 .isInstanceOf(BusinessException::class.java)
                 .hasFieldOrPropertyWithValue("errorCode", ErrorCode.LIKE_NOT_FOUND)
 
-            verify(likeRepository, never()).delete(any())
+            verify(postRepository, never()).decreaseLikeCount(anyLong())
         }
 
         @Test
@@ -152,7 +152,7 @@ class LikeServiceTest {
                 .isInstanceOf(BusinessException::class.java)
                 .hasFieldOrPropertyWithValue("errorCode", ErrorCode.POST_NOT_FOUND)
 
-            verify(likeRepository, never()).delete(any())
+            verify(likeRepository, never()).deleteByPostIdAndUserId(anyLong(), anyLong())
         }
     }
 }

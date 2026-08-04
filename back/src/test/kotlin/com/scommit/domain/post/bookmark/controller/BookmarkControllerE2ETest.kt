@@ -559,18 +559,9 @@ class BookmarkControllerE2ETest {
     @Nested
     @DisplayName("DELETE /api/posts/{postId}/bookmarks — 북마크 취소")
     inner class DeleteBookmark {
-        // FIXME(#1): BookmarkService.deleteBookmark 가 bookmarkRepository.delete(bookmark) 로 삭제를 예약한 뒤
-        // postRepository.decreaseBookmarkCount(postId) 를 호출하는데, 이 @Modifying 쿼리가
-        // clearAutomatically = true / flushAutomatically = false 다. 대상 테이블이 서로 달라
-        // (post_bookmarks ↔ posts) Hibernate 의 auto-flush 가 걸리지 않고, 쿼리 직후 영속성 컨텍스트가
-        // clear 되면서 예약된 DELETE 가 통째로 버려진다. LikeService.deleteLike 도 같은 모양이다.
-        // 2026-07-27 커밋 c2360f8("count 로직 DB로 마이그레이션")에서 post.decreaseBookmarkCount() 를
-        // postRepository.decreaseBookmarkCount() 로 바꾸며 생긴 회귀다 — 그 이전 버전은 정상 동작했다.
-        // 순수 JDBC 조회와 Hibernate SQL 로그(DELETE 문 미발행)로 확인했다.
-        // 상세: docs/like-bookmark-notification-e2e-known-issues.md #1
         @Test
-        @DisplayName("1. 200-1을 반환하고 bookmarkCount는 줄지만 Bookmark 행과 목록 노출은 그대로다")
-        fun deleteBookmark_returns200ButBookmarkRowSurvives() {
+        @DisplayName("1. 200-1을 반환하고 bookmarkCount가 줄면서 Bookmark 행과 목록 노출도 같이 사라진다")
+        fun deleteBookmark_returns200AndPersistsDeletion() {
             val session = createUserAndLogin(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
             val accessToken = session.accessToken
             val userId = session.user.id
@@ -594,18 +585,13 @@ class BookmarkControllerE2ETest {
                     assertThat(body.data).isNull()
                 }
 
-            // 카운트는 줄었는데
+            // 카운트도 줄고
             assertThat(bookmarkCountOf(postId)).isZero()
-            // 행은 그대로 남아 있고
-            assertThat(findBookmark(postId, userId)).isPresent()
-            // 취소한 게시글이 내 북마크 목록에 계속 보인다 — 사용자에게 바로 드러나는 증상이다.
+            // 행도 실제로 지워진다.
+            assertThat(findBookmark(postId, userId)).isEmpty()
+            // 취소한 게시글은 내 북마크 목록에서도 사라진다.
             val myBookmarks = getMyBookmarks(accessToken)
-            assertThat(myBookmarks.totalElements).isEqualTo(1)
-            assertThat(myBookmarks.content)
-                .extracting<Long>(PostListResponse::id)
-                .containsExactly(postId)
-            assertThat(myBookmarks.content[0].bookmarkCount).isZero()
-            assertThat(myBookmarks.content[0].isBookmarked).isTrue()
+            assertThat(myBookmarks.totalElements).isZero()
         }
 
         @Test
@@ -691,12 +677,9 @@ class BookmarkControllerE2ETest {
             assertThat(getMyBookmarks(owner.accessToken).totalElements).isEqualTo(1)
         }
 
-        // FIXME(#1): 첫 취소에서 행이 실제로 지워지지 않기 때문에(#1) 두 번째 취소도 대상을 찾아 성공한다.
-        // 정상 구현이라면 두 번째는 404-8이어야 한다. bookmarkCount 가 음수가 되지 않는 것은
-        // decreaseBookmarkCount 의 CASE WHEN 가드 덕분이지, 취소가 멱등해서가 아니다.
         @Test
-        @DisplayName("7. 같은 북마크를 두 번 취소해도 200-1이고 bookmarkCount는 0 아래로 내려가지 않는다")
-        fun deleteBookmark_twice_returns200BothTimes() {
+        @DisplayName("7. 같은 북마크를 두 번 취소하면 첫 번째만 200-1이고 두 번째는 404-8이다")
+        fun deleteBookmark_twice_secondReturns404_8() {
             val session = createUserAndLogin(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
             val accessToken = session.accessToken
             val postId = createPublicPost(accessToken)
@@ -705,25 +688,23 @@ class BookmarkControllerE2ETest {
             expectResultCode(deleteBookmarkRequest(accessToken, postId), HttpStatus.OK, "200-1")
             assertThat(bookmarkCountOf(postId)).isZero()
 
-            expectResultCode(deleteBookmarkRequest(accessToken, postId), HttpStatus.OK, "200-1")
+            expectResultCode(deleteBookmarkRequest(accessToken, postId), HttpStatus.NOT_FOUND, "404-8")
             assertThat(bookmarkCountOf(postId)).isZero()
-            assertThat(findBookmark(postId, session.user.id)).isPresent()
+            assertThat(findBookmark(postId, session.user.id)).isEmpty()
         }
 
-        // FIXME(#1): 취소가 행을 지우지 않으므로(#1) 유니크 제약(uk_post_bookmarks_post_user)이 살아 있어
-        // 같은 게시글을 다시 북마크할 수 없다. 목록에는 계속 남아 있는데 "다시 북마크"만 막히는 상태다.
         @Test
-        @DisplayName("8. 취소한 뒤 다시 북마크하면 409-8이라 재북마크가 불가능하다")
-        fun createBookmark_afterDelete_returns409_8() {
+        @DisplayName("8. 취소한 뒤 다시 북마크하면 201-1로 재북마크가 된다")
+        fun createBookmark_afterDelete_returns201_1() {
             val accessToken = createUserAndGetAccessToken(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
             val postId = createPublicPost(accessToken)
 
             createBookmark(accessToken, postId)
             expectResultCode(deleteBookmarkRequest(accessToken, postId), HttpStatus.OK, "200-1")
 
-            expectResultCode(createBookmarkRequest(accessToken, postId), HttpStatus.CONFLICT, "409-8")
+            expectResultCode(createBookmarkRequest(accessToken, postId), HttpStatus.CREATED, "201-1")
 
-            assertThat(bookmarkCountOf(postId)).isZero()
+            assertThat(bookmarkCountOf(postId)).isEqualTo(1L)
             assertThat(getMyBookmarks(accessToken).totalElements).isEqualTo(1)
         }
     }

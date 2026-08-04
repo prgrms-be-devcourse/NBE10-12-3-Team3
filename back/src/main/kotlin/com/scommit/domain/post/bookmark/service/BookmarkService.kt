@@ -62,10 +62,11 @@ class BookmarkService(
         postRepository.findByIdAndDeletedAtIsNull(postId)
             ?: throw BusinessException(ErrorCode.POST_NOT_FOUND)
 
-        val bookmark =
-            bookmarkRepository.findByPostIdAndUserId(postId, requireNotNull(actor.id))
-                ?: throw BusinessException(ErrorCode.BOOKMARK_NOT_FOUND)
-        bookmarkRepository.delete(bookmark)
+        val actorId = requireNotNull(actor.id)
+        val deletedCount = bookmarkRepository.deleteByPostIdAndUserId(postId, actorId)
+        if (deletedCount == 0) {
+            throw BusinessException(ErrorCode.BOOKMARK_NOT_FOUND)
+        }
         postRepository.decreaseBookmarkCount(postId)
     }
 }

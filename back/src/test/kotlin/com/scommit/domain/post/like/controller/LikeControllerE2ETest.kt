@@ -335,18 +335,9 @@ class LikeControllerE2ETest {
     @Nested
     @DisplayName("DELETE /api/posts/{postId}/likes — 좋아요 취소")
     inner class DeleteLike {
-        // FIXME(#1): LikeService.deleteLike 가 likeRepository.delete(like) 로 삭제를 예약한 뒤
-        // postRepository.decreaseLikeCount(postId) 를 호출하는데, 이 @Modifying 쿼리가
-        // clearAutomatically = true / flushAutomatically = false 다. 대상 테이블이 서로 달라
-        // (post_likes ↔ posts) Hibernate 의 auto-flush 가 걸리지 않고, 쿼리 직후 영속성 컨텍스트가
-        // clear 되면서 예약된 DELETE 가 통째로 버려진다. 결과적으로 카운트만 줄고 행은 남는다.
-        // 2026-07-27 커밋 51dbb50("count 로직 DB로 마이그레이션")에서 post.decreaseLikeCount() 를
-        // postRepository.decreaseLikeCount() 로 바꾸며 생긴 회귀다 — 그 이전 버전은 정상 동작했다.
-        // 순수 JDBC 조회와 Hibernate SQL 로그(DELETE 문 미발행)로 확인했다.
-        // 상세: docs/like-bookmark-notification-e2e-known-issues.md #1
         @Test
-        @DisplayName("1. 200-1을 반환하고 likeCount는 줄지만 Like 행은 삭제되지 않는다")
-        fun deleteLike_returns200ButLikeRowSurvives() {
+        @DisplayName("1. 200-1을 반환하고 likeCount가 줄면서 Like 행도 실제로 삭제된다")
+        fun deleteLike_returns200AndPersistsDeletion() {
             val session = createUserAndLogin(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
             val accessToken = session.accessToken
             val userId = session.user.id
@@ -370,15 +361,14 @@ class LikeControllerE2ETest {
                     assertThat(body.data).isNull()
                 }
 
-            // 카운트는 줄었는데
+            // 카운트도 줄고
             assertThat(likeCountOf(postId)).isZero()
-            // 행은 그대로 남아 있다 — 이 어긋남 자체가 버그다.
-            assertThat(findLike(postId, userId)).isNotNull()
+            // 행도 실제로 지워진다.
+            assertThat(findLike(postId, userId)).isNull()
 
-            // 사용자 화면에도 "좋아요 0개인데 내가 누른 상태"로 보인다.
             val post = getPost(accessToken, postId)
             assertThat(post.likeCount).isZero()
-            assertThat(post.isLiked).isTrue()
+            assertThat(post.isLiked).isFalse()
         }
 
         @Test
@@ -461,12 +451,9 @@ class LikeControllerE2ETest {
             assertThat(likeCountOf(postId)).isEqualTo(1L)
         }
 
-        // FIXME(#1): 첫 취소에서 행이 실제로 지워지지 않기 때문에(#1) 두 번째 취소도 대상을 찾아
-        // 성공한다. 정상 구현이라면 두 번째는 404-9여야 한다. likeCount 가 음수가 되지 않는 것은
-        // decreaseLikeCount 의 CASE WHEN 가드 덕분이지, 취소가 멱등해서가 아니다.
         @Test
-        @DisplayName("7. 같은 좋아요를 두 번 취소해도 200-1이고 likeCount는 0 아래로 내려가지 않는다")
-        fun deleteLike_twice_returns200BothTimes() {
+        @DisplayName("7. 같은 좋아요를 두 번 취소하면 첫 번째만 200-1이고 두 번째는 404-9다")
+        fun deleteLike_twice_secondReturns404_9() {
             val session = createUserAndLogin(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
             val accessToken = session.accessToken
             val postId = createPublicPost(accessToken)
@@ -475,17 +462,14 @@ class LikeControllerE2ETest {
             expectResultCode(deleteLikeRequest(accessToken, postId), HttpStatus.OK, "200-1")
             assertThat(likeCountOf(postId)).isZero()
 
-            expectResultCode(deleteLikeRequest(accessToken, postId), HttpStatus.OK, "200-1")
+            expectResultCode(deleteLikeRequest(accessToken, postId), HttpStatus.NOT_FOUND, "404-9")
             assertThat(likeCountOf(postId)).isZero()
-            assertThat(findLike(postId, session.user.id)).isNotNull()
+            assertThat(findLike(postId, session.user.id)).isNull()
         }
 
-        // FIXME(#1): 취소가 행을 지우지 않으므로(#1) 유니크 제약(uk_post_likes_post_user)이 그대로 살아 있어
-        // 같은 게시글에 다시 좋아요를 누를 수 없다. 사용자 입장에서는 "좋아요를 껐다 켤 수 없는" 상태이고,
-        // likeCount 는 0인데 isLiked 는 true 로 남아 화면과 데이터가 어긋난다.
         @Test
-        @DisplayName("8. 취소한 뒤 다시 좋아요하면 409-7이라 재좋아요가 불가능하다")
-        fun createLike_afterDelete_returns409_7() {
+        @DisplayName("8. 취소한 뒤 다시 좋아요하면 201-1로 재좋아요가 된다")
+        fun createLike_afterDelete_returns201_1() {
             val session = createUserAndLogin(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
             val accessToken = session.accessToken
             val postId = createPublicPost(accessToken)
@@ -493,10 +477,10 @@ class LikeControllerE2ETest {
             createLike(accessToken, postId)
             expectResultCode(deleteLikeRequest(accessToken, postId), HttpStatus.OK, "200-1")
 
-            expectResultCode(createLikeRequest(accessToken, postId), HttpStatus.CONFLICT, "409-7")
+            expectResultCode(createLikeRequest(accessToken, postId), HttpStatus.CREATED, "201-1")
 
             val post = getPost(accessToken, postId)
-            assertThat(post.likeCount).isZero()
+            assertThat(post.likeCount).isEqualTo(1)
             assertThat(post.isLiked).isTrue()
         }
     }
