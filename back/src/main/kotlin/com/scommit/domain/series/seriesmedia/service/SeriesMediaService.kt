@@ -36,7 +36,7 @@ class SeriesMediaService(
 
         val existing = seriesMediaRepository.findBySeries(series)
         if (existing != null) {
-            val oldMediaId = existing.media.id
+            val oldMediaId = checkNotNull(existing.media.id)
             val newMedia = mediaService.uploadMedia(file, "series")
             existing.media = newMedia
             mediaService.deleteMedia(oldMediaId)
@@ -76,7 +76,7 @@ class SeriesMediaService(
         val seriesMedia =
             seriesMediaRepository.findBySeries(series) ?: throw BusinessException(ErrorCode.MEDIA_NOT_FOUND)
 
-        val mediaId = seriesMedia.media.id
+        val mediaId = checkNotNull(seriesMedia.media.id)
         seriesMediaRepository.delete(seriesMedia)
         mediaService.deleteMedia(mediaId)
     }

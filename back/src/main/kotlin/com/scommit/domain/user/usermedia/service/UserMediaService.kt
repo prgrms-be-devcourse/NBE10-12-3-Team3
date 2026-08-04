@@ -27,7 +27,7 @@ class UserMediaService(
 
         val existing = userMediaRepository.findByUser(user)
         if (existing != null) {
-            val oldMediaId = existing.media.id
+            val oldMediaId = checkNotNull(existing.media.id)
             val newMedia = mediaService.uploadMedia(file, "user")
             existing.media = newMedia
             mediaService.deleteMedia(oldMediaId)
@@ -54,7 +54,7 @@ class UserMediaService(
         val userMedia =
             userMediaRepository.findByUser(user) ?: throw BusinessException(ErrorCode.MEDIA_NOT_FOUND)
 
-        val mediaId = userMedia.media.id
+        val mediaId = checkNotNull(userMedia.media.id)
         userMediaRepository.delete(userMedia)
         mediaService.deleteMedia(mediaId)
     }

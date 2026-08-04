@@ -12,8 +12,8 @@ data class PostMediaResponse(
     val type: PostMediaType,
 ) {
     constructor(postMedia: PostMedia) : this(
-        postMedia.id,
-        postMedia.post.id,
+        checkNotNull(postMedia.id),
+        checkNotNull(postMedia.post.id),
         postMedia.media.url,
         postMedia.media.type,
         postMedia.type,

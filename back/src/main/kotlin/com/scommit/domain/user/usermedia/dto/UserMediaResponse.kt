@@ -10,8 +10,8 @@ data class UserMediaResponse(
     val mediaType: MediaType,
 ) {
     constructor(userMedia: UserMedia) : this(
-        userMedia.id,
-        userMedia.user.id,
+        checkNotNull(userMedia.id),
+        checkNotNull(userMedia.user.id),
         userMedia.media.url,
         userMedia.media.type,
     )

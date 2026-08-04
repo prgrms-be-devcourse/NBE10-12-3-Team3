@@ -33,7 +33,7 @@ class PostMediaService(
         if (type == PostMediaType.THUMBNAIL) {
             val existing = postMediaRepository.findByPostAndType(post, PostMediaType.THUMBNAIL)
             if (existing != null) {
-                val oldMediaId = existing.media.id
+                val oldMediaId = checkNotNull(existing.media.id)
                 val newMedia = mediaService.uploadMedia(file, "post")
                 existing.media = newMedia
                 mediaService.deleteMedia(oldMediaId)
@@ -84,7 +84,7 @@ class PostMediaService(
             throw BusinessException(ErrorCode.POST_NOT_FOUND)
         }
 
-        val mediaId = postMedia.media.id
+        val mediaId = checkNotNull(postMedia.media.id)
         postMediaRepository.delete(postMedia)
         mediaService.deleteMedia(mediaId)
     }

@@ -8,5 +8,5 @@ data class MediaResponse(
     val url: String?,
     val type: MediaType,
 ) {
-    constructor(media: Media) : this(media.id, media.url, media.type)
+    constructor(media: Media) : this(checkNotNull(media.id), media.url, media.type)
 }

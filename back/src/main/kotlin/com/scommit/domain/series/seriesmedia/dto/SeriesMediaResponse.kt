@@ -10,8 +10,8 @@ data class SeriesMediaResponse(
     val mediaType: MediaType,
 ) {
     constructor(seriesMedia: SeriesMedia) : this(
-        seriesMedia.id,
-        seriesMedia.series.id,
+        checkNotNull(seriesMedia.id),
+        checkNotNull(seriesMedia.series.id),
         seriesMedia.media.url,
         seriesMedia.media.type,
     )
