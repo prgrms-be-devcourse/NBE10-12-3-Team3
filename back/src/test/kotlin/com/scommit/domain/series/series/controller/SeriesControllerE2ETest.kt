@@ -159,7 +159,7 @@ class SeriesControllerE2ETest {
         response
             .expectStatus()
             .isUnauthorized()
-            .expectBody(ApiResponse.VOID_BODY)
+            .expectBody<ApiResponse<Void>>()
             .value { body ->
                 checkNotNull(body)
                 assertThat(body.resultCode).isEqualTo("401-1")
@@ -535,7 +535,7 @@ class SeriesControllerE2ETest {
             createSeriesRequest(accessToken, null, "본문")
                 .expectStatus()
                 .isBadRequest()
-                .expectBody(ApiResponse.VOID_BODY)
+                .expectBody<ApiResponse<Void>>()
                 .value { body ->
                     checkNotNull(body)
                     assertThat(body.resultCode).isEqualTo("400-1")
@@ -551,7 +551,7 @@ class SeriesControllerE2ETest {
             createSeriesRequest(accessToken, "   ", "본문")
                 .expectStatus()
                 .isBadRequest()
-                .expectBody(ApiResponse.VOID_BODY)
+                .expectBody<ApiResponse<Void>>()
                 .value { body ->
                     checkNotNull(body)
                     assertThat(body.resultCode).isEqualTo("400-1")
@@ -575,7 +575,7 @@ class SeriesControllerE2ETest {
                 .exchange()
                 .expectStatus()
                 .isBadRequest()
-                .expectBody(ApiResponse.VOID_BODY)
+                .expectBody<ApiResponse<Void>>()
                 .value { body ->
                     checkNotNull(body)
                     assertThat(body.resultCode).isEqualTo("400-1")
@@ -819,7 +819,7 @@ class SeriesControllerE2ETest {
             updateSeriesRequest(accessToken, seriesId, "   ", "본문")
                 .expectStatus()
                 .isBadRequest()
-                .expectBody(ApiResponse.VOID_BODY)
+                .expectBody<ApiResponse<Void>>()
                 .value { body ->
                     checkNotNull(body)
                     assertThat(body.resultCode).isEqualTo("400-1")
@@ -836,7 +836,7 @@ class SeriesControllerE2ETest {
             updateSeriesRequest(accessToken, seriesId, null, "본문")
                 .expectStatus()
                 .isBadRequest()
-                .expectBody(ApiResponse.VOID_BODY)
+                .expectBody<ApiResponse<Void>>()
                 .value { body ->
                     checkNotNull(body)
                     assertThat(body.resultCode).isEqualTo("400-1")
