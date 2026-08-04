@@ -318,7 +318,7 @@ class CommentControllerE2ETest {
                 .exchange()
                 .expectStatus()
                 .isBadRequest()
-                .expectBody(ApiResponse.VOID_BODY)
+                .expectBody<ApiResponse<Void>>()
                 .value { body ->
                     checkNotNull(body)
                     // 400-1 은 Bean Validation 실패와 JSON 파싱 실패가 공유하는 코드라 msg 까지 본다(컨벤션 6장).
@@ -769,7 +769,7 @@ class CommentControllerE2ETest {
             deleteCommentRequest(accessToken, postId, created.id)
                 .expectStatus()
                 .isOk()
-                .expectBody(ApiResponse.VOID_BODY)
+                .expectBody<ApiResponse<Void>>()
                 .value { body ->
                     checkNotNull(body)
                     assertThat(body.resultCode).isEqualTo("200-1")

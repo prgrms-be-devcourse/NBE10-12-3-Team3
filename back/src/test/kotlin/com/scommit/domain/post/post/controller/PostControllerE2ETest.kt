@@ -236,7 +236,7 @@ class PostControllerE2ETest {
         response
             .expectStatus()
             .isUnauthorized()
-            .expectBody(ApiResponse.VOID_BODY)
+            .expectBody<ApiResponse<Void>>()
             .value { body ->
                 checkNotNull(body)
                 assertThat(body.resultCode).isEqualTo("401-1")
@@ -332,7 +332,7 @@ class PostControllerE2ETest {
             createPostRequest(accessToken, null, "본문만 있음", PublishStatus.PUBLIC, PostAccessLevel.FREE)
                 .expectStatus()
                 .is5xxServerError()
-                .expectBody(ApiResponse.VOID_BODY)
+                .expectBody<ApiResponse<Void>>()
                 .value { body ->
                     checkNotNull(body)
                     assertThat(body.resultCode).isEqualTo("500-1")
@@ -353,7 +353,7 @@ class PostControllerE2ETest {
                 .exchange()
                 .expectStatus()
                 .isBadRequest()
-                .expectBody(ApiResponse.VOID_BODY)
+                .expectBody<ApiResponse<Void>>()
                 .value { body ->
                     checkNotNull(body)
                     assertThat(body.resultCode).isEqualTo("400-1")
@@ -691,7 +691,7 @@ class PostControllerE2ETest {
             deletePostRequest(accessToken, postId)
                 .expectStatus()
                 .isOk()
-                .expectBody(ApiResponse.VOID_BODY)
+                .expectBody<ApiResponse<Void>>()
                 .value { body ->
                     checkNotNull(body)
                     assertThat(body.resultCode).isEqualTo("200-1")
@@ -960,7 +960,7 @@ class PostControllerE2ETest {
                 .exchange()
                 .expectStatus()
                 .is5xxServerError()
-                .expectBody(ApiResponse.VOID_BODY)
+                .expectBody<ApiResponse<Void>>()
                 .value { body ->
                     checkNotNull(body)
                     assertThat(body.resultCode).isEqualTo("500-1")
@@ -1233,7 +1233,7 @@ class PostControllerE2ETest {
                 MediaType.TEXT_PLAIN,
             ).expectStatus()
                 .isEqualTo(HttpStatus.UNSUPPORTED_MEDIA_TYPE)
-                .expectBody(ApiResponse.VOID_BODY)
+                .expectBody<ApiResponse<Void>>()
                 .value { body ->
                     checkNotNull(body)
                     assertThat(body.resultCode).isEqualTo("415-1")
@@ -1295,7 +1295,7 @@ class PostControllerE2ETest {
                 .exchange()
                 .expectStatus()
                 .isOk()
-                .expectBody(ApiResponse.VOID_BODY)
+                .expectBody<ApiResponse<Void>>()
                 .value { body ->
                     checkNotNull(body)
                     assertThat(body.resultCode).isEqualTo("200-1")
