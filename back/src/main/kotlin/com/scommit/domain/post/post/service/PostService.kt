@@ -79,13 +79,15 @@ class PostService
                 return postRepository
                     .findSliceByUserAndDeletedAtIsNull(creator, pageable)
                     .map { post ->
-                        PostListResponse(post, isLiked(checkNotNull(post.id), actor), isBookmarked(checkNotNull(post.id), actor))
+                        val postId = checkNotNull(post.id)
+                        PostListResponse(post, isLiked(postId, actor), isBookmarked(postId, actor))
                     }
             }
             return postRepository
                 .findAllByDeletedAtIsNullAndPublishStatus(PublishStatus.PUBLIC, pageable)
                 .map { post ->
-                    PostListResponse(post, isLiked(checkNotNull(post.id), actor), isBookmarked(checkNotNull(post.id), actor))
+                    val postId = checkNotNull(post.id)
+                    PostListResponse(post, isLiked(postId, actor), isBookmarked(postId, actor))
                 }
         }
 
@@ -112,10 +114,12 @@ class PostService
             if (post.accessLevel == PostAccessLevel.PAID && !isOwner) {
                 val isMember =
                     actor != null &&
-                        subscriptionRepository
-                            .findByUserIdAndCreatorId(actor.id, post.user.id)
-                            .map { sub -> sub.tier == SubscriptionTier.MEMBERSHIP }
-                            .orElse(false)
+                        checkNotNull(
+                            subscriptionRepository
+                                .findByUserIdAndCreatorId(checkNotNull(actor.id), checkNotNull(post.user.id))
+                                .map { sub -> sub.tier == SubscriptionTier.MEMBERSHIP }
+                                .orElse(false),
+                        )
                 if (!isMember) {
                     return PostResponse(post, true, isLiked(id, actor), isBookmarked(id, actor))
                 }
@@ -188,7 +192,8 @@ class PostService
             return postRepository
                 .findByUserAndDeletedAtIsNull(user, pageable)
                 .map { post ->
-                    PostListResponse(post, isLiked(checkNotNull(post.id), actor), isBookmarked(checkNotNull(post.id), actor))
+                    val postId = checkNotNull(post.id)
+                    PostListResponse(post, isLiked(postId, actor), isBookmarked(postId, actor))
                 }
         }
 
@@ -209,7 +214,8 @@ class PostService
             postRepository
                 .findByUserAndDeletedAtIsNull(actor, pageable)
                 .map { post ->
-                    PostListResponse(post, isLiked(checkNotNull(post.id), actor), isBookmarked(checkNotNull(post.id), actor))
+                    val postId = checkNotNull(post.id)
+                    PostListResponse(post, isLiked(postId, actor), isBookmarked(postId, actor))
                 }
 
         // 시리즈에 포스트 추가
@@ -268,7 +274,8 @@ class PostService
             postRepository
                 .findBySeriesIdAndDeletedAtIsNull(seriesId)
                 .map { post ->
-                    PostListResponse(post, isLiked(checkNotNull(post.id), actor), isBookmarked(checkNotNull(post.id), actor))
+                    val postId = checkNotNull(post.id)
+                    PostListResponse(post, isLiked(postId, actor), isBookmarked(postId, actor))
                 }
 
         private fun sendSse(post: Post) {
