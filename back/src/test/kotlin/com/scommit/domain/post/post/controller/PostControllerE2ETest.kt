@@ -148,13 +148,15 @@ class PostControllerE2ETest {
         accessLevel: PostAccessLevel,
     ): Long =
         checkNotNull(
-            createPostRequest(accessToken, title, "본문 내용", publishStatus, accessLevel)
-                .expectStatus()
-                .isCreated()
-                .expectBody<ApiResponse<PostResponse>>()
-                .returnResult()
-                .responseBody,
-        ).data.id
+            checkNotNull(
+                createPostRequest(accessToken, title, "본문 내용", publishStatus, accessLevel)
+                    .expectStatus()
+                    .isCreated()
+                    .expectBody<ApiResponse<PostResponse>>()
+                    .returnResult()
+                    .responseBody,
+            ).data.id,
+        )
 
     private fun getPost(
         id: Any,
@@ -579,7 +581,7 @@ class PostControllerE2ETest {
                         .returnResult()
                         .responseBody,
                 ).data
-            val postId = created.id
+            val postId = checkNotNull(created.id)
             val createdUpdatedAt = created.updatedAt
 
             val updated =
@@ -604,7 +606,7 @@ class PostControllerE2ETest {
             // DB 값: 응답과 사실상 같은 시점이 실제로 반영돼 있다(JSON 직렬화의 초 이하 정밀도 손실
             // 감안해 100ms 이내 오차는 허용 — Comment의 스테일 버그처럼 수백 ms~초 단위로 어긋나는
             // 것과는 구분된다).
-            val dbUpdatedAtAfter: LocalDateTime = findPost(postId).updatedAt
+            val dbUpdatedAtAfter: LocalDateTime = checkNotNull(findPost(postId).updatedAt)
             assertThat(Duration.between(updated.updatedAt, dbUpdatedAtAfter).abs())
                 .isLessThan(Duration.ofMillis(100))
 
@@ -770,7 +772,7 @@ class PostControllerE2ETest {
                         .returnResult()
                         .responseBody,
                 )
-            val mediaId = uploaded.data.id
+            val mediaId = checkNotNull(uploaded.data.id)
 
             deletePostRequest(accessToken, postId).expectStatus().isOk()
 
@@ -1270,19 +1272,21 @@ class PostControllerE2ETest {
             val postId = createPost(accessToken, "미디어 삭제 테스트", PublishStatus.PUBLIC, PostAccessLevel.FREE)
             val mediaId =
                 checkNotNull(
-                    uploadMediaRequest(
-                        accessToken,
-                        postId,
-                        PostMediaType.BODY,
-                        PNG_BYTES,
-                        "body.png",
-                        MediaType.IMAGE_PNG,
-                    ).expectStatus()
-                        .isCreated()
-                        .expectBody<ApiResponse<PostMediaResponse>>()
-                        .returnResult()
-                        .responseBody,
-                ).data.id
+                    checkNotNull(
+                        uploadMediaRequest(
+                            accessToken,
+                            postId,
+                            PostMediaType.BODY,
+                            PNG_BYTES,
+                            "body.png",
+                            MediaType.IMAGE_PNG,
+                        ).expectStatus()
+                            .isCreated()
+                            .expectBody<ApiResponse<PostMediaResponse>>()
+                            .returnResult()
+                            .responseBody,
+                    ).data.id,
+                )
 
             client
                 .method(HttpMethod.DELETE)
@@ -1321,17 +1325,19 @@ class PostControllerE2ETest {
             val postId2 = createPost(accessToken, "글2", PublishStatus.PUBLIC, PostAccessLevel.FREE)
             val mediaIdOfPost1 =
                 checkNotNull(
-                    uploadMediaRequest(
-                        accessToken,
-                        postId1,
-                        PostMediaType.THUMBNAIL,
-                        PNG_BYTES,
-                        "t.png",
-                        MediaType.IMAGE_PNG,
-                    ).expectBody<ApiResponse<PostMediaResponse>>()
-                        .returnResult()
-                        .responseBody,
-                ).data.id
+                    checkNotNull(
+                        uploadMediaRequest(
+                            accessToken,
+                            postId1,
+                            PostMediaType.THUMBNAIL,
+                            PNG_BYTES,
+                            "t.png",
+                            MediaType.IMAGE_PNG,
+                        ).expectBody<ApiResponse<PostMediaResponse>>()
+                            .returnResult()
+                            .responseBody,
+                    ).data.id,
+                )
 
             expectResultCode(
                 client
