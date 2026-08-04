@@ -44,13 +44,11 @@ class LikeServiceTest {
     @BeforeEach
     fun setUp() {
         actor =
-            User
-                .builder()
-                .email("actor@test.com")
-                .nickname("액터")
-                .role(UserRole.USER)
-                .build()
-                .also { ReflectionTestUtils.setField(it, "id", 1L) }
+            User(
+                email = "actor@test.com",
+                nickname = "액터",
+                role = UserRole.USER,
+            ).also { ReflectionTestUtils.setField(it, "id", 1L) }
 
         post =
             Post

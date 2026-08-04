@@ -77,18 +77,10 @@ class PostServiceTest {
     @BeforeEach
     void setUp() {
         // JPA가 없으므로 id는 ReflectionTestUtils로 직접 주입
-        mockUser = User.builder()
-                .email("test@example.com")
-                .nickname("테스터")
-                .role(UserRole.USER)
-                .build();
+        mockUser = new User("test@example.com", null, "테스터", null, UserRole.USER);
         ReflectionTestUtils.setField(mockUser, "id", 1L);
 
-        otherUser = User.builder()
-                .email("other@example.com")
-                .nickname("다른유저")
-                .role(UserRole.USER)
-                .build();
+        otherUser = new User("other@example.com", null, "다른유저", null, UserRole.USER);
         ReflectionTestUtils.setField(otherUser, "id", 2L);
     }
 
@@ -175,7 +167,7 @@ class PostServiceTest {
             Post post = buildPost(1L, mockUser, null);
             SliceImpl<Post> slice = new SliceImpl<>(List.of(post), pageable, false);
 
-            when(userRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(mockUser));
+            when(userRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(mockUser);
             when(postRepository.findSliceByUserAndDeletedAtIsNull(mockUser, pageable)).thenReturn(slice);
 
             var result = postService.getPosts(1L, null, pageable);
@@ -188,7 +180,7 @@ class PostServiceTest {
         @DisplayName("실패: 존재하지 않는 creatorId면 USER_NOT_FOUND 예외를 던진다.")
         void getPosts_CreatorNotFound() {
             Pageable pageable = PageRequest.of(0, 8);
-            when(userRepository.findByIdAndDeletedAtIsNull(999L)).thenReturn(Optional.empty());
+            when(userRepository.findByIdAndDeletedAtIsNull(999L)).thenReturn(null);
 
             assertThatThrownBy(() -> postService.getPosts(999L, null, pageable))
                     .isInstanceOf(BusinessException.class)
@@ -258,7 +250,7 @@ class PostServiceTest {
             Post post = buildPost(1L, mockUser, null);
             Page<Post> postPage = new PageImpl<>(List.of(post), pageable, 1);
 
-            when(userRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(mockUser));
+            when(userRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(mockUser);
             when(postRepository.findByUserAndDeletedAtIsNull(mockUser, pageable)).thenReturn(postPage);
 
             Page<PostListResponse> result = postService.getUserPosts(1L, null, pageable);
@@ -272,7 +264,7 @@ class PostServiceTest {
         @DisplayName("실패: 존재하지 않는 유저면 USER_NOT_FOUND 예외를 던진다.")
         void getUserPosts_UserNotFound() {
             Pageable pageable = PageRequest.of(0, 10);
-            when(userRepository.findByIdAndDeletedAtIsNull(999L)).thenReturn(Optional.empty());
+            when(userRepository.findByIdAndDeletedAtIsNull(999L)).thenReturn(null);
 
             assertThatThrownBy(() -> postService.getUserPosts(999L, null, pageable))
                     .isInstanceOf(BusinessException.class)
@@ -286,7 +278,7 @@ class PostServiceTest {
             Pageable pageable = PageRequest.of(0, 10);
             Page<Post> emptyPage = new PageImpl<>(List.of(), pageable, 0);
 
-            when(userRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(mockUser));
+            when(userRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(mockUser);
             when(postRepository.findByUserAndDeletedAtIsNull(mockUser, pageable)).thenReturn(emptyPage);
 
             Page<PostListResponse> result = postService.getUserPosts(1L, null, pageable);
@@ -302,7 +294,7 @@ class PostServiceTest {
             Post post = buildPost(1L, mockUser, null);
             Page<Post> postPage = new PageImpl<>(List.of(post), pageable, 1);
 
-            when(userRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(mockUser));
+            when(userRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(mockUser);
             when(postRepository.findByUserAndDeletedAtIsNull(mockUser, pageable)).thenReturn(postPage);
             when(likeRepository.existsByPostIdAndUserId(1L, otherUser.getId())).thenReturn(true);
 

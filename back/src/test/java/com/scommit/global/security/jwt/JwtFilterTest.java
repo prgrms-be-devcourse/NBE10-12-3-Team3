@@ -21,7 +21,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.time.Duration;
-import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -108,13 +107,9 @@ class JwtFilterTest {
         JwtProvider expiredProvider = new JwtProvider(authTokenProperties(SECRET, Duration.ofMillis(-1)));
         String expiredAccessToken = expiredProvider.generateAccessToken(1L, "user@test.com", "nickname", UserRole.USER);
         String refreshToken = "valid-refresh-token";
-        User user = User.builder()
-                .email("user@test.com")
-                .nickname("nickname")
-                .role(UserRole.USER)
-                .build();
+        User user = new User("user@test.com", null, "nickname", null, UserRole.USER);
         given(securityHelper.getHeader("Authorization", "")).willReturn("Bearer " + refreshToken + " " + expiredAccessToken);
-        given(userService.getUserByRefreshToken(refreshToken)).willReturn(Optional.of(user));
+        given(userService.getUserByRefreshToken(refreshToken)).willReturn(user);
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setRequestURI("/api/test");
         MockHttpServletResponse response = new MockHttpServletResponse();
@@ -136,7 +131,7 @@ class JwtFilterTest {
         String refreshToken = "valid-refresh-token";
         User user = new User(1L, "user@test.com", "nickname", UserRole.USER);
         given(securityHelper.getHeader("Authorization", "")).willReturn("Bearer " + refreshToken + " " + expiredAccessToken);
-        given(userService.getUserByRefreshToken(refreshToken)).willReturn(Optional.of(user));
+        given(userService.getUserByRefreshToken(refreshToken)).willReturn(user);
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setRequestURI("/api/test");
         MockHttpServletResponse response = new MockHttpServletResponse();
@@ -170,7 +165,7 @@ class JwtFilterTest {
         given(securityHelper.getHeader("Authorization", "")).willReturn("");
         given(securityHelper.getCookieValue("refreshToken", "")).willReturn(refreshToken);
         given(securityHelper.getCookieValue("accessToken", "")).willReturn(expiredAccessToken);
-        given(userService.getUserByRefreshToken(refreshToken)).willReturn(Optional.of(user));
+        given(userService.getUserByRefreshToken(refreshToken)).willReturn(user);
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setRequestURI("/api/test");
         MockHttpServletResponse response = new MockHttpServletResponse();
@@ -191,7 +186,7 @@ class JwtFilterTest {
         String refreshToken = "valid-refresh-token-malformed";
         User user = new User(3L, "malformed@test.com", "malformedUser", UserRole.USER);
         given(securityHelper.getHeader("Authorization", "")).willReturn("Bearer " + refreshToken + " " + malformedAccessToken);
-        given(userService.getUserByRefreshToken(refreshToken)).willReturn(Optional.of(user));
+        given(userService.getUserByRefreshToken(refreshToken)).willReturn(user);
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setRequestURI("/api/test");
         MockHttpServletResponse response = new MockHttpServletResponse();
@@ -211,7 +206,7 @@ class JwtFilterTest {
         given(securityHelper.getHeader("Authorization", "")).willReturn("");
         given(securityHelper.getCookieValue("refreshToken", "")).willReturn(refreshToken);
         given(securityHelper.getCookieValue("accessToken", "")).willReturn("");
-        given(userService.getUserByRefreshToken(refreshToken)).willReturn(Optional.of(user));
+        given(userService.getUserByRefreshToken(refreshToken)).willReturn(user);
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setRequestURI("/api/test");
         MockHttpServletResponse response = new MockHttpServletResponse();
@@ -231,7 +226,7 @@ class JwtFilterTest {
         String expiredAccessToken = expiredProvider.generateAccessToken(5L, "invalid@test.com", "invalidUser", UserRole.USER);
         String refreshToken = "invalid-refresh-token";
         given(securityHelper.getHeader("Authorization", "")).willReturn("Bearer " + refreshToken + " " + expiredAccessToken);
-        given(userService.getUserByRefreshToken(refreshToken)).willReturn(Optional.empty());
+        given(userService.getUserByRefreshToken(refreshToken)).willReturn(null);
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setRequestURI("/api/test");
         MockHttpServletResponse response = new MockHttpServletResponse();
