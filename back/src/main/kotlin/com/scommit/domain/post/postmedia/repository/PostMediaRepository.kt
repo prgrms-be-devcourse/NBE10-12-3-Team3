@@ -4,9 +4,7 @@ import com.scommit.domain.post.post.entity.Post
 import com.scommit.domain.post.postmedia.entity.PostMedia
 import com.scommit.domain.post.postmedia.entity.PostMediaType
 import org.springframework.data.jpa.repository.JpaRepository
-import org.springframework.stereotype.Repository
 
-@Repository
 interface PostMediaRepository : JpaRepository<PostMedia, Long> {
     fun findByPostAndType(
         post: Post,

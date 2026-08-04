@@ -25,30 +25,36 @@ class PostMediaService(
         file: MultipartFile,
         type: PostMediaType,
     ): PostMediaResponse {
-        val post = postRepository.findByIdOrNull(postId) ?: throw BusinessException(ErrorCode.POST_NOT_FOUND)
+        val post =
+            postRepository.findByIdOrNull(postId)
+                ?: throw BusinessException(ErrorCode.POST_NOT_FOUND)
+
         if (post.deletedAt != null) {
             throw BusinessException(ErrorCode.POST_NOT_FOUND)
         }
 
         if (type == PostMediaType.THUMBNAIL) {
-            val existing = postMediaRepository.findByPostAndType(post, PostMediaType.THUMBNAIL)
-            if (existing != null) {
-                val oldMediaId = checkNotNull(existing.media.id)
+            val postMedia = postMediaRepository.findByPostAndType(post, PostMediaType.THUMBNAIL)
+            if (postMedia != null) {
+                val oldMediaId = postMedia.media.id
                 val newMedia = mediaService.uploadMedia(file, "post")
-                existing.media = newMedia
+                postMedia.updateMedia(newMedia)
                 mediaService.deleteMedia(oldMediaId)
-                return PostMediaResponse(existing)
+                return PostMediaResponse(postMedia)
             }
         }
 
         val media = mediaService.uploadMedia(file, "post")
-        val saved = postMediaRepository.save(PostMedia(post = post, media = media, type = type))
-        return PostMediaResponse(saved)
+
+        return PostMediaResponse(postMediaRepository.save(PostMedia(post, media, type)))
     }
 
     @Transactional(readOnly = true)
     fun getMediaList(postId: Long): List<PostMediaResponse> {
-        val post = postRepository.findByIdOrNull(postId) ?: throw BusinessException(ErrorCode.POST_NOT_FOUND)
+        val post =
+            postRepository.findByIdOrNull(postId)
+                ?: throw BusinessException(ErrorCode.POST_NOT_FOUND)
+
         if (post.deletedAt != null) {
             throw BusinessException(ErrorCode.POST_NOT_FOUND)
         }
@@ -58,23 +64,28 @@ class PostMediaService(
 
     @Transactional(readOnly = true)
     fun getThumbnail(postId: Long): PostMediaResponse? {
-        val post = postRepository.findByIdOrNull(postId) ?: throw BusinessException(ErrorCode.POST_NOT_FOUND)
+        val post =
+            postRepository.findByIdOrNull(postId)
+                ?: throw BusinessException(ErrorCode.POST_NOT_FOUND)
+
         if (post.deletedAt != null) {
             throw BusinessException(ErrorCode.POST_NOT_FOUND)
         }
 
         val postMedia = postMediaRepository.findByPostAndType(post, PostMediaType.THUMBNAIL) ?: return null
+
         return PostMediaResponse(postMedia)
     }
 
+    @Suppress("ThrowsCount")
     @Transactional
-    @Suppress("ThrowsCount") // 서로 다른 검증 실패(미디어 없음/포스트 불일치/삭제된 포스트)마다 별개의 에러코드가 필요해 분리
     fun deleteMedia(
         postId: Long,
         postMediaId: Long,
     ) {
         val postMedia =
-            postMediaRepository.findByIdOrNull(postMediaId) ?: throw BusinessException(ErrorCode.MEDIA_NOT_FOUND)
+            postMediaRepository.findByIdOrNull(postMediaId)
+                ?: throw BusinessException(ErrorCode.MEDIA_NOT_FOUND)
 
         if (postMedia.post.id != postId) {
             throw BusinessException(ErrorCode.MEDIA_NOT_FOUND)
@@ -84,7 +95,7 @@ class PostMediaService(
             throw BusinessException(ErrorCode.POST_NOT_FOUND)
         }
 
-        val mediaId = checkNotNull(postMedia.media.id)
+        val mediaId = postMedia.media.id
         postMediaRepository.delete(postMedia)
         mediaService.deleteMedia(mediaId)
     }

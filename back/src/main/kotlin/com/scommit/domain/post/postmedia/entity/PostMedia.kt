@@ -25,4 +25,8 @@ class PostMedia(
     @Enumerated(EnumType.STRING)
     @Column(name = "type", nullable = false)
     val type: PostMediaType,
-) : BaseEntity()
+) : BaseEntity() {
+    fun updateMedia(media: Media) {
+        this.media = media
+    }
+}

@@ -5,6 +5,7 @@ import com.scommit.domain.media.media.entity.MediaType
 import com.scommit.domain.media.media.service.MediaService
 import com.scommit.domain.post.post.entity.Post
 import com.scommit.domain.post.post.repository.PostRepository
+import com.scommit.domain.post.postmedia.dto.PostMediaResponse
 import com.scommit.domain.post.postmedia.entity.PostMedia
 import com.scommit.domain.post.postmedia.entity.PostMediaType
 import com.scommit.domain.post.postmedia.repository.PostMediaRepository
@@ -15,26 +16,23 @@ import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
-import org.mockito.ArgumentMatchers.anyLong
+import org.mockito.ArgumentMatchers.any
 import org.mockito.BDDMockito.given
 import org.mockito.InjectMocks
 import org.mockito.Mock
-import org.mockito.Mockito
 import org.mockito.Mockito.inOrder
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.never
 import org.mockito.Mockito.verify
 import org.mockito.junit.jupiter.MockitoExtension
 import org.springframework.mock.web.MockMultipartFile
-import org.springframework.web.multipart.MultipartFile
 import java.time.LocalDateTime
 import java.util.Optional
 
-// Mockito ArgumentMatchers.any()는 null을 반환하는데, Kotlin에서 선언된 non-null 파라미터에
-// 직접 전달하면 플랫폼 타입 널 체크가 삽입되어 NPE가 발생한다. mockito-kotlin 미사용 환경의 표준 우회책.
-@Suppress("UNCHECKED_CAST", "IgnoredReturnValue") // 매처 등록이 목적이므로 반환값은 의도적으로 버린다
-private fun <T> any(): T {
-    Mockito.any<T>()
+// any() returns null at runtime, which fails Kotlin's non-null check on Kotlin-declared repository params.
+private fun <T> anyOfType(): T {
+    any<T>()
+    @Suppress("UNCHECKED_CAST")
     return null as T
 }
 
@@ -43,19 +41,15 @@ class PostMediaServiceTest {
     private val file = MockMultipartFile("file", "test.png", "image/png", "content".toByteArray())
 
     @Mock
-    @Suppress("VarCouldBeVal") // Mockito가 리플렉션으로 주입하므로 lateinit var가 필요하다
     private lateinit var mediaService: MediaService
 
     @Mock
-    @Suppress("VarCouldBeVal") // Mockito가 리플렉션으로 주입하므로 lateinit var가 필요하다
     private lateinit var postMediaRepository: PostMediaRepository
 
     @Mock
-    @Suppress("VarCouldBeVal") // Mockito가 리플렉션으로 주입하므로 lateinit var가 필요하다
     private lateinit var postRepository: PostRepository
 
     @InjectMocks
-    @Suppress("VarCouldBeVal") // Mockito가 리플렉션으로 주입하므로 lateinit var가 필요하다
     private lateinit var postMediaService: PostMediaService
 
     @Nested
@@ -64,61 +58,62 @@ class PostMediaServiceTest {
         @Test
         @DisplayName("성공: BODY 타입은 중복 체크 없이 추가된다")
         fun uploadMedia_Body_Success() {
+            val postId = 1L
             val post = mock(Post::class.java)
             val media = mock(Media::class.java)
             val postMedia = mock(PostMedia::class.java)
 
-            given(postRepository.findById(1L)).willReturn(Optional.of(post))
+            given(postRepository.findById(postId)).willReturn(Optional.of(post))
             given(post.deletedAt).willReturn(null)
             given(mediaService.uploadMedia(file, "post")).willReturn(media)
-            given(postMediaRepository.save(any<PostMedia>())).willReturn(postMedia)
+            given(postMediaRepository.save(any(PostMedia::class.java))).willReturn(postMedia)
             given(postMedia.post).willReturn(post)
             given(postMedia.media).willReturn(media)
             given(postMedia.type).willReturn(PostMediaType.BODY)
             given(media.url).willReturn("post/uuid_test.png")
             given(media.type).willReturn(MediaType.IMAGE)
 
-            val result = postMediaService.uploadMedia(1L, file, PostMediaType.BODY)
+            val result = postMediaService.uploadMedia(postId, file, PostMediaType.BODY)
 
             assertThat(result).isNotNull()
-            verify(postMediaRepository, never()).findByPostAndType(any<Post>(), any<PostMediaType>())
+            verify(postMediaRepository, never()).findByPostAndType(anyOfType(), anyOfType())
         }
 
         @Test
         @DisplayName("성공: THUMBNAIL 첫 업로드 시 기존 삭제 없이 저장된다")
         fun uploadMedia_Thumbnail_First_Success() {
+            val postId = 1L
             val post = mock(Post::class.java)
             val media = mock(Media::class.java)
             val postMedia = mock(PostMedia::class.java)
 
-            given(postRepository.findById(1L)).willReturn(Optional.of(post))
+            given(postRepository.findById(postId)).willReturn(Optional.of(post))
             given(post.deletedAt).willReturn(null)
             given(postMediaRepository.findByPostAndType(post, PostMediaType.THUMBNAIL)).willReturn(null)
             given(mediaService.uploadMedia(file, "post")).willReturn(media)
-            given(postMediaRepository.save(any<PostMedia>())).willReturn(postMedia)
+            given(postMediaRepository.save(any(PostMedia::class.java))).willReturn(postMedia)
             given(postMedia.post).willReturn(post)
             given(postMedia.media).willReturn(media)
             given(postMedia.type).willReturn(PostMediaType.THUMBNAIL)
             given(media.url).willReturn("post/uuid_test.png")
             given(media.type).willReturn(MediaType.IMAGE)
 
-            postMediaService.uploadMedia(1L, file, PostMediaType.THUMBNAIL)
+            postMediaService.uploadMedia(postId, file, PostMediaType.THUMBNAIL)
 
-            verify(postMediaRepository, never()).delete(any<PostMedia>())
-            verify(mediaService, never()).deleteMedia(anyLong())
+            verify(postMediaRepository, never()).delete(any(PostMedia::class.java))
+            verify(mediaService, never()).deleteMedia(any())
         }
 
         @Test
         @DisplayName("성공: THUMBNAIL 중복 업로드 시 기존 썸네일을 교체한다")
         fun uploadMedia_Thumbnail_Replace_Success() {
+            val postId = 1L
             val post = mock(Post::class.java)
 
-            val existingMedia =
-                mock(Media::class.java).apply {
-                    given(id).willReturn(10L)
-                    given(url).willReturn("post/uuid_old.png")
-                    given(type).willReturn(MediaType.IMAGE)
-                }
+            val existingMedia = mock(Media::class.java)
+            given(existingMedia.id).willReturn(10L)
+            given(existingMedia.url).willReturn("post/uuid_old.png")
+            given(existingMedia.type).willReturn(MediaType.IMAGE)
             val existingPostMedia = mock(PostMedia::class.java)
             given(existingPostMedia.media).willReturn(existingMedia)
             given(existingPostMedia.post).willReturn(post)
@@ -126,17 +121,17 @@ class PostMediaServiceTest {
 
             val newMedia = mock(Media::class.java)
 
-            given(postRepository.findById(1L)).willReturn(Optional.of(post))
+            given(postRepository.findById(postId)).willReturn(Optional.of(post))
             given(post.deletedAt).willReturn(null)
             given(postMediaRepository.findByPostAndType(post, PostMediaType.THUMBNAIL)).willReturn(existingPostMedia)
             given(mediaService.uploadMedia(file, "post")).willReturn(newMedia)
 
-            postMediaService.uploadMedia(1L, file, PostMediaType.THUMBNAIL)
+            postMediaService.uploadMedia(postId, file, PostMediaType.THUMBNAIL)
 
-            verify(existingPostMedia).media = newMedia
+            verify(existingPostMedia).updateMedia(newMedia)
             verify(mediaService).deleteMedia(10L)
-            verify(postMediaRepository, never()).delete(any<PostMedia>())
-            verify(postMediaRepository, never()).save(any<PostMedia>())
+            verify(postMediaRepository, never()).delete(any())
+            verify(postMediaRepository, never()).save(any())
         }
 
         @Test
@@ -147,21 +142,22 @@ class PostMediaServiceTest {
             assertThatThrownBy { postMediaService.uploadMedia(999L, file, PostMediaType.BODY) }
                 .isInstanceOf(BusinessException::class.java)
 
-            verify(mediaService, never()).uploadMedia(any<MultipartFile?>(), any<String>())
+            verify(mediaService, never()).uploadMedia(any(), any())
         }
 
         @Test
         @DisplayName("실패: 소프트삭제된 포스트에 업로드 시도 시 예외를 던진다")
         fun uploadMedia_DeletedPost_Fail() {
+            val postId = 1L
             val post = mock(Post::class.java)
 
-            given(postRepository.findById(1L)).willReturn(Optional.of(post))
+            given(postRepository.findById(postId)).willReturn(Optional.of(post))
             given(post.deletedAt).willReturn(LocalDateTime.now())
 
-            assertThatThrownBy { postMediaService.uploadMedia(1L, file, PostMediaType.BODY) }
+            assertThatThrownBy { postMediaService.uploadMedia(postId, file, PostMediaType.BODY) }
                 .isInstanceOf(BusinessException::class.java)
 
-            verify(mediaService, never()).uploadMedia(any<MultipartFile?>(), any<String>())
+            verify(mediaService, never()).uploadMedia(any(), any())
         }
     }
 
@@ -171,13 +167,14 @@ class PostMediaServiceTest {
         @Test
         @DisplayName("성공: 포스트의 모든 미디어 목록을 반환한다")
         fun getMediaList_Success() {
+            val postId = 1L
             val post = mock(Post::class.java)
             val media1 = mock(Media::class.java)
             val media2 = mock(Media::class.java)
             val postMedia1 = mock(PostMedia::class.java)
             val postMedia2 = mock(PostMedia::class.java)
 
-            given(postRepository.findById(1L)).willReturn(Optional.of(post))
+            given(postRepository.findById(postId)).willReturn(Optional.of(post))
             given(post.deletedAt).willReturn(null)
             given(postMediaRepository.findAllByPost(post)).willReturn(listOf(postMedia1, postMedia2))
             given(postMedia1.post).willReturn(post)
@@ -191,7 +188,7 @@ class PostMediaServiceTest {
             given(media2.url).willReturn("post/uuid_body.png")
             given(media2.type).willReturn(MediaType.IMAGE)
 
-            val result = postMediaService.getMediaList(1L)
+            val result = postMediaService.getMediaList(postId)
 
             assertThat(result).hasSize(2)
         }
@@ -199,13 +196,14 @@ class PostMediaServiceTest {
         @Test
         @DisplayName("성공: 미디어 없는 포스트 조회 시 빈 목록을 반환한다")
         fun getMediaList_Empty_Success() {
+            val postId = 1L
             val post = mock(Post::class.java)
 
-            given(postRepository.findById(1L)).willReturn(Optional.of(post))
+            given(postRepository.findById(postId)).willReturn(Optional.of(post))
             given(post.deletedAt).willReturn(null)
             given(postMediaRepository.findAllByPost(post)).willReturn(emptyList())
 
-            val result = postMediaService.getMediaList(1L)
+            val result = postMediaService.getMediaList(postId)
 
             assertThat(result).isEmpty()
         }
@@ -222,12 +220,13 @@ class PostMediaServiceTest {
         @Test
         @DisplayName("실패: 소프트삭제된 포스트 조회 시 예외를 던진다")
         fun getMediaList_DeletedPost_Fail() {
+            val postId = 1L
             val post = mock(Post::class.java)
 
-            given(postRepository.findById(1L)).willReturn(Optional.of(post))
+            given(postRepository.findById(postId)).willReturn(Optional.of(post))
             given(post.deletedAt).willReturn(LocalDateTime.now())
 
-            assertThatThrownBy { postMediaService.getMediaList(1L) }
+            assertThatThrownBy { postMediaService.getMediaList(postId) }
                 .isInstanceOf(BusinessException::class.java)
         }
     }
@@ -238,11 +237,12 @@ class PostMediaServiceTest {
         @Test
         @DisplayName("성공: 포스트 썸네일을 반환한다")
         fun getThumbnail_Success() {
+            val postId = 1L
             val post = mock(Post::class.java)
             val media = mock(Media::class.java)
             val postMedia = mock(PostMedia::class.java)
 
-            given(postRepository.findById(1L)).willReturn(Optional.of(post))
+            given(postRepository.findById(postId)).willReturn(Optional.of(post))
             given(post.deletedAt).willReturn(null)
             given(postMediaRepository.findByPostAndType(post, PostMediaType.THUMBNAIL)).willReturn(postMedia)
             given(postMedia.post).willReturn(post)
@@ -251,10 +251,10 @@ class PostMediaServiceTest {
             given(media.url).willReturn("post/uuid_thumb.png")
             given(media.type).willReturn(MediaType.IMAGE)
 
-            val result = postMediaService.getThumbnail(1L)
+            val result = postMediaService.getThumbnail(postId)
 
             assertThat(result).isNotNull()
-            assertThat(result?.url).isEqualTo("post/uuid_thumb.png")
+            assertThat(result!!.url).isEqualTo("post/uuid_thumb.png")
         }
 
         @Test
@@ -269,25 +269,27 @@ class PostMediaServiceTest {
         @Test
         @DisplayName("성공: 썸네일 없는 포스트 조회 시 null을 반환한다")
         fun getThumbnail_NoThumbnail_Success() {
+            val postId = 1L
             val post = mock(Post::class.java)
 
-            given(postRepository.findById(1L)).willReturn(Optional.of(post))
+            given(postRepository.findById(postId)).willReturn(Optional.of(post))
             given(post.deletedAt).willReturn(null)
             given(postMediaRepository.findByPostAndType(post, PostMediaType.THUMBNAIL)).willReturn(null)
 
-            val result = postMediaService.getThumbnail(1L)
+            val result: PostMediaResponse? = postMediaService.getThumbnail(postId)
             assertThat(result).isNull()
         }
 
         @Test
         @DisplayName("실패: 소프트삭제된 포스트 조회 시 예외를 던진다")
         fun getThumbnail_DeletedPost_Fail() {
+            val postId = 1L
             val post = mock(Post::class.java)
 
-            given(postRepository.findById(1L)).willReturn(Optional.of(post))
+            given(postRepository.findById(postId)).willReturn(Optional.of(post))
             given(post.deletedAt).willReturn(LocalDateTime.now())
 
-            assertThatThrownBy { postMediaService.getThumbnail(1L) }
+            assertThatThrownBy { postMediaService.getThumbnail(postId) }
                 .isInstanceOf(BusinessException::class.java)
         }
     }
@@ -301,11 +303,9 @@ class PostMediaServiceTest {
             val postId = 1L
             val postMediaId = 5L
 
-            val post =
-                mock(Post::class.java).apply {
-                    given(id).willReturn(postId)
-                    given(deletedAt).willReturn(null)
-                }
+            val post = mock(Post::class.java)
+            given(post.id).willReturn(postId)
+            given(post.deletedAt).willReturn(null)
 
             val media = mock(Media::class.java)
             given(media.id).willReturn(10L)
@@ -330,7 +330,7 @@ class PostMediaServiceTest {
             assertThatThrownBy { postMediaService.deleteMedia(1L, 999L) }
                 .isInstanceOf(BusinessException::class.java)
 
-            verify(postMediaRepository, never()).delete(any<PostMedia>())
+            verify(postMediaRepository, never()).delete(any())
         }
 
         @Test
@@ -349,8 +349,8 @@ class PostMediaServiceTest {
             assertThatThrownBy { postMediaService.deleteMedia(postId, postMediaId) }
                 .isInstanceOf(BusinessException::class.java)
 
-            verify(postMediaRepository, never()).delete(any<PostMedia>())
-            verify(mediaService, never()).deleteMedia(anyLong())
+            verify(postMediaRepository, never()).delete(any())
+            verify(mediaService, never()).deleteMedia(any())
         }
 
         @Test
@@ -359,11 +359,9 @@ class PostMediaServiceTest {
             val postId = 1L
             val postMediaId = 5L
 
-            val post =
-                mock(Post::class.java).apply {
-                    given(id).willReturn(postId)
-                    given(deletedAt).willReturn(LocalDateTime.now())
-                }
+            val post = mock(Post::class.java)
+            given(post.id).willReturn(postId)
+            given(post.deletedAt).willReturn(LocalDateTime.now())
 
             val postMedia = mock(PostMedia::class.java)
             given(postMedia.post).willReturn(post)
@@ -372,8 +370,8 @@ class PostMediaServiceTest {
             assertThatThrownBy { postMediaService.deleteMedia(postId, postMediaId) }
                 .isInstanceOf(BusinessException::class.java)
 
-            verify(postMediaRepository, never()).delete(any<PostMedia>())
-            verify(mediaService, never()).deleteMedia(anyLong())
+            verify(postMediaRepository, never()).delete(any())
+            verify(mediaService, never()).deleteMedia(any())
         }
     }
 }
