@@ -74,16 +74,19 @@ class PostService
         ): Slice<PostListResponse> {
             if (creatorId != null) {
                 val creator =
-                    userRepository
-                        .findByIdAndDeletedAtIsNull(creatorId)
-                        .orElseThrow { BusinessException(ErrorCode.USER_NOT_FOUND) }
+                    userRepository.findByIdAndDeletedAtIsNull(creatorId)
+                        ?: throw BusinessException(ErrorCode.USER_NOT_FOUND)
                 return postRepository
                     .findSliceByUserAndDeletedAtIsNull(creator, pageable)
-                    .map { post -> PostListResponse(post, isLiked(post.id, actor), isBookmarked(post.id, actor)) }
+                    .map { post ->
+                        PostListResponse(post, isLiked(checkNotNull(post.id), actor), isBookmarked(checkNotNull(post.id), actor))
+                    }
             }
             return postRepository
                 .findAllByDeletedAtIsNullAndPublishStatus(PublishStatus.PUBLIC, pageable)
-                .map { post -> PostListResponse(post, isLiked(post.id, actor), isBookmarked(post.id, actor)) }
+                .map { post ->
+                    PostListResponse(post, isLiked(checkNotNull(post.id), actor), isBookmarked(checkNotNull(post.id), actor))
+                }
         }
 
         // 게시글 상세 조회
@@ -180,12 +183,13 @@ class PostService
             pageable: Pageable,
         ): Page<PostListResponse> {
             val user =
-                userRepository
-                    .findByIdAndDeletedAtIsNull(userId)
-                    .orElseThrow { BusinessException(ErrorCode.USER_NOT_FOUND) }
+                userRepository.findByIdAndDeletedAtIsNull(userId)
+                    ?: throw BusinessException(ErrorCode.USER_NOT_FOUND)
             return postRepository
                 .findByUserAndDeletedAtIsNull(user, pageable)
-                .map { post -> PostListResponse(post, isLiked(post.id, actor), isBookmarked(post.id, actor)) }
+                .map { post ->
+                    PostListResponse(post, isLiked(checkNotNull(post.id), actor), isBookmarked(checkNotNull(post.id), actor))
+                }
         }
 
         // 키워드 검색
@@ -204,7 +208,9 @@ class PostService
         ): Page<PostListResponse> =
             postRepository
                 .findByUserAndDeletedAtIsNull(actor, pageable)
-                .map { post -> PostListResponse(post, isLiked(post.id, actor), isBookmarked(post.id, actor)) }
+                .map { post ->
+                    PostListResponse(post, isLiked(checkNotNull(post.id), actor), isBookmarked(checkNotNull(post.id), actor))
+                }
 
         // 시리즈에 포스트 추가
         @Suppress("ThrowsCount")
@@ -222,9 +228,8 @@ class PostService
             }
 
             val series =
-                seriesRepository
-                    .findByIdAndDeletedAtIsNull(seriesId)
-                    .orElseThrow { BusinessException(ErrorCode.SERIES_NOT_FOUND) }
+                seriesRepository.findByIdAndDeletedAtIsNull(seriesId)
+                    ?: throw BusinessException(ErrorCode.SERIES_NOT_FOUND)
             if (series.user.id != actor.id) {
                 throw BusinessException(ErrorCode.ACCESS_DENIED)
             }
@@ -262,19 +267,21 @@ class PostService
         ): List<PostListResponse> =
             postRepository
                 .findBySeriesIdAndDeletedAtIsNull(seriesId)
-                .map { post -> PostListResponse(post, isLiked(post.id, actor), isBookmarked(post.id, actor)) }
+                .map { post ->
+                    PostListResponse(post, isLiked(checkNotNull(post.id), actor), isBookmarked(checkNotNull(post.id), actor))
+                }
 
         private fun sendSse(post: Post) {
-            val creatorId: Long = post.user.id
+            val creatorId: Long = checkNotNull(post.user.id)
             val subscriberIds: List<Long> =
                 if (post.accessLevel == PostAccessLevel.PAID) {
                     subscriptionRepository
                         .findByCreatorIdAndTierAndDeletedAtIsNull(creatorId, SubscriptionTier.MEMBERSHIP)
-                        .map { it.user.id }
+                        .map { checkNotNull(it.user.id) }
                 } else {
                     subscriptionRepository
                         .findByCreatorIdAndDeletedAtIsNull(creatorId)
-                        .map { it.user.id }
+                        .map { checkNotNull(it.user.id) }
                 }
 
             for (subscriberId in subscriberIds) {
@@ -292,10 +299,10 @@ class PostService
         private fun isLiked(
             postId: Long,
             actor: User?,
-        ): Boolean = actor != null && likeRepository.existsByPostIdAndUserId(postId, actor.id)
+        ): Boolean = actor != null && likeRepository.existsByPostIdAndUserId(postId, checkNotNull(actor.id))
 
         private fun isBookmarked(
             postId: Long,
             actor: User?,
-        ): Boolean = actor != null && bookmarkRepository.existsByPostIdAndUserId(postId, actor.id)
+        ): Boolean = actor != null && bookmarkRepository.existsByPostIdAndUserId(postId, checkNotNull(actor.id))
     }

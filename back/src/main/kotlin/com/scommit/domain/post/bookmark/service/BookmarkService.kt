@@ -26,9 +26,8 @@ class BookmarkService(
         actor: User,
     ) {
         val post =
-            postRepository
-                .findByIdAndDeletedAtIsNull(postId)
-                .orElseThrow { BusinessException(ErrorCode.POST_NOT_FOUND) }
+            postRepository.findByIdAndDeletedAtIsNull(postId)
+                ?: throw BusinessException(ErrorCode.POST_NOT_FOUND)
 
         try {
             bookmarkRepository.save(Bookmark(post, actor))
@@ -60,9 +59,8 @@ class BookmarkService(
         postId: Long,
         actor: User,
     ) {
-        postRepository
-            .findByIdAndDeletedAtIsNull(postId)
-            .orElseThrow { BusinessException(ErrorCode.POST_NOT_FOUND) }
+        postRepository.findByIdAndDeletedAtIsNull(postId)
+            ?: throw BusinessException(ErrorCode.POST_NOT_FOUND)
 
         val bookmark =
             bookmarkRepository.findByPostIdAndUserId(postId, requireNotNull(actor.id))
