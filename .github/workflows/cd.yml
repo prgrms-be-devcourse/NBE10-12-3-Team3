@@ -12,6 +12,10 @@ permissions:
   contents: read
   packages: write
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   deploy:
     name: Deploy to EC2
@@ -85,5 +89,79 @@ jobs:
             } > .env
             printf "[client]\nuser=exporter\npassword=%s\nhost=db\nport=3306\n" "${MYSQL_EXPORTER_PASSWORD}" > mysql-exporter.cnf
             chmod 644 mysql-exporter.cnf
-            docker compose pull
-            docker compose up -d
+
+            # 1. 인프라 컨테이너 실행 확인
+            docker compose up -d db mysql-exporter promtail
+
+            # 2. 현재 실행 중인 백엔드 색상 확인
+            IS_BLUE_UP=$(docker ps --format '{{.Names}}' | grep -w "scommit-app-blue" || true)
+
+            if [ -z "$IS_BLUE_UP" ]; then
+              TARGET_COLOR="blue"
+              TARGET_PORT="8081"
+              CURRENT_COLOR="green"
+            else
+              TARGET_COLOR="green"
+              TARGET_PORT="8082"
+              CURRENT_COLOR="blue"
+            fi
+
+            echo "타겟 환경[$TARGET_COLOR] 배포 시작 (포트: $TARGET_PORT)"
+
+            # 3. 타겟 이미지 Pull 및 실행
+            docker compose --profile $TARGET_COLOR pull back-$TARGET_COLOR
+            docker compose --profile $TARGET_COLOR up -d back-$TARGET_COLOR
+
+            # 4. Health Check 진행 (최대 60초 대기: 3초 interval * 20회)
+            echo "Health Check 검증 중 (http://localhost:${TARGET_PORT}/actuator/health)..."
+            HEALTH_CHECK_PASSED=false
+
+            for i in {1..20}; do
+              HTTP_CODE=$(curl -s -o /tmp/health_response.json -w "%{http_code}" http://localhost:${TARGET_PORT}/actuator/health || echo "000")
+
+              if [ "$HTTP_CODE" -eq 200 ]; then
+                STATUS_CHECK=$(grep -o '"status":"UP"' /tmp/health_response.json || true)
+                if [ -n "$STATUS_CHECK" ]; then
+                  echo "Health Check 성공! ($TARGET_COLOR 환경 준비 완료)"
+                  HEALTH_CHECK_PASSED=true
+                  break
+                fi
+              fi
+
+              echo "대기 중... ($i/20) - 응답 코드: $HTTP_CODE"
+              sleep 3
+            done
+
+            # 5. Health Check 실패 시 자동 롤백
+            if [ "$HEALTH_CHECK_PASSED" = false ]; then
+              echo "Health Check 실패! 새로 구동한 $TARGET_COLOR 컨테이너를 중지하고 롤백합니다."
+              docker compose --profile $TARGET_COLOR stop back-$TARGET_COLOR
+              exit 1
+            fi
+
+            # 6. Nginx 트래픽 스위칭 (Dynamic Reload)
+            echo "Nginx 트래픽을 $TARGET_COLOR($TARGET_PORT) 포트로 전환합니다."
+            echo "server 127.0.0.1:${TARGET_PORT};" | sudo tee /etc/nginx/conf.d/service-env.inc > /dev/null
+            sudo nginx -t
+            sudo systemctl reload nginx
+
+            # 7. 진행 중인 요청 완료를 위한 Drain Time (5초) 대기
+            echo "기존 트래픽 소진 대기 중 (5초 Drain Time)..."
+            sleep 5
+
+            # 8. 구버전 컨테이너 정상 종료
+            echo "이전 버전 컨테이너($CURRENT_COLOR)를 정상 종료합니다."
+            docker compose --profile $CURRENT_COLOR stop back-$CURRENT_COLOR || true
+
+            # 9. 레거시(단일 백엔드 모드) scommit-app 컨테이너 자동 Cleanup
+            LEGACY_APP=$(docker ps --format '{{.Names}}' | grep -w "scommit-app" || true)
+            if [ -n "$LEGACY_APP" ]; then
+              echo "레거시 scommit-app 컨테이너를 정리합니다."
+              docker stop scommit-app || true
+              docker rm scommit-app || true
+            fi
+
+            # 10. 사용하지 않는 이미지 정리 (디스크 여유 확보, 실패해도 배포 결과에 영향 없음)
+            docker image prune -f || true
+
+            echo "Blue/Green 무중단 배포가 완료되었습니다."
