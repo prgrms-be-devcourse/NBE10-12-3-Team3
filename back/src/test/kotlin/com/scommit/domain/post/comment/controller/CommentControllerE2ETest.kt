@@ -92,19 +92,21 @@ class CommentControllerE2ETest {
         accessLevel: PostAccessLevel,
     ): Long =
         checkNotNull(
-            client
-                .post()
-                .uri("/api/posts")
-                .header("Authorization", bearer(accessToken))
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(PostCreateRequest(null, "댓글 E2E 게시글", "게시글 본문", publishStatus, accessLevel))
-                .exchange()
-                .expectStatus()
-                .isCreated()
-                .expectBody<ApiResponse<PostResponse>>()
-                .returnResult()
-                .responseBody,
-        ).data.id
+            checkNotNull(
+                client
+                    .post()
+                    .uri("/api/posts")
+                    .header("Authorization", bearer(accessToken))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(PostCreateRequest(null, "댓글 E2E 게시글", "게시글 본문", publishStatus, accessLevel))
+                    .exchange()
+                    .expectStatus()
+                    .isCreated()
+                    .expectBody<ApiResponse<PostResponse>>()
+                    .returnResult()
+                    .responseBody,
+            ).data.id,
+        )
 
     private fun createPublicPost(accessToken: String): Long =
         createPost(accessToken, PublishStatus.PUBLIC, PostAccessLevel.FREE)
@@ -624,7 +626,7 @@ class CommentControllerE2ETest {
             assertThat(updated.updatedAt).isCloseTo(createdUpdatedAt, within(1, ChronoUnit.MICROS))
 
             // DB 값: 실제로는 갱신되어 있다. 둘의 차이 자체를 고정해 둔다.
-            val dbUpdatedAtAfter: LocalDateTime = findComment(created.id).updatedAt
+            val dbUpdatedAtAfter: LocalDateTime = checkNotNull(findComment(created.id).updatedAt)
             assertThat(dbUpdatedAtAfter).isAfter(createdUpdatedAt)
             assertThat(dbUpdatedAtAfter).isNotEqualTo(updated.updatedAt)
 

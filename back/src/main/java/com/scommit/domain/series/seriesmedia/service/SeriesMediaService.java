@@ -25,8 +25,10 @@ public class SeriesMediaService {
 
     @Transactional
     public SeriesMediaResponse uploadMedia(Long seriesId, MultipartFile file, Long actorId, UserRole actorRole) {
-        Series series = seriesRepository.findByIdAndDeletedAtIsNull(seriesId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.SERIES_NOT_FOUND));
+        Series series = seriesRepository.findByIdAndDeletedAtIsNull(seriesId);
+        if (series == null) {
+            throw new BusinessException(ErrorCode.SERIES_NOT_FOUND);
+        }
 
         if (actorRole != UserRole.ADMIN && !series.getUser().getId().equals(actorId)) {
             throw new BusinessException(ErrorCode.ACCESS_DENIED);
@@ -51,8 +53,10 @@ public class SeriesMediaService {
 
     @Transactional(readOnly = true)
     public SeriesMediaResponse getMedia(Long seriesId) {
-        Series series = seriesRepository.findByIdAndDeletedAtIsNull(seriesId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.SERIES_NOT_FOUND));
+        Series series = seriesRepository.findByIdAndDeletedAtIsNull(seriesId);
+        if (series == null) {
+            throw new BusinessException(ErrorCode.SERIES_NOT_FOUND);
+        }
 
         SeriesMedia seriesMedia = seriesMediaRepository.findBySeries(series).orElse(null);
         if (seriesMedia == null) {
@@ -64,8 +68,10 @@ public class SeriesMediaService {
 
     @Transactional
     public void deleteMedia(Long seriesId, Long actorId, UserRole actorRole) {
-        Series series = seriesRepository.findByIdAndDeletedAtIsNull(seriesId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.SERIES_NOT_FOUND));
+        Series series = seriesRepository.findByIdAndDeletedAtIsNull(seriesId);
+        if (series == null) {
+            throw new BusinessException(ErrorCode.SERIES_NOT_FOUND);
+        }
 
         if (actorRole != UserRole.ADMIN && !series.getUser().getId().equals(actorId)) {
             throw new BusinessException(ErrorCode.ACCESS_DENIED);
