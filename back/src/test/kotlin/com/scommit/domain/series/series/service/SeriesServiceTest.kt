@@ -72,12 +72,11 @@ class SeriesServiceTest {
     @BeforeEach
     fun setUp() {
         mockUser =
-            User
-                .builder()
-                .email("test@example.com")
-                .nickname("테스터")
-                .role(UserRole.USER)
-                .build()
+            User(
+                email = "test@example.com",
+                nickname = "테스터",
+                role = UserRole.USER,
+            )
         ReflectionTestUtils.setField(mockUser, "id", 1L)
     }
 
