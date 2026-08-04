@@ -154,7 +154,7 @@ class PlatformDashboardService(
         accessLevel: PostAccessLevel,
     ): List<TopPost> =
         postRepository
-            .findTop5PostsByAccessLevelAndPeriod(periodStart, accessLevel, PageRequest.of(0, TOP_N))
+            .findTop5PostsByAccessLevelAndPeriod(periodStart, accessLevel, PageRequest.of(0, MAINPAGE_TOP_N))
             .map { TopPost.from(it) }
 
     private fun calculatePeriodStart(period: String): LocalDateTime {
@@ -169,6 +169,7 @@ class PlatformDashboardService(
 
     companion object {
         private const val TOP_N = 5
+        private const val MAINPAGE_TOP_N = 10
         private const val SEVEN_DAYS = 7L
         private const val THIRTY_DAYS = 30L
         private const val FULL_PERCENT = 100.0

@@ -363,7 +363,7 @@ export default function Home() {
           <div ref={premiumRef} className={cn("flex gap-6 overflow-x-auto md:overflow-hidden scrollbar-hide snap-x relative", getMaskClass(premiumLeft, premiumRight))}>
             <div data-carousel-dummy="left" className="w-[1px] shrink-0 opacity-0 pointer-events-none -mr-6" />
             {isLoading ? (
-              Array.from({ length: 5 }).map((_, i) => (
+              Array.from({ length: 10 }).map((_, i) => (
                 <div key={i} className="w-[260px] sm:w-[280px] flex-none snap-start">
                   <ContentCardSkeleton />
                 </div>
@@ -421,7 +421,7 @@ export default function Home() {
           <div ref={freeRef} className={cn("flex gap-6 overflow-x-auto md:overflow-hidden scrollbar-hide snap-x relative", getMaskClass(freeLeft, freeRight))}>
             <div data-carousel-dummy="left" className="w-[1px] shrink-0 opacity-0 pointer-events-none -mr-6" />
             {isLoading ? (
-              Array.from({ length: 5 }).map((_, i) => (
+              Array.from({ length: 10 }).map((_, i) => (
                 <div key={i} className="w-[260px] sm:w-[280px] flex-none snap-start">
                   <ContentCardSkeleton />
                 </div>
