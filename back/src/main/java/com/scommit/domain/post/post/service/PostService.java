@@ -176,8 +176,10 @@ public class PostService {
             throw new BusinessException(ErrorCode.ACCESS_DENIED);
         }
 
-        Series series = seriesRepository.findByIdAndDeletedAtIsNull(seriesId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.SERIES_NOT_FOUND));
+        Series series = seriesRepository.findByIdAndDeletedAtIsNull(seriesId);
+        if (series == null) {
+            throw new BusinessException(ErrorCode.SERIES_NOT_FOUND);
+        }
         if (!series.getUser().getId().equals(actor.getId())) {
             throw new BusinessException(ErrorCode.ACCESS_DENIED);
         }

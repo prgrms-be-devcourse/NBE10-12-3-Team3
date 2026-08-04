@@ -39,7 +39,7 @@ class CommentService(
 
         if (actor.id != post.user.id) {
             sseEmitterRepository.sendToUser(
-                post.user.id,
+                checkNotNull(post.user.id),
                 NotificationResponse(
                     NotificationType.COMMENT,
                     "${actor.nickname}님이 댓글을 작성했습니다.",

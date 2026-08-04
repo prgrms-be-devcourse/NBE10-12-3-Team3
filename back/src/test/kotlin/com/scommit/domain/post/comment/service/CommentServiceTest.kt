@@ -1,6 +1,7 @@
 package com.scommit.domain.post.comment.service
 
 import com.scommit.domain.notification.notification.dto.NotificationResponse
+import com.scommit.domain.notification.notification.dto.NotificationType
 import com.scommit.domain.notification.notification.repository.SseEmitterRepository
 import com.scommit.domain.post.comment.dto.CommentResponse
 import com.scommit.domain.post.comment.entity.Comment
@@ -21,6 +22,7 @@ import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.ArgumentMatchers.any
+import org.mockito.ArgumentMatchers.anyLong
 import org.mockito.ArgumentMatchers.eq
 import org.mockito.InjectMocks
 import org.mockito.Mock
@@ -35,6 +37,11 @@ import org.springframework.data.domain.Pageable
 import org.springframework.test.util.ReflectionTestUtils
 import java.time.LocalDateTime
 import java.util.Optional
+
+private fun anyNotificationResponse(): NotificationResponse {
+    any(NotificationResponse::class.java)
+    return NotificationResponse(NotificationType.COMMENT, "", 0L)
+}
 
 /**
  * CommentService 단위 테스트
@@ -202,8 +209,8 @@ internal class CommentServiceTest {
             commentService.createComment(otherUser, 10L, "댓글")
 
             verify(sseEmitterRepository).sendToUser(
-                eq(mockUser.id),
-                any(NotificationResponse::class.java),
+                eq(checkNotNull(mockUser.id)),
+                anyNotificationResponse(),
             )
         }
 
@@ -217,7 +224,7 @@ internal class CommentServiceTest {
             commentService.createComment(mockUser, 10L, "댓글")
 
             verify(sseEmitterRepository, never())
-                .sendToUser(any(), any())
+                .sendToUser(anyLong(), anyNotificationResponse())
         }
 
         // softDelete된 게시글에는 댓글 작성 불가
