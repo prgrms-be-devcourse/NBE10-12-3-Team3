@@ -1,0 +1,31 @@
+# Loki 로그 수집 및 저장소 설정
+auth_enabled: false
+
+# HTTP/gRPC 서버 설정
+server:
+  http_listen_port: 3100
+  grpc_listen_port: 9096
+
+# 공통 설정
+common:
+  instance_addr: 127.0.0.1
+  path_prefix: /loki
+  storage:
+    filesystem:
+      chunks_directory: /loki/chunks      # 로그 데이터 저장
+      rules_directory: /loki/rules         # 규칙 저장
+  replication_factor: 1
+  ring:
+    kvstore:
+      store: inmemory
+
+# 로그 스키마 및 저장소 정책
+schema_config:
+  configs:
+    - from: 2020-10-24
+      store: tsdb                         # 시계열 데이터베이스 사용
+      object_store: filesystem
+      schema: v13
+      index:
+        prefix: index_
+        period: 24h                       # 인덱스 롤링 주기
