@@ -16,7 +16,10 @@ import jakarta.persistence.UniqueConstraint
     uniqueConstraints = [
         UniqueConstraint(
             name = "uk_post_bookmarks_post_user",
-            columnNames = ["post_id", "user_id"],
+            // user_id를 선두로 두는 이유: post_id+user_id 동등조건 조회는 컬럼 순서와 무관하게 이
+            // 인덱스를 그대로 타지만, findByUserIdAndPostDeletedAtIsNull("내 북마크 목록")처럼
+            // user_id만으로 거는 조회는 선두 컬럼이 아니면 인덱스를 못 탄다.
+            columnNames = ["user_id", "post_id"],
         ),
     ],
 )
