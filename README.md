@@ -181,7 +181,7 @@ Grafana 대시보드에서 확인합니다.
 처리합니다.
 
 1. Docker Buildx로 이미지 빌드 (GHA 레이어 캐시 사용)
-2. GHCR(`ghcr.io/prgrms-be-devcourse/nbe10-12-2-team3:latest`)에 이미지 푸시
+2. GHCR(`ghcr.io/prgrms-be-devcourse/nbe10-12-3-team3:latest`)에 이미지 푸시
 3. SCP로 `docker-compose.yml`, `promtail-config.yml`을 EC2로 전송
 4. EC2 SSH 접속 → `.env` 파일 생성 → `mysql-exporter.cnf` 생성 → `docker compose pull` + `docker compose up -d`
 

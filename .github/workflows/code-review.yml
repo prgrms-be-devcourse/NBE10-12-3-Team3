@@ -1,7 +1,7 @@
 name: AI PR CodeReview
 on:
   pull_request:
-    branches: [ main ]
+    branches: [ "main", "dev" ]
     types: [opened, synchronize, reopened, ready_for_review] # Draft에서 Ready로 변경될 때도 트리거
 
 jobs:
@@ -24,8 +24,22 @@ jobs:
       - name: Get Filtered Diff
         run: |
           git fetch origin ${{ github.event.pull_request.base.ref }}
-          # 패키지 매니저 Lock 파일이나 SVG 등은 리뷰에서 제외 (옵션 2)
-          git diff origin/${{ github.event.pull_request.base.ref }}...HEAD -- . ':(exclude)*.lock' ':(exclude)package-lock.json' ':(exclude)*.svg' > diff.txt
+          # 패키지 매니저 Lock 파일, 빌드 산출물, 이미지 등은 리뷰에서 제외 (옵션 2)
+          # back/ 하위의 Gradle 관련 파일은 실제 경로(back/*) 기준으로 제외해야 매칭됨
+          git diff origin/${{ github.event.pull_request.base.ref }}...HEAD -- . \
+            ':(exclude)*.lock' \
+            ':(exclude)package-lock.json' \
+            ':(exclude)pnpm-lock.yaml' \
+            ':(exclude)*.svg' \
+            ':(exclude,glob)**/*.gradle' \
+            ':(exclude,glob)**/*.gradle.kts' \
+            ':(exclude)back/gradle/**' \
+            ':(exclude)back/gradlew' \
+            ':(exclude)back/gradlew.bat' \
+            ':(exclude)back/.gradle/**' \
+            ':(exclude)back/.kotlin/**' \
+            ':(exclude,glob)**/build/**' \
+            > diff.txt
 
       - name: Run Advanced Review
         uses: actions/github-script@v7
@@ -35,6 +49,8 @@ jobs:
           script: |
             const fs = require("fs");
             const diff_output = fs.readFileSync("diff.txt", "utf8").trim();
+
+            // 변경 사항이 없으면 스킵
             if (!diff_output) {
               console.log("No relevant changes to review.");
               return;
@@ -92,15 +108,16 @@ jobs:
               ]
             }`;
             
-            // API 호출 (503 일시적 과부하 대비 최대 3회 재시도)
+            // API 호출 (503 과부하 / 429 rate limit 등 일시적 오류 대비 최대 3회 재시도)
             async function generateWithRetry(model, prompt, retries = 3) {
               for (let i = 0; i < retries; i++) {
                 try {
                   return await model.generateContent(prompt);
                 } catch (e) {
-                  if (e.status === 503 && i < retries - 1) {
+                  const retryable = e.status === 503 || e.status === 429;
+                  if (retryable && i < retries - 1) {
                     const waitMs = (i + 1) * 10000;
-                    console.log(`Gemini 503, ${waitMs / 1000}s 후 재시도... (${i + 1}/${retries})`);
+                    console.log(`Gemini ${e.status}, ${waitMs / 1000}s 후 재시도... (${i + 1}/${retries})`);
                     await new Promise(r => setTimeout(r, waitMs));
                   } else {
                     throw e;
@@ -108,17 +125,60 @@ jobs:
                 }
               }
             }
-            const result = await generateWithRetry(model, prompt);
+            // PR 코멘트 1개만 유지: 기존 봇 댓글을 찾아 덮어쓰고, 없으면 새로 생성 (댓글 도배 방지)
+            const COMMENT_MARKER = "## 🤖 Gemini AI 코드 리뷰";
+            async function upsertReviewComment(bodyText) {
+              const { data: comments } = await github.rest.issues.listComments({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.pull_request.number,
+              });
+              const botComment = comments.find(c => c.user.type === 'Bot' && c.body.includes(COMMENT_MARKER));
+
+              if (botComment) {
+                await github.rest.issues.updateComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  comment_id: botComment.id,
+                  body: bodyText
+                });
+              } else {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.payload.pull_request.number,
+                  body: bodyText
+                });
+              }
+            }
+
+            // Gemini 호출 자체가 실패한 경우 (재시도 소진 등) - 침묵하지 않고 실패를 댓글로 알림
+            let result;
+            try {
+              result = await generateWithRetry(model, prompt);
+            } catch (e) {
+              console.error("Gemini API call failed:", e);
+              await upsertReviewComment(
+                `${COMMENT_MARKER}\n\n⚠️ 리뷰 생성에 실패했습니다 (API 오류: ${e.status || e.message}).\n` +
+                `이 댓글은 이전 커밋 기준일 수 있으니 참고용으로만 사용하고, Actions 로그를 확인해주세요.`
+              );
+              return;
+            }
             const responseText = await result.response.text();
-            
+
+            // 응답 JSON 파싱 실패 시에도 침묵하지 않고 실패를 댓글로 알림
             let reviewData;
             try {
               reviewData = JSON.parse(responseText);
             } catch (e) {
               console.error("JSON Parse Error. Raw response:", responseText);
+              await upsertReviewComment(
+                `${COMMENT_MARKER}\n\n⚠️ 리뷰 응답을 해석하지 못했습니다 (JSON 파싱 오류).\n` +
+                `이 댓글은 이전 커밋 기준일 수 있으니 참고용으로만 사용하고, Actions 로그를 확인해주세요.`
+              );
               return;
             }
-            
+
             const { summary_report, inline_comments } = reviewData;
 
             // diff에 실제로 존재하는 라인만 추출 (GitHub API는 diff 외부 라인을 거부함)
@@ -153,67 +213,38 @@ jobs:
             }
             const validLineMap = buildValidLineMap(diff_output);
 
-            // 1. 전체 요약 리뷰 덮어쓰기 (댓글 도배 방지)
-            if (summary_report) {
-              // Gemini가 summary_report에 제목을 포함해 반환할 경우 중복 방지
-              const cleanReport = summary_report.replace(/^#+\s*.+\n+/, '').trim();
-              const bodyText = "## 🤖 Gemini AI 리뷰 요약\n\n" + cleanReport;
-              
-              // 기존에 봇이 작성한 요약 댓글이 있는지 검색
-              const { data: comments } = await github.rest.issues.listComments({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.payload.pull_request.number,
-              });
-              const botComment = comments.find(c => c.user.type === 'Bot' && c.body.includes("## 🤖 Gemini AI 리뷰 요약"));
-              
-              if (botComment) {
-                // 기존 댓글 덮어쓰기 (Update)
-                await github.rest.issues.updateComment({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  comment_id: botComment.id,
-                  body: bodyText
-                });
-              } else {
-                // 새 댓글 작성 (Create)
-                await github.rest.issues.createComment({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  issue_number: context.payload.pull_request.number,
-                  body: bodyText
-                });
+            // diff에 실제로 존재하는 라인 + text가 실제 문자열인 이슈만 남기고, 요약 댓글의 테이블로 통합
+            const validComments = (inline_comments || []).filter(c => {
+              if (typeof c.text !== 'string') {
+                console.log(`Skip comment with invalid text: ${c.path}:${c.line}`);
+                return false;
               }
-            }
-            
-            
-            // 2. 라인별 인라인 코멘트 달기 (옵션 5)
-            if (inline_comments && inline_comments.length > 0) {
-              const filteredComments = inline_comments.filter(c => {
-                const validSet = validLineMap[c.path];
-                const isValid = validSet && validSet.has(Number(c.line));
-                if (!isValid) console.log(`Skip invalid line: ${c.path}:${c.line}`);
-                return isValid;
-              });
-              if (filteredComments.length === 0) {
-                console.log("No valid inline comments after filtering.");
-              } else {
-                const formattedComments = filteredComments.map(c => ({
-                  path: c.path,
-                  line: Number(c.line),
-                  body: c.text,
-                  side: 'RIGHT'
-                }));
+              const validSet = validLineMap[c.path];
+              const isValid = validSet && validSet.has(Number(c.line));
+              if (!isValid) console.log(`Skip invalid line: ${c.path}:${c.line}`);
+              return isValid;
+            });
 
-                // PR 머지를 강제로 막지 않기 위해 REQUEST_CHANGES 대신 COMMENT 형식으로 의도적 설정함
-                await github.rest.pulls.createReview({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  pull_number: context.payload.pull_request.number,
-                  event: 'COMMENT',
-                  comments: formattedComments
-                });
-              }
+            const severityOrder = { P1: 0, P2: 1, P3: 2 };
+            validComments.sort((a, b) => {
+              const sa = (a.text.match(/^P([1-3]):/) || [])[1];
+              const sb = (b.text.match(/^P([1-3]):/) || [])[1];
+              return (severityOrder[`P${sa}`] ?? 99) - (severityOrder[`P${sb}`] ?? 99);
+            });
+
+            let issuesTable = '';
+            if (validComments.length > 0) {
+              issuesTable = `\n### 🔍 발견된 이슈\n| 파일 | 라인 | 심각도 | 내용 |\n|------|------|------|------|\n`;
+              validComments.forEach(c => {
+                const match = c.text.match(/^P([1-3]):\s*([\s\S]*)$/);
+                const severity = match ? `P${match[1]}` : '-';
+                const content = (match ? match[2] : c.text).replace(/\|/g, '\\|').replace(/\n/g, ' ');
+                issuesTable += `| \`${c.path}\` | ${c.line} | ${severity} | ${content} |\n`;
+              });
             }
-            
+
+            const cleanReport = (summary_report || '요약을 생성하지 못했습니다.').replace(/^#+\s*.+\n+/, '').trim();
+            const bodyText = `${COMMENT_MARKER}\n\n${cleanReport}\n${issuesTable}`;
+
+            await upsertReviewComment(bodyText);
             console.log("Advanced Review Process Completed.");
