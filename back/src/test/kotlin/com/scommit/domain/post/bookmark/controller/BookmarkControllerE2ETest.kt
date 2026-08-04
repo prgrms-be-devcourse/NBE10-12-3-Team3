@@ -80,19 +80,21 @@ class BookmarkControllerE2ETest {
         accessLevel: PostAccessLevel,
     ): Long =
         checkNotNull(
-            client
-                .post()
-                .uri("/api/posts")
-                .header("Authorization", bearer(accessToken))
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(PostCreateRequest(null, "북마크 E2E 게시글", "게시글 본문", publishStatus, accessLevel))
-                .exchange()
-                .expectStatus()
-                .isCreated()
-                .expectBody<ApiResponse<PostResponse>>()
-                .returnResult()
-                .responseBody,
-        ).data.id
+            checkNotNull(
+                client
+                    .post()
+                    .uri("/api/posts")
+                    .header("Authorization", bearer(accessToken))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(PostCreateRequest(null, "북마크 E2E 게시글", "게시글 본문", publishStatus, accessLevel))
+                    .exchange()
+                    .expectStatus()
+                    .isCreated()
+                    .expectBody<ApiResponse<PostResponse>>()
+                    .returnResult()
+                    .responseBody,
+            ).data.id,
+        )
 
     private fun createPublicPost(accessToken: String): Long =
         createPost(accessToken, PublishStatus.PUBLIC, PostAccessLevel.FREE)

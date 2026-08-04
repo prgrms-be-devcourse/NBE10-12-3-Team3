@@ -32,7 +32,6 @@ import org.springframework.data.domain.PageImpl
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Pageable
 import org.springframework.test.util.ReflectionTestUtils
-import java.util.Optional
 
 @ExtendWith(MockitoExtension::class)
 class BookmarkServiceTest {
@@ -61,15 +60,14 @@ class BookmarkServiceTest {
             ).also { ReflectionTestUtils.setField(it, "id", 1L) }
 
         post =
-            Post
-                .builder()
-                .user(actor)
-                .title("테스트 게시글")
-                .body("내용")
-                .publishStatus(PublishStatus.PUBLIC)
-                .accessLevel(PostAccessLevel.FREE)
-                .build()
-                .also { ReflectionTestUtils.setField(it, "id", 10L) }
+            Post(
+                user = actor,
+                series = null,
+                title = "테스트 게시글",
+                body = "내용",
+                publishStatus = PublishStatus.PUBLIC,
+                accessLevel = PostAccessLevel.FREE,
+            ).also { ReflectionTestUtils.setField(it, "id", 10L) }
     }
 
     @Nested
@@ -79,7 +77,7 @@ class BookmarkServiceTest {
         @DisplayName("성공: 북마크가 추가되고 bookmarkCount가 증가한다")
         fun createBookmark_success() {
             // given
-            given(postRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(Optional.of(post))
+            given(postRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(post)
 
             // when
             bookmarkService.createBookmark(10L, actor)
@@ -93,7 +91,7 @@ class BookmarkServiceTest {
         @DisplayName("실패: 이미 북마크한 경우 DataIntegrityViolationException이 발생하면 ALREADY_BOOKMARKED 예외를 던진다")
         fun createBookmark_alreadyBookmarked() {
             // given
-            given(postRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(Optional.of(post))
+            given(postRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(post)
             given(bookmarkRepository.save(any(Bookmark::class.java)))
                 .willThrow(DataIntegrityViolationException("Duplicate entry"))
 
@@ -107,7 +105,7 @@ class BookmarkServiceTest {
         @DisplayName("실패: 존재하지 않는 게시글이면 POST_NOT_FOUND 예외를 던진다")
         fun createBookmark_postNotFound() {
             // given
-            given(postRepository.findByIdAndDeletedAtIsNull(999L)).willReturn(Optional.empty())
+            given(postRepository.findByIdAndDeletedAtIsNull(999L)).willReturn(null)
 
             // when & then
             assertThatThrownBy { bookmarkService.createBookmark(999L, actor) }
@@ -127,7 +125,7 @@ class BookmarkServiceTest {
             // given
             ReflectionTestUtils.setField(post, "bookmarkCount", 1L)
             val bookmark = Bookmark(post = post, user = actor)
-            given(postRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(Optional.of(post))
+            given(postRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(post)
             given(bookmarkRepository.findByPostIdAndUserId(10L, 1L)).willReturn(bookmark)
 
             // when
@@ -142,7 +140,7 @@ class BookmarkServiceTest {
         @DisplayName("실패: 북마크가 없는 경우 BOOKMARK_NOT_FOUND 예외를 던진다")
         fun deleteBookmark_bookmarkNotFound() {
             // given
-            given(postRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(Optional.of(post))
+            given(postRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(post)
             given(bookmarkRepository.findByPostIdAndUserId(10L, 1L)).willReturn(null)
 
             // when & then
@@ -157,7 +155,7 @@ class BookmarkServiceTest {
         @DisplayName("실패: 존재하지 않는 게시글이면 POST_NOT_FOUND 예외를 던진다")
         fun deleteBookmark_postNotFound() {
             // given
-            given(postRepository.findByIdAndDeletedAtIsNull(999L)).willReturn(Optional.empty())
+            given(postRepository.findByIdAndDeletedAtIsNull(999L)).willReturn(null)
 
             // when & then
             assertThatThrownBy { bookmarkService.deleteBookmark(999L, actor) }
@@ -185,7 +183,7 @@ class BookmarkServiceTest {
 
             // then
             assertThat(result.content).hasSize(1)
-            assertThat(result.content[0].id()).isEqualTo(10L)
+            assertThat(result.content[0].id).isEqualTo(10L)
         }
 
         @Test
@@ -216,7 +214,7 @@ class BookmarkServiceTest {
             val result: Page<PostListResponse> = bookmarkService.getMyBookmarks(actor, pageable)
 
             // then
-            assertThat(result.content[0].isBookmarked()).isTrue()
+            assertThat(result.content[0].isBookmarked).isTrue()
         }
 
         @Test
@@ -233,7 +231,7 @@ class BookmarkServiceTest {
             val result: Page<PostListResponse> = bookmarkService.getMyBookmarks(actor, pageable)
 
             // then
-            assertThat(result.content[0].isLiked()).isTrue()
+            assertThat(result.content[0].isLiked).isTrue()
         }
 
         @Test
@@ -250,7 +248,7 @@ class BookmarkServiceTest {
             val result: Page<PostListResponse> = bookmarkService.getMyBookmarks(actor, pageable)
 
             // then
-            assertThat(result.content[0].isLiked()).isFalse()
+            assertThat(result.content[0].isLiked).isFalse()
         }
     }
 }

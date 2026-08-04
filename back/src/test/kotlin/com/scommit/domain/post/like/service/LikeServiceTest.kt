@@ -25,7 +25,6 @@ import org.mockito.Mockito.verify
 import org.mockito.junit.jupiter.MockitoExtension
 import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.test.util.ReflectionTestUtils
-import java.util.Optional
 
 @ExtendWith(MockitoExtension::class)
 class LikeServiceTest {
@@ -51,14 +50,14 @@ class LikeServiceTest {
             ).also { ReflectionTestUtils.setField(it, "id", 1L) }
 
         post =
-            Post
-                .builder()
-                .title("테스트 게시글")
-                .body("내용")
-                .publishStatus(PublishStatus.PUBLIC)
-                .accessLevel(PostAccessLevel.FREE)
-                .build()
-                .also { ReflectionTestUtils.setField(it, "id", 10L) }
+            Post(
+                user = actor,
+                series = null,
+                title = "테스트 게시글",
+                body = "내용",
+                publishStatus = PublishStatus.PUBLIC,
+                accessLevel = PostAccessLevel.FREE,
+            ).also { ReflectionTestUtils.setField(it, "id", 10L) }
     }
 
     @Nested
@@ -68,7 +67,7 @@ class LikeServiceTest {
         @DisplayName("성공: 좋아요가 추가되고 likeCount가 증가한다")
         fun createLike_success() {
             // given
-            given(postRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(Optional.of(post))
+            given(postRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(post)
 
             // when
             likeService.createLike(10L, actor)
@@ -82,7 +81,7 @@ class LikeServiceTest {
         @DisplayName("실패: 이미 좋아요한 경우 DataIntegrityViolationException이 발생하면 ALREADY_LIKED 예외를 던진다")
         fun createLike_alreadyLiked() {
             // given
-            given(postRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(Optional.of(post))
+            given(postRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(post)
             given(likeRepository.save(any(Like::class.java)))
                 .willThrow(DataIntegrityViolationException("Duplicate entry"))
 
@@ -96,7 +95,7 @@ class LikeServiceTest {
         @DisplayName("실패: 존재하지 않는 게시글이면 POST_NOT_FOUND 예외를 던진다")
         fun createLike_postNotFound() {
             // given
-            given(postRepository.findByIdAndDeletedAtIsNull(999L)).willReturn(Optional.empty())
+            given(postRepository.findByIdAndDeletedAtIsNull(999L)).willReturn(null)
 
             // when & then
             assertThatThrownBy { likeService.createLike(999L, actor) }
@@ -116,7 +115,7 @@ class LikeServiceTest {
             // given
             ReflectionTestUtils.setField(post, "likeCount", 1L)
             val like = Like(post = post, user = actor)
-            given(postRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(Optional.of(post))
+            given(postRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(post)
             given(likeRepository.findByPostIdAndUserId(10L, 1L)).willReturn(like)
 
             // when
@@ -131,7 +130,7 @@ class LikeServiceTest {
         @DisplayName("실패: 좋아요가 없는 경우 LIKE_NOT_FOUND 예외를 던진다")
         fun deleteLike_likeNotFound() {
             // given
-            given(postRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(Optional.of(post))
+            given(postRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(post)
             given(likeRepository.findByPostIdAndUserId(10L, 1L)).willReturn(null)
 
             // when & then
@@ -146,7 +145,7 @@ class LikeServiceTest {
         @DisplayName("실패: 존재하지 않는 게시글이면 POST_NOT_FOUND 예외를 던진다")
         fun deleteLike_postNotFound() {
             // given
-            given(postRepository.findByIdAndDeletedAtIsNull(999L)).willReturn(Optional.empty())
+            given(postRepository.findByIdAndDeletedAtIsNull(999L)).willReturn(null)
 
             // when & then
             assertThatThrownBy { likeService.deleteLike(999L, actor) }

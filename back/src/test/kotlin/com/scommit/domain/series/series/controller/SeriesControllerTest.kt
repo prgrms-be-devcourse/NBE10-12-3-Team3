@@ -47,6 +47,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put
 import org.springframework.test.web.servlet.result.MockMvcResultHandlers.print
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
+import org.springframework.web.multipart.MultipartFile
 import tools.jackson.databind.ObjectMapper
 import java.time.LocalDateTime
 
@@ -63,6 +64,11 @@ private fun anyPageable(): Pageable {
 private fun anyUserRole(): UserRole {
     any(UserRole::class.java)
     return UserRole.USER
+}
+
+private fun anyMultipartFile(): MultipartFile {
+    any(MultipartFile::class.java)
+    return MockMultipartFile("file", ByteArray(0))
 }
 
 @WebMvcTest(
@@ -453,7 +459,7 @@ class SeriesControllerTest {
             val file = MockMultipartFile("file", "thumb.png", "image/png", "content".toByteArray())
 
             given(securityHelper.actor).willReturn(mockActor)
-            given(seriesMediaService.uploadMedia(anyLong(), any(), anyLong(), any())).willReturn(response)
+            given(seriesMediaService.uploadMedia(anyLong(), anyMultipartFile(), anyLong(), any())).willReturn(response)
 
             mockMvc
                 .perform(
@@ -472,7 +478,7 @@ class SeriesControllerTest {
             val otherActor = User(99L, "other@example.com", "다른유저", UserRole.USER)
 
             given(securityHelper.actor).willReturn(otherActor)
-            given(seriesMediaService.uploadMedia(anyLong(), any(), eq(99L), any()))
+            given(seriesMediaService.uploadMedia(anyLong(), anyMultipartFile(), eq(99L), any()))
                 .willThrow(BusinessException(ErrorCode.ACCESS_DENIED))
 
             mockMvc
@@ -491,7 +497,7 @@ class SeriesControllerTest {
             val file = MockMultipartFile("file", "thumb.png", "image/png", "content".toByteArray())
 
             given(securityHelper.actor).willReturn(mockActor)
-            given(seriesMediaService.uploadMedia(anyLong(), any(), anyLong(), any()))
+            given(seriesMediaService.uploadMedia(anyLong(), anyMultipartFile(), anyLong(), any()))
                 .willThrow(BusinessException(ErrorCode.RESOURCE_NOT_FOUND))
 
             mockMvc
