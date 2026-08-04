@@ -3,9 +3,12 @@ package com.scommit.global.exception
 import com.scommit.global.dto.RsData
 import org.slf4j.LoggerFactory
 import org.springframework.http.ResponseEntity
+import org.springframework.http.converter.HttpMessageNotReadableException
 import org.springframework.validation.BindException
+import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException
 
 @RestControllerAdvice
 class GlobalExceptionHandler {
@@ -27,10 +30,8 @@ class GlobalExceptionHandler {
     /**
      * @RequestBody JSON 바인딩 에러 처리 (@Valid 유효성 검사 실패 시)
      */
-    @ExceptionHandler(org.springframework.web.bind.MethodArgumentNotValidException::class)
-    fun handleMethodArgumentNotValidException(
-        e: org.springframework.web.bind.MethodArgumentNotValidException,
-    ): ResponseEntity<RsData<Void>> {
+    @ExceptionHandler(MethodArgumentNotValidException::class)
+    fun handleMethodArgumentNotValidException(e: MethodArgumentNotValidException): ResponseEntity<RsData<Void>> {
         val errorMessage = e.bindingResult.allErrors[0].defaultMessage
         log.warn("MethodArgumentNotValidException: {}", errorMessage)
 
@@ -63,9 +64,9 @@ class GlobalExceptionHandler {
     /**
      * URL 경로 변수나 쿼리 파라미터의 데이터 타입이 일치하지 않을 때 (예: Long 자리에 String 입력)
      */
-    @ExceptionHandler(org.springframework.web.method.annotation.MethodArgumentTypeMismatchException::class)
+    @ExceptionHandler(MethodArgumentTypeMismatchException::class)
     fun handleMethodArgumentTypeMismatchException(
-        e: org.springframework.web.method.annotation.MethodArgumentTypeMismatchException,
+        e: MethodArgumentTypeMismatchException,
     ): ResponseEntity<RsData<Void>> {
         log.warn("TypeMismatchException: 파라미터 '{}'에 잘못된 값 '{}'가 입력되었습니다.", e.name, e.value)
 
@@ -79,10 +80,8 @@ class GlobalExceptionHandler {
     /**
      * JSON 파싱 에러 처리 (클라이언트가 잘못된 JSON 포맷을 보냈을 때)
      */
-    @ExceptionHandler(org.springframework.http.converter.HttpMessageNotReadableException::class)
-    fun handleHttpMessageNotReadableException(
-        e: org.springframework.http.converter.HttpMessageNotReadableException,
-    ): ResponseEntity<RsData<Void>> {
+    @ExceptionHandler(HttpMessageNotReadableException::class)
+    fun handleHttpMessageNotReadableException(e: HttpMessageNotReadableException): ResponseEntity<RsData<Void>> {
         log.warn("HttpMessageNotReadableException: {}", e.message)
         val errorCode = ErrorCode.INVALID_INPUT_VALUE
         val rsData: RsData<Void> = RsData(errorCode.code, "올바른 JSON 요청 형식이 아닙니다.")

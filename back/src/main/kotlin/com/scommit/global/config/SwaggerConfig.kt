@@ -23,12 +23,13 @@ class SwaggerConfig {
     @Bean
     fun openAPI(): OpenAPI {
         val bearerAuth =
-            SecurityScheme()
-                .type(SecurityScheme.Type.HTTP)
-                .scheme("bearer")
-                .bearerFormat("JWT")
-                .`in`(SecurityScheme.In.HEADER)
-                .name("Authorization")
+            SecurityScheme().apply {
+                type = SecurityScheme.Type.HTTP
+                scheme = "bearer"
+                bearerFormat = "JWT"
+                setIn(SecurityScheme.In.HEADER)
+                name = "Authorization"
+            }
 
         val securityRequirement = SecurityRequirement().addList("bearerAuth")
 
@@ -48,35 +49,35 @@ class SwaggerConfig {
         OpenApiCustomizer { openApi ->
             openApi.paths.values.forEach { pathItem ->
                 pathItem.readOperations().forEach { operation ->
-                    if (operation.parameters == null) return@forEach
+                    val parameters = operation.parameters ?: return@forEach
 
-                    val hasPageable =
-                        operation.parameters
-                            .any { p -> "pageable" == p.name }
+                    val hasPageable = parameters.any { p -> "pageable" == p.name }
 
-                    operation.parameters
-                        .removeIf { param -> "pageable" == param.name || "sort" == param.name }
+                    parameters.removeIf { param -> "pageable" == param.name || "sort" == param.name }
 
                     if (hasPageable) {
                         val pageParams =
                             listOf(
-                                Parameter()
-                                    .`in`("query")
-                                    .name("page")
-                                    .description("페이지 번호 (0부터 시작)")
-                                    .schema(IntegerSchema().example(DEFAULT_PAGE_NUMBER)),
-                                Parameter()
-                                    .`in`("query")
-                                    .name("size")
-                                    .description("페이지 크기")
-                                    .schema(IntegerSchema().example(DEFAULT_PAGE_SIZE)),
-                                Parameter()
-                                    .`in`("query")
-                                    .name("sort")
-                                    .description("정렬 (예: id,desc)")
-                                    .schema(StringSchema().example("id,desc")),
+                                Parameter().apply {
+                                    setIn("query")
+                                    name = "page"
+                                    description = "페이지 번호 (0부터 시작)"
+                                    schema = IntegerSchema().example(DEFAULT_PAGE_NUMBER)
+                                },
+                                Parameter().apply {
+                                    setIn("query")
+                                    name = "size"
+                                    description = "페이지 크기"
+                                    schema = IntegerSchema().example(DEFAULT_PAGE_SIZE)
+                                },
+                                Parameter().apply {
+                                    setIn("query")
+                                    name = "sort"
+                                    description = "정렬 (예: id,desc)"
+                                    schema = StringSchema().example("id,desc")
+                                },
                             )
-                        operation.parameters.addAll(pageParams)
+                        parameters.addAll(pageParams)
                     }
                 }
             }

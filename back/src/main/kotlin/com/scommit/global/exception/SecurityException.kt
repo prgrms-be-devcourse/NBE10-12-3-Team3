@@ -9,5 +9,5 @@ class SecurityException(
     private val resultCode: String,
     private val msg: String,
 ) : RuntimeException("$resultCode : $msg") {
-    fun getRsData(): RsData<Void> = RsData(resultCode, msg, null)
+    val rsData: RsData<Void> get() = RsData(resultCode, msg, null)
 }
