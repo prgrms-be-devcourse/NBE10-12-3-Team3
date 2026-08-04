@@ -51,7 +51,7 @@ class NotificationService(
     fun notifyNewPost(
         subscriberIds: List<Long>,
         creatorNickname: String,
-        postId: Long,
+        postId: Long?,
     ) = subscriberIds.forEach { subscriberId ->
         sseEmitterRepository.sendToUser(
             subscriberId,

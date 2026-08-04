@@ -286,7 +286,7 @@ class PostService
                         .map { checkNotNull(it.user.id) }
                 }
 
-            notificationService.notifyNewPost(subscriberIds, post.user.nickname, checkNotNull(post.id))
+            notificationService.notifyNewPost(subscriberIds, post.user.nickname, post.id)
         }
 
         private fun isLiked(

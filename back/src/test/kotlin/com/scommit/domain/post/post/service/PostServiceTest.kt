@@ -1,7 +1,6 @@
 package com.scommit.domain.post.post.service
 
-import com.scommit.domain.notification.notification.dto.NotificationResponse
-import com.scommit.domain.notification.notification.repository.SseEmitterRepository
+import com.scommit.domain.notification.notification.service.NotificationService
 import com.scommit.domain.post.bookmark.repository.BookmarkRepository
 import com.scommit.domain.post.like.repository.LikeRepository
 import com.scommit.domain.post.post.dto.PostListResponse
@@ -28,8 +27,10 @@ import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.ArgumentMatchers.any
+import org.mockito.ArgumentMatchers.anyList
 import org.mockito.ArgumentMatchers.anyLong
-import org.mockito.ArgumentMatchers.eq
+import org.mockito.ArgumentMatchers.anyString
+import org.mockito.ArgumentMatchers.isNull
 import org.mockito.BDDMockito.given
 import org.mockito.InjectMocks
 import org.mockito.Mock
@@ -72,7 +73,7 @@ class PostServiceTest {
     private lateinit var subscriptionRepository: SubscriptionRepository
 
     @Mock
-    private lateinit var sseEmitterRepository: SseEmitterRepository
+    private lateinit var notificationService: NotificationService
 
     @Mock
     private lateinit var likeRepository: LikeRepository
@@ -353,7 +354,7 @@ class PostServiceTest {
 
             postService.createPost(mockUser, "제목", "내용", PublishStatus.PUBLIC, PostAccessLevel.FREE, null)
 
-            verify(sseEmitterRepository).sendToUser(eq(2L), anyOfType<NotificationResponse>())
+            verify(notificationService).notifyNewPost(anyList(), anyString(), isNull())
         }
 
         @Test
@@ -365,7 +366,7 @@ class PostServiceTest {
 
             postService.createPost(mockUser, "제목", "내용", PublishStatus.PUBLIC, PostAccessLevel.PAID, null)
 
-            verify(sseEmitterRepository).sendToUser(eq(2L), anyOfType<NotificationResponse>())
+            verify(notificationService).notifyNewPost(anyList(), anyString(), isNull())
             verify(subscriptionRepository, never()).findByCreatorIdAndDeletedAtIsNull(anyLong())
         }
 
@@ -374,7 +375,7 @@ class PostServiceTest {
         fun create_Draft_NoSse() {
             postService.createPost(mockUser, "제목", "내용", PublishStatus.DRAFT, PostAccessLevel.FREE, null)
 
-            verify(sseEmitterRepository, never()).sendToUser(anyLong(), anyOfType<NotificationResponse>())
+            verify(notificationService, never()).notifyNewPost(anyList(), anyString(), anyLong())
         }
 
         // 없는 시리즈 ID를 넘기면 저장 전에 예외가 발생해야 함
@@ -417,7 +418,7 @@ class PostServiceTest {
 
             postService.updatePost(mockUser, 1L, "제목", "내용", PublishStatus.PUBLIC, PostAccessLevel.FREE, null)
 
-            verify(sseEmitterRepository).sendToUser(eq(2L), anyOfType<NotificationResponse>())
+            verify(notificationService).notifyNewPost(anyList(), anyString(), anyLong())
         }
 
         @Test
@@ -428,7 +429,7 @@ class PostServiceTest {
 
             postService.updatePost(mockUser, 1L, "수정제목", "수정내용", PublishStatus.PUBLIC, PostAccessLevel.FREE, null)
 
-            verify(sseEmitterRepository, never()).sendToUser(anyLong(), anyOfType<NotificationResponse>())
+            verify(notificationService, never()).notifyNewPost(anyList(), anyString(), anyLong())
         }
 
         // 없는 게시글 ID → 조회 시점에 예외 발생
