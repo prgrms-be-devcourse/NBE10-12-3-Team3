@@ -70,8 +70,10 @@ public class PostService {
     // 홈페이지 전체 조회 - 무한 스크롤
     public Slice<PostListResponse> getPosts(Long creatorId, User actor, Pageable pageable) {
         if (creatorId != null) {
-            User creator = userRepository.findByIdAndDeletedAtIsNull(creatorId)
-                    .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+            User creator = userRepository.findByIdAndDeletedAtIsNull(creatorId);
+            if (creator == null) {
+                throw new BusinessException(ErrorCode.USER_NOT_FOUND);
+            }
             return postRepository.findSliceByUserAndDeletedAtIsNull(creator, pageable)
                     .map(post -> new PostListResponse(post, isLiked(post.getId(), actor), isBookmarked(post.getId(), actor)));
         }
@@ -149,8 +151,10 @@ public class PostService {
 
     // 특정 유저의 게시글 조회 - 번호 페이지네이션 (프로필 화면)
     public Page<PostListResponse> getUserPosts(Long userId, User actor, Pageable pageable) {
-        User user = userRepository.findByIdAndDeletedAtIsNull(userId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+        User user = userRepository.findByIdAndDeletedAtIsNull(userId);
+        if (user == null) {
+            throw new BusinessException(ErrorCode.USER_NOT_FOUND);
+        }
         return postRepository.findByUserAndDeletedAtIsNull(user, pageable)
                 .map(post -> new PostListResponse(post, isLiked(post.getId(), actor), isBookmarked(post.getId(), actor)));
     }
