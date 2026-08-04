@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDateTime
 
 @Service
+@Transactional(readOnly = true)
 class UserCouponService(
     private val couponPolicyRepository: CouponPolicyRepository,
     private val userCouponRepository: UserCouponRepository,

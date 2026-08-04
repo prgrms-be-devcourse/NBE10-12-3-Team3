@@ -26,7 +26,6 @@ class CouponPolicy(
     val startAt: LocalDateTime,
     @Column(name = "end_at", nullable = false)
     val endAt: LocalDateTime,
-    // 발급받은 쿠폰의 사용 기한을 어떻게 정할지 — RELATIVE면 validDays, ABSOLUTE면 fixedExpiredAt을 쓴다.
     @Enumerated(EnumType.STRING)
     @Column(name = "expiry_type", nullable = false)
     val expiryType: ExpiryType,
@@ -37,14 +36,7 @@ class CouponPolicy(
     @Column(name = "fixed_expired_at")
     val fixedExpiredAt: LocalDateTime?,
 ) : BaseEntity() {
-    init {
-        when (expiryType) {
-            ExpiryType.RELATIVE ->
-                require(validDays != null) { "RELATIVE 정책은 validDays가 필요합니다." }
-            ExpiryType.ABSOLUTE ->
-                require(fixedExpiredAt != null) { "ABSOLUTE 정책은 fixedExpiredAt이 필요합니다." }
-        }
-    }
+    // expiryType-validDays/fixedExpiredAt 조합 검증은 CouponPolicyService에서 미리 한다(500 방지).
 
     @Column(name = "issued_quantity", nullable = false)
     var issuedQuantity: Int = 0

@@ -90,6 +90,24 @@ class CouponPolicyServiceTest {
         fixedExpiredAt = fixedExpiredAt,
     )
 
+    // 서비스가 DTO 대신 개별 파라미터를 받으므로, 테스트는 buildRequest()로 만든 값을 풀어서 넘긴다.
+    private fun callCreate(
+        actor: User,
+        request: CouponPolicyCreateRequest,
+    ) = couponPolicyService.createCouponPolicy(
+        actor,
+        request.title,
+        request.description,
+        request.discountType,
+        request.discountValue,
+        request.totalQuantity,
+        request.startAt,
+        request.endAt,
+        request.expiryType,
+        request.validDays,
+        request.fixedExpiredAt,
+    )
+
     private fun buildPolicy(
         id: Long,
         expiryType: ExpiryType = ExpiryType.RELATIVE,
@@ -118,7 +136,7 @@ class CouponPolicyServiceTest {
             given(userRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(Optional.of(adminUser))
             given(couponPolicyRepository.save(any<CouponPolicy>())).willAnswer { it.arguments[0] }
 
-            val response = couponPolicyService.createCouponPolicy(adminUser, buildRequest())
+            val response = callCreate(adminUser, buildRequest())
 
             assertThat(response.title).isEqualTo("여름 할인 이벤트")
             assertThat(response.expiryType).isEqualTo(ExpiryType.RELATIVE)
@@ -133,7 +151,7 @@ class CouponPolicyServiceTest {
             given(couponPolicyRepository.save(any<CouponPolicy>())).willAnswer { it.arguments[0] }
 
             val response =
-                couponPolicyService.createCouponPolicy(
+                callCreate(
                     adminUser,
                     buildRequest(expiryType = ExpiryType.ABSOLUTE, validDays = null, fixedExpiredAt = fixedExpiredAt),
                 )
@@ -147,7 +165,7 @@ class CouponPolicyServiceTest {
         fun create_Fail_NotAdmin() {
             given(userRepository.findByIdAndDeletedAtIsNull(2L)).willReturn(Optional.of(normalUser))
 
-            assertThatThrownBy { couponPolicyService.createCouponPolicy(normalUser, buildRequest()) }
+            assertThatThrownBy { callCreate(normalUser, buildRequest()) }
                 .isInstanceOf(BusinessException::class.java)
                 .hasFieldOrPropertyWithValue("errorCode", ErrorCode.ACCESS_DENIED)
         }
@@ -157,9 +175,37 @@ class CouponPolicyServiceTest {
         fun create_Fail_UserNotFound() {
             given(userRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(Optional.empty())
 
-            assertThatThrownBy { couponPolicyService.createCouponPolicy(adminUser, buildRequest()) }
+            assertThatThrownBy { callCreate(adminUser, buildRequest()) }
                 .isInstanceOf(BusinessException::class.java)
                 .hasFieldOrPropertyWithValue("errorCode", ErrorCode.USER_NOT_FOUND)
+        }
+
+        @Test
+        @DisplayName("실패: RELATIVE인데 validDays가 없으면 INVALID_INPUT_VALUE 예외를 던진다.")
+        fun create_Fail_RelativeWithoutValidDays() {
+            given(userRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(Optional.of(adminUser))
+
+            assertThatThrownBy {
+                callCreate(
+                    adminUser,
+                    buildRequest(expiryType = ExpiryType.RELATIVE, validDays = null),
+                )
+            }.isInstanceOf(BusinessException::class.java)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.INVALID_INPUT_VALUE)
+        }
+
+        @Test
+        @DisplayName("실패: ABSOLUTE인데 fixedExpiredAt이 없으면 INVALID_INPUT_VALUE 예외를 던진다.")
+        fun create_Fail_AbsoluteWithoutFixedExpiredAt() {
+            given(userRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(Optional.of(adminUser))
+
+            assertThatThrownBy {
+                callCreate(
+                    adminUser,
+                    buildRequest(expiryType = ExpiryType.ABSOLUTE, validDays = null, fixedExpiredAt = null),
+                )
+            }.isInstanceOf(BusinessException::class.java)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.INVALID_INPUT_VALUE)
         }
     }
 
