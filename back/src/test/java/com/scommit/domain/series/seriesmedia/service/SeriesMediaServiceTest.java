@@ -56,7 +56,7 @@ class SeriesMediaServiceTest {
             Media media = mock(Media.class);
             SeriesMedia seriesMedia = mock(SeriesMedia.class);
 
-            given(seriesRepository.findByIdAndDeletedAtIsNull(seriesId)).willReturn(Optional.of(series));
+            given(seriesRepository.findByIdAndDeletedAtIsNull(seriesId)).willReturn(series);
             given(series.getUser()).willReturn(owner);
             given(owner.getId()).willReturn(1L);
             given(seriesMediaRepository.findBySeries(series)).willReturn(Optional.empty());
@@ -91,7 +91,7 @@ class SeriesMediaServiceTest {
 
             Media newMedia = mock(Media.class);
 
-            given(seriesRepository.findByIdAndDeletedAtIsNull(seriesId)).willReturn(Optional.of(series));
+            given(seriesRepository.findByIdAndDeletedAtIsNull(seriesId)).willReturn(series);
             given(series.getUser()).willReturn(owner);
             given(owner.getId()).willReturn(1L);
             given(seriesMediaRepository.findBySeries(series)).willReturn(Optional.of(existingSeriesMedia));
@@ -108,7 +108,7 @@ class SeriesMediaServiceTest {
         @Test
         @DisplayName("실패: 존재하지 않는 seriesId로 업로드 시 예외를 던진다")
         void uploadMedia_SeriesNotFound_Fail() {
-            given(seriesRepository.findByIdAndDeletedAtIsNull(999L)).willReturn(Optional.empty());
+            given(seriesRepository.findByIdAndDeletedAtIsNull(999L)).willReturn(null);
 
             assertThatThrownBy(() -> seriesMediaService.uploadMedia(999L, file, 1L, UserRole.USER))
                     .isInstanceOf(BusinessException.class);
@@ -119,7 +119,7 @@ class SeriesMediaServiceTest {
         @Test
         @DisplayName("실패: 소프트삭제된 시리즈에 업로드 시도 시 예외를 던진다")
         void uploadMedia_DeletedSeries_Fail() {
-            given(seriesRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(Optional.empty());
+            given(seriesRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(null);
 
             assertThatThrownBy(() -> seriesMediaService.uploadMedia(1L, file, 1L, UserRole.USER))
                     .isInstanceOf(BusinessException.class);
@@ -134,7 +134,7 @@ class SeriesMediaServiceTest {
             Series series = mock(Series.class);
             User owner = mock(User.class);
 
-            given(seriesRepository.findByIdAndDeletedAtIsNull(seriesId)).willReturn(Optional.of(series));
+            given(seriesRepository.findByIdAndDeletedAtIsNull(seriesId)).willReturn(series);
             given(series.getUser()).willReturn(owner);
             given(owner.getId()).willReturn(1L);
 
@@ -153,7 +153,7 @@ class SeriesMediaServiceTest {
             Media media = mock(Media.class);
             SeriesMedia seriesMedia = mock(SeriesMedia.class);
 
-            given(seriesRepository.findByIdAndDeletedAtIsNull(seriesId)).willReturn(Optional.of(series));
+            given(seriesRepository.findByIdAndDeletedAtIsNull(seriesId)).willReturn(series);
             given(seriesMediaRepository.findBySeries(series)).willReturn(Optional.empty());
             given(mediaService.uploadMedia(file, "series")).willReturn(media);
             given(seriesMediaRepository.save(any(SeriesMedia.class))).willReturn(seriesMedia);
@@ -180,7 +180,7 @@ class SeriesMediaServiceTest {
             Media media = mock(Media.class);
             SeriesMedia seriesMedia = mock(SeriesMedia.class);
 
-            given(seriesRepository.findByIdAndDeletedAtIsNull(seriesId)).willReturn(Optional.of(series));
+            given(seriesRepository.findByIdAndDeletedAtIsNull(seriesId)).willReturn(series);
             given(seriesMediaRepository.findBySeries(series)).willReturn(Optional.of(seriesMedia));
             given(seriesMedia.getSeries()).willReturn(series);
             given(seriesMedia.getMedia()).willReturn(media);
@@ -196,7 +196,7 @@ class SeriesMediaServiceTest {
         @Test
         @DisplayName("실패: 존재하지 않는 seriesId로 조회 시 예외를 던진다")
         void getMedia_SeriesNotFound_Fail() {
-            given(seriesRepository.findByIdAndDeletedAtIsNull(999L)).willReturn(Optional.empty());
+            given(seriesRepository.findByIdAndDeletedAtIsNull(999L)).willReturn(null);
 
             assertThatThrownBy(() -> seriesMediaService.getMedia(999L))
                     .isInstanceOf(BusinessException.class);
@@ -208,7 +208,7 @@ class SeriesMediaServiceTest {
             Long seriesId = 1L;
             Series series = mock(Series.class);
 
-            given(seriesRepository.findByIdAndDeletedAtIsNull(seriesId)).willReturn(Optional.of(series));
+            given(seriesRepository.findByIdAndDeletedAtIsNull(seriesId)).willReturn(series);
             given(seriesMediaRepository.findBySeries(series)).willReturn(Optional.empty());
 
             SeriesMediaResponse result = seriesMediaService.getMedia(seriesId);
@@ -232,7 +232,7 @@ class SeriesMediaServiceTest {
             SeriesMedia seriesMedia = mock(SeriesMedia.class);
             given(seriesMedia.getMedia()).willReturn(media);
 
-            given(seriesRepository.findByIdAndDeletedAtIsNull(seriesId)).willReturn(Optional.of(series));
+            given(seriesRepository.findByIdAndDeletedAtIsNull(seriesId)).willReturn(series);
             given(series.getUser()).willReturn(owner);
             given(owner.getId()).willReturn(1L);
             given(seriesMediaRepository.findBySeries(series)).willReturn(Optional.of(seriesMedia));
@@ -246,7 +246,7 @@ class SeriesMediaServiceTest {
         @Test
         @DisplayName("실패: 존재하지 않는 seriesId로 삭제 시 예외를 던진다")
         void deleteMedia_SeriesNotFound_Fail() {
-            given(seriesRepository.findByIdAndDeletedAtIsNull(999L)).willReturn(Optional.empty());
+            given(seriesRepository.findByIdAndDeletedAtIsNull(999L)).willReturn(null);
 
             assertThatThrownBy(() -> seriesMediaService.deleteMedia(999L, 1L, UserRole.USER))
                     .isInstanceOf(BusinessException.class);
@@ -261,7 +261,7 @@ class SeriesMediaServiceTest {
             Series series = mock(Series.class);
             User owner = mock(User.class);
 
-            given(seriesRepository.findByIdAndDeletedAtIsNull(seriesId)).willReturn(Optional.of(series));
+            given(seriesRepository.findByIdAndDeletedAtIsNull(seriesId)).willReturn(series);
             given(series.getUser()).willReturn(owner);
             given(owner.getId()).willReturn(1L);
 
@@ -279,7 +279,7 @@ class SeriesMediaServiceTest {
             Series series = mock(Series.class);
             User owner = mock(User.class);
 
-            given(seriesRepository.findByIdAndDeletedAtIsNull(seriesId)).willReturn(Optional.of(series));
+            given(seriesRepository.findByIdAndDeletedAtIsNull(seriesId)).willReturn(series);
             given(series.getUser()).willReturn(owner);
             given(owner.getId()).willReturn(1L);
             given(seriesMediaRepository.findBySeries(series)).willReturn(Optional.empty());
@@ -293,7 +293,7 @@ class SeriesMediaServiceTest {
         @Test
         @DisplayName("실패: 소프트삭제된 시리즈 삭제 시도 시 예외를 던진다")
         void deleteMedia_DeletedSeries_Fail() {
-            given(seriesRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(Optional.empty());
+            given(seriesRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(null);
 
             assertThatThrownBy(() -> seriesMediaService.deleteMedia(1L, 1L, UserRole.USER))
                     .isInstanceOf(BusinessException.class);
@@ -311,7 +311,7 @@ class SeriesMediaServiceTest {
 
             given(media.getId()).willReturn(10L);
             given(seriesMedia.getMedia()).willReturn(media);
-            given(seriesRepository.findByIdAndDeletedAtIsNull(seriesId)).willReturn(Optional.of(series));
+            given(seriesRepository.findByIdAndDeletedAtIsNull(seriesId)).willReturn(series);
             given(seriesMediaRepository.findBySeries(series)).willReturn(Optional.of(seriesMedia));
 
             seriesMediaService.deleteMedia(seriesId, 99L, UserRole.ADMIN);
