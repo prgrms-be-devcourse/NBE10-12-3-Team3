@@ -23,7 +23,7 @@ management:
 
 auth-token:
   access-token:
-    secret-key: ${JWT_SECRET_KEY:c2VjcmV0S2V5Rm9yVGVzdGluZ1B1cnBvc2VzT25seVdoZW5FbnZJc05vdFNldA==}
+    secret-key: ${JWT_SECRET_KEY}
     expiration: 30m          # 서버에서 인식하는 액세스 토큰 자체의 유효기간
     cookie-max-age: 30m      # 브라우저가 액세스 토큰 쿠키를 유지하는 기간
   refresh-token:

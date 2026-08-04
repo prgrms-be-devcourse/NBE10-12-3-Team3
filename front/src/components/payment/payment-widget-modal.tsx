@@ -15,9 +15,10 @@ interface PaymentWidgetModalProps {
   creatorName: string;
   creatorId: number;
   amount: number;
+  onSuccess?: () => void;
 }
 
-export function PaymentWidgetModal({ isOpen, onClose, creatorName, creatorId, amount }: PaymentWidgetModalProps) {
+export function PaymentWidgetModal({ isOpen, onClose, creatorName, creatorId, amount, onSuccess }: PaymentWidgetModalProps) {
   const [paymentWidget, setPaymentWidget] = useState<PaymentWidgetInstance | null>(null);
   const paymentMethodsWidgetRef = useRef<ReturnType<PaymentWidgetInstance['renderPaymentMethods']> | null>(null);
   
@@ -46,18 +47,14 @@ export function PaymentWidgetModal({ isOpen, onClose, creatorName, creatorId, am
       const confirmPayment = async () => {
         try {
           // 2. 백엔드에 최종 승인 요청 (토스 서버와 통신 및 멤버십 승급)
-          const res = await apiPost('/api/payments/toss/confirm', {
+          // apiPost는 성공 시 반환 데이터를, 실패 시 ApiError를 던집니다.
+          await apiPost('/api/payments/toss/confirm', {
             paymentKey,
             orderId,
             amount: Number(returnedAmount)
           });
           
-          if (res.resultCode.startsWith('200')) {
-            setStatus('SUCCESS');
-          } else {
-            setStatus('FAIL');
-            setErrorMessage(res.msg || '결제 승인 중 오류가 발생했습니다.');
-          }
+          setStatus('SUCCESS');
         } catch (err: any) {
           setStatus('FAIL');
           setErrorMessage('서버와 통신 중 오류가 발생했습니다.');
@@ -117,17 +114,17 @@ export function PaymentWidgetModal({ isOpen, onClose, creatorName, creatorId, am
     
     try {
       // 1. 백엔드에 결제 준비 요청 (orderId 생성 및 DB 저장)
-      const res = await apiPost('/api/payments/toss/ready', {
+      const res = await apiPost<{ orderId: string }>('/api/payments/toss/ready', {
         amount,
         orderName: `${creatorName} 멤버십 구독`,
         targetCreatorId: creatorId
       });
       
-      if (!res.resultCode.startsWith('200') || !res.data?.orderId) {
+      if (!res?.orderId) {
         throw new Error('결제 준비에 실패했습니다.');
       }
       
-      const orderId = res.data.orderId;
+      const orderId = res.orderId;
       
       const currentUrl = new URL(window.location.href);
       currentUrl.searchParams.delete('paymentKey');
@@ -168,6 +165,11 @@ export function PaymentWidgetModal({ isOpen, onClose, creatorName, creatorId, am
       currentUrl.searchParams.delete('message');
       currentUrl.searchParams.delete('code');
       router.replace(currentUrl.pathname, { scroll: false });
+      // 결제 성공 후 닫는 거라면, 새로운 등급(MEMBERSHIP) 정보를 반영하기 위해 페이지 데이터를 리프레시합니다.
+      if (status === 'SUCCESS') {
+        router.refresh();
+        onSuccess?.();
+      }
     }
     
     setStatus('IDLE');

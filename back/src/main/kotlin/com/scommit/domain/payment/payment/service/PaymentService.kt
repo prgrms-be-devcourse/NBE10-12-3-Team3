@@ -63,7 +63,7 @@ class PaymentService(
         // 3. 금액 위변조 검증 (DB 가격 vs 프론트엔드 요청 가격)
         if (payment.amount != request.amount) {
             payment.fail()
-            throw IllegalArgumentException("결제 요청 금액이 변조되었습니다. (DB: \${payment.amount}, 요청: \${request.amount})")
+            throw IllegalArgumentException("결제 요청 금액이 변조되었습니다. (DB: ${payment.amount}, 요청: ${request.amount})")
         }
 
         // 4. 토스 페이먼츠 승인(Confirm) API 호출
@@ -76,13 +76,19 @@ class PaymentService(
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(request)
                 .retrieve()
-                .body(String::class.java)
+                .body(Map::class.java)
+
+            val status = response?.get("status") as? String
+            if (status != "DONE") {
+                payment.fail()
+                throw IllegalStateException("결제가 승인되지 않았습니다. 상태: $status")
+            }
                 
             // 5. 결제 성공 처리
             payment.confirm(request.paymentKey)
             
             // 6. 비즈니스 로직 연동: 해당 유저의 멤버십 업그레이드
-            subscriptionService.joinMembership(payment.user.id, payment.targetCreatorId)
+            subscriptionService.joinMembership(payment.user.id!!, payment.targetCreatorId)
             
         } catch (e: Exception) {
             // 토스 측 승인 실패 시

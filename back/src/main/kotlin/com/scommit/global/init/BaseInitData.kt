@@ -60,6 +60,8 @@ class BaseInitData(
             User("admin@test.com", pw, "관리자", "사이트 관리자입니다.", UserRole.ADMIN),
         )
 
+
+
         // Test users: user1@test.com ~ user10@test.com (heavy users)
         val testUsers = mutableListOf<User>()
         for (i in 0..9) {

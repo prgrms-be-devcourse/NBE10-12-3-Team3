@@ -4,12 +4,12 @@ import com.scommit.domain.payment.payment.entity.Payment
 import java.time.LocalDateTime
 
 data class PaymentResponse(
-    val id: Long,
+    val id: Long?,
     val orderId: String,
     val orderName: String,
     val amount: Long,
     val status: String,
-    val createDate: LocalDateTime
+    val createDate: LocalDateTime?
 ) {
     companion object {
         fun from(payment: Payment): PaymentResponse {

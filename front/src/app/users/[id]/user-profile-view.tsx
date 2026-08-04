@@ -360,6 +360,13 @@ export function UserProfileView({ profile, tab, page, totalPages, isLastPostsPag
         creatorName={profile.nickname}
         creatorId={profile.id}
         amount={9900}
+        onSuccess={() => {
+          setIsMember(true);
+          if (!isFollowing) {
+            setIsFollowing(true);
+            setSubscriberCount((prev) => prev + 1);
+          }
+        }}
       />
     </>
   );
