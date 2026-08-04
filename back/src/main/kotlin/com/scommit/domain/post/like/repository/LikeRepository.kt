@@ -23,4 +23,10 @@ interface LikeRepository : JpaRepository<Like, Long> {
         @Param("postId") postId: Long,
         @Param("userId") userId: Long,
     ): Int
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("DELETE FROM Like l WHERE l.post.id = :postId")
+    fun deleteAllByPostId(
+        @Param("postId") postId: Long,
+    ): Int
 }

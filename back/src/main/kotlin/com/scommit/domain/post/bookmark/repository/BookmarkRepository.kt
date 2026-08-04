@@ -32,4 +32,10 @@ interface BookmarkRepository : JpaRepository<Bookmark, Long> {
         @Param("postId") postId: Long,
         @Param("userId") userId: Long,
     ): Int
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("DELETE FROM Bookmark b WHERE b.post.id = :postId")
+    fun deleteAllByPostId(
+        @Param("postId") postId: Long,
+    ): Int
 }

@@ -524,12 +524,9 @@ class LikeControllerE2ETest {
             assertThat(getPost(author.accessToken, postId).isLiked).isTrue()
         }
 
-        // FIXME(#2): PostService.deletePost 는 post.softDelete() 만 호출하고 연관 Like 를 정리하지 않는다.
-        // 어떤 화면에도 나오지 않는 고아 좋아요 행이 남고, 게시글이 복구되면(BaseEntity.restore) 그대로 되살아난다.
-        // 상세: docs/like-bookmark-notification-e2e-known-issues.md #2
         @Test
-        @DisplayName("3. 게시글을 삭제하면 좋아요 추가·취소가 모두 404-3이 되지만 Like 행은 남는다")
-        fun deletingPost_blocksLikeApis_butKeepsLikeRows() {
+        @DisplayName("3. 게시글을 삭제하면 좋아요 추가·취소가 모두 404-3이 되고 연관 Like 행도 정리된다")
+        fun deletingPost_blocksLikeApis_andCleansUpLikeRows() {
             val session = createUserAndLogin(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
             val accessToken = session.accessToken
             val postId = createPublicPost(accessToken)
@@ -541,7 +538,7 @@ class LikeControllerE2ETest {
             expectResultCode(deleteLikeRequest(accessToken, postId), HttpStatus.NOT_FOUND, "404-3")
 
             assertThat(checkNotNull(postRepository.findByIdOrNull(postId)).deletedAt).isNotNull()
-            assertThat(findLike(postId, session.user.id)).isNotNull()
+            assertThat(findLike(postId, session.user.id)).isNull()
         }
     }
 

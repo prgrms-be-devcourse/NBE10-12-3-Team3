@@ -445,7 +445,7 @@ class BookmarkControllerE2ETest {
         }
 
         @Test
-        @DisplayName("4. 게시글이 삭제되면 목록에서 빠지지만 Bookmark 행은 남는다")
+        @DisplayName("4. 게시글이 삭제되면 목록에서 빠지고 Bookmark 행도 정리된다")
         fun getMyBookmarks_excludesDeletedPosts() {
             val author = createUserAndLogin(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
             val reader = createUserAndLogin(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
@@ -465,8 +465,8 @@ class BookmarkControllerE2ETest {
                 .extracting<Long>(PostListResponse::id)
                 .containsExactly(kept)
 
-            // 다만 북마크 행 자체는 정리되지 않는다(#2).
-            assertThat(findBookmark(removed, reader.user.id)).isPresent()
+            // 북마크 행 자체도 정리된다(#2).
+            assertThat(findBookmark(removed, reader.user.id)).isEmpty()
         }
 
         @Test
@@ -701,6 +701,23 @@ class BookmarkControllerE2ETest {
 
             assertThat(bookmarkCountOf(postId)).isEqualTo(1L)
             assertThat(getMyBookmarks(accessToken).totalElements).isEqualTo(1)
+        }
+
+        @Test
+        @DisplayName("9. 게시글을 삭제하면 북마크 추가·취소가 모두 404-3이 되고 연관 Bookmark 행도 정리된다")
+        fun deletingPost_blocksBookmarkApis_andCleansUpBookmarkRows() {
+            val session = createUserAndLogin(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
+            val accessToken = session.accessToken
+            val postId = createPublicPost(accessToken)
+            createBookmark(accessToken, postId)
+
+            deletePost(accessToken, postId)
+
+            expectResultCode(createBookmarkRequest(accessToken, postId), HttpStatus.NOT_FOUND, "404-3")
+            expectResultCode(deleteBookmarkRequest(accessToken, postId), HttpStatus.NOT_FOUND, "404-3")
+
+            assertThat(checkNotNull(postRepository.findByIdOrNull(postId)).deletedAt).isNotNull()
+            assertThat(findBookmark(postId, session.user.id)).isEmpty()
         }
     }
 

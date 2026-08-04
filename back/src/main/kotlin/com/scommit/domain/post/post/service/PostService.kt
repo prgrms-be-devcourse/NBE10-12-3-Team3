@@ -174,7 +174,13 @@ class PostService
                 throw BusinessException(ErrorCode.ACCESS_DENIED)
             }
 
+            // softDelete()의 변경을 먼저 만들어 둔다 — deleteAllByPostId가
+            // flushAutomatically=true라 이 시점의 더티 상태를 자동으로 먼저 flush한 뒤
+            // clearAutomatically=true로 컨텍스트를 비운다. 순서를 바꾸면 post가 clear로 detach된
+            // 뒤 softDelete()를 호출하는 꼴이 되어 변경이 flush 없이 사라진다(과거 delete flush 회귀와 동일한 함정).
             post.softDelete()
+            likeRepository.deleteAllByPostId(id)
+            bookmarkRepository.deleteAllByPostId(id)
         }
 
         // 특정 유저의 게시글 조회 - 번호 페이지네이션 (프로필 화면)
