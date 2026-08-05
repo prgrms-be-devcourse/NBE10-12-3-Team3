@@ -86,7 +86,7 @@ class UserCouponServiceTest {
         @DisplayName("성공: RELATIVE 정책이면 발급일 + validDays로 만료일이 계산된다.")
         fun issue_Success_Relative() {
             val policy = buildPolicy(1L, validDays = 7)
-            given(couponPolicyRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(policy)
+            given(couponPolicyRepository.findByIdAndDeletedAtIsNullForUpdate(1L)).willReturn(policy)
             given(userCouponRepository.existsByUserAndCouponPolicy(actor, policy)).willReturn(false)
 
             val response = userCouponService.issueCoupon(actor, 1L)
@@ -102,7 +102,7 @@ class UserCouponServiceTest {
             val fixedExpiredAt = LocalDateTime.of(2026, 12, 31, 23, 59, 59)
             val policy =
                 buildPolicy(1L, expiryType = ExpiryType.ABSOLUTE, validDays = null, fixedExpiredAt = fixedExpiredAt)
-            given(couponPolicyRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(policy)
+            given(couponPolicyRepository.findByIdAndDeletedAtIsNullForUpdate(1L)).willReturn(policy)
             given(userCouponRepository.existsByUserAndCouponPolicy(actor, policy)).willReturn(false)
 
             val response = userCouponService.issueCoupon(actor, 1L)
@@ -113,7 +113,7 @@ class UserCouponServiceTest {
         @Test
         @DisplayName("실패: 존재하지 않는 쿠폰 이벤트면 COUPON_POLICY_NOT_FOUND 예외를 던진다.")
         fun issue_Fail_PolicyNotFound() {
-            given(couponPolicyRepository.findByIdAndDeletedAtIsNull(999L)).willReturn(null)
+            given(couponPolicyRepository.findByIdAndDeletedAtIsNullForUpdate(999L)).willReturn(null)
 
             assertThatThrownBy { userCouponService.issueCoupon(actor, 999L) }
                 .isInstanceOf(BusinessException::class.java)
@@ -129,7 +129,7 @@ class UserCouponServiceTest {
                     startAt = LocalDateTime.now().plusDays(1),
                     endAt = LocalDateTime.now().plusDays(10),
                 )
-            given(couponPolicyRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(policy)
+            given(couponPolicyRepository.findByIdAndDeletedAtIsNullForUpdate(1L)).willReturn(policy)
 
             assertThatThrownBy { userCouponService.issueCoupon(actor, 1L) }
                 .isInstanceOf(BusinessException::class.java)
@@ -156,7 +156,7 @@ class UserCouponServiceTest {
         @DisplayName("실패: 이미 발급받은 유저면 COUPON_ALREADY_ISSUED 예외를 던진다.")
         fun issue_Fail_AlreadyIssued() {
             val policy = buildPolicy(1L)
-            given(couponPolicyRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(policy)
+            given(couponPolicyRepository.findByIdAndDeletedAtIsNullForUpdate(1L)).willReturn(policy)
             given(userCouponRepository.existsByUserAndCouponPolicy(actor, policy)).willReturn(true)
 
             assertThatThrownBy { userCouponService.issueCoupon(actor, 1L) }
@@ -168,7 +168,7 @@ class UserCouponServiceTest {
         @DisplayName("실패: 이미 소진된 이벤트면 COUPON_SOLD_OUT 예외를 던진다.")
         fun issue_Fail_SoldOut() {
             val policy = buildPolicy(1L, totalQuantity = 10, issuedQuantity = 10)
-            given(couponPolicyRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(policy)
+            given(couponPolicyRepository.findByIdAndDeletedAtIsNullForUpdate(1L)).willReturn(policy)
             given(userCouponRepository.existsByUserAndCouponPolicy(actor, policy)).willReturn(false)
 
             assertThatThrownBy { userCouponService.issueCoupon(actor, 1L) }

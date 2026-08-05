@@ -8,11 +8,15 @@ import { ProfileHeaderSkeleton } from "@/components/mypage/profile-header-skelet
 import { SubscriptionList } from "@/components/mypage/subscription-list";
 import { MySeriesList } from "@/components/mypage/my-series-list";
 import { MyPostList } from "@/components/mypage/my-post-list";
+import { PaymentHistoryList } from "@/components/mypage/payment-history-list";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/providers/auth-provider";
 import { apiFetch, ApiError } from "@/lib/api";
 
+import { CreatorDashboardView } from "@/components/dashboard/creator-dashboard-view";
+
 const TABS = [
+  { id: "dashboard", label: "통계 대시보드" },
   { id: "subscriptions", label: "내 구독 목록" },
   { id: "posts", label: "내 포스트" },
   { id: "series", label: "내 시리즈" },
@@ -47,7 +51,7 @@ export default function MyPage() {
       {/* Background Decor */}
       <div className="absolute top-0 left-0 w-full h-[400px] bg-gradient-to-b from-white to-transparent pointer-events-none" />
 
-      <main className="max-w-[1024px] mx-auto px-4 sm:px-6 pt-12 md:pt-20 relative z-10">
+      <main className="max-w-[1280px] mx-auto px-4 sm:px-6 pt-12 md:pt-20 relative z-10">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -102,17 +106,15 @@ export default function MyPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
             >
+              {activeTab === "dashboard" && <CreatorDashboardView />}
+
               {activeTab === "subscriptions" && <SubscriptionList />}
               
               {activeTab === "posts" && <MyPostList />}
 
               {activeTab === "series" && <MySeriesList />}
 
-              {activeTab === "payments" && (
-                <div className="py-20 text-center text-neutral-500">
-                  <p>결제 내역이 존재하지 않습니다.</p>
-                </div>
-              )}
+              {activeTab === "payments" && <PaymentHistoryList />}
             </motion.div>
           </section>
         </motion.div>

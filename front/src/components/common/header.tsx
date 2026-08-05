@@ -8,7 +8,6 @@ import {
     Bookmark,
     ChevronDown,
     Clock,
-    CreditCard,
     History,
     LogOut,
     Menu,
@@ -161,6 +160,11 @@ export function Header() {
           <nav className="hidden md:flex items-center gap-8">
             <Link href="/posts" className="text-[15px] font-bold text-neutral-dark hover:text-primary transition-colors">✍️ 게시글</Link>
             <Link href="/series" className="text-[15px] font-bold text-neutral-dark hover:text-primary transition-colors">📚 시리즈</Link>
+            {isAuthReady && user?.role === "ADMIN" && (
+              <Link href="/admin/dashboard" className="text-[15px] font-bold text-neutral-dark hover:text-primary transition-colors">
+                👑 관리자 대시보드
+              </Link>
+            )}
           </nav>
         </div>
 
@@ -261,24 +265,6 @@ export function Header() {
 
           {isAuthReady ? (
             <div className="flex items-center gap-4" ref={profileDropdownRef}>
-              {user?.role === "ADMIN" ? (
-                <div className="relative group hidden sm:block">
-                  <button className="text-sm font-bold text-neutral-dark hover:text-primary transition-colors py-2 flex items-center gap-1">
-                    관리자 메뉴 <ChevronDown className="h-4 w-4" />
-                  </button>
-                  {/* Dropdown Box */}
-                  <div className="absolute top-full right-0 mt-2 w-48 rounded-2xl border border-neutral-200/60 bg-white p-2 shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
-                    <button onClick={(e) => handleDummyClick(e, "사용자 관리")} className="flex w-full items-center px-3 py-2.5 text-[14px] font-bold text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 rounded-xl transition-colors">👥 사용자 관리</button>
-                    <button onClick={(e) => handleDummyClick(e, "포스트 관리")} className="flex w-full items-center px-3 py-2.5 text-[14px] font-bold text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 rounded-xl transition-colors">📝 포스트 관리</button>
-                    <button onClick={(e) => handleDummyClick(e, "시리즈 관리")} className="flex w-full items-center px-3 py-2.5 text-[14px] font-bold text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 rounded-xl transition-colors">📚 시리즈 관리</button>
-                    <button onClick={(e) => handleDummyClick(e, "주문 관리")} className="flex w-full items-center px-3 py-2.5 text-[14px] font-bold text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 rounded-xl transition-colors">💳 주문 관리</button>
-                    <button onClick={(e) => handleDummyClick(e, "쿠폰 관리")} className="flex w-full items-center px-3 py-2.5 text-[14px] font-bold text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 rounded-xl transition-colors">🎟️ 쿠폰 관리</button>
-                    <div className="my-1 h-px w-full bg-neutral-100" />
-                    <button onClick={(e) => handleDummyClick(e, "신고 관리")} className="flex w-full items-center px-3 py-2.5 text-[14px] font-bold text-red-600 hover:bg-red-50 hover:text-red-700 rounded-xl transition-colors">🚨 신고 관리</button>
-                  </div>
-                </div>
-              ) : null}
-              
               {/* Avatar & Dropdown Container */}
               <div className="relative">
                 <button 
@@ -316,9 +302,6 @@ export function Header() {
                         >
                           <Bookmark className="h-4 w-4" /> 내 북마크
                         </Link>
-                        <button className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-[14px] font-semibold text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-neutral-900">
-                          <CreditCard className="h-4 w-4" /> 결제 내역
-                        </button>
 
                         <div className="my-1 h-px w-full bg-neutral-100" />
 

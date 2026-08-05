@@ -1084,14 +1084,10 @@ class SeriesControllerE2ETest {
                 }
         }
 
-        // FIXME: postCount는 SeriesListResponse 프로젝션 전용 필드라 Series 엔티티에 없다. Spring Data가
-        // Pageable의 Sort를 JPQL에 "order by s.postCount ..."로 그대로 덧붙이고, Hibernate가 이를 파싱하다
-        // 실패해 GlobalExceptionHandler의 포괄 Exception 핸들러로 떨어진다. 상세: docs/series-e2e-known-issues.md #4
         @Test
-        @DisplayName("6. 존재하지 않는 정렬 프로퍼티(postCount)를 쓰면 실제 동작을 그대로 고정한다 (Q2)")
-        @Suppress("ForbiddenComment")
-        fun getSeriesList_invalidSortProperty_returns500_1() {
-            expectResultCode(getSeriesListRequest("?sort=postCount,desc"), HttpStatus.INTERNAL_SERVER_ERROR, "500-1")
+        @DisplayName("6. 존재하지 않는 정렬 프로퍼티(postCount)를 쓰면 400-1을 반환한다")
+        fun getSeriesList_invalidSortProperty_returns400_1() {
+            expectResultCode(getSeriesListRequest("?sort=postCount,desc"), HttpStatus.BAD_REQUEST, "400-1")
         }
     }
 

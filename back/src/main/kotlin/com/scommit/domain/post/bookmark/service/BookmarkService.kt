@@ -4,6 +4,7 @@ import com.scommit.domain.post.bookmark.entity.Bookmark
 import com.scommit.domain.post.bookmark.repository.BookmarkRepository
 import com.scommit.domain.post.like.repository.LikeRepository
 import com.scommit.domain.post.post.dto.PostListResponse
+import com.scommit.domain.post.post.entity.PublishStatus
 import com.scommit.domain.post.post.repository.PostRepository
 import com.scommit.domain.user.user.entity.User
 import com.scommit.global.exception.BusinessException
@@ -20,6 +21,7 @@ class BookmarkService(
     private val postRepository: PostRepository,
     private val likeRepository: LikeRepository,
 ) {
+    @Suppress("ThrowsCount")
     @Transactional
     fun createBookmark(
         postId: Long,
@@ -28,6 +30,11 @@ class BookmarkService(
         val post =
             postRepository.findByIdAndDeletedAtIsNull(postId)
                 ?: throw BusinessException(ErrorCode.POST_NOT_FOUND)
+
+        val isOwner = post.user.id == actor.id
+        if (post.publishStatus != PublishStatus.PUBLIC && !isOwner) {
+            throw BusinessException(ErrorCode.ACCESS_DENIED)
+        }
 
         try {
             bookmarkRepository.save(Bookmark(post, actor))
@@ -43,15 +50,24 @@ class BookmarkService(
         pageable: Pageable,
     ): Page<PostListResponse> {
         val actorId = requireNotNull(actor.id)
-        return bookmarkRepository
-            .findByUserIdAndPostDeletedAtIsNull(actorId, pageable)
-            .map { bookmark ->
-                PostListResponse(
-                    bookmark.post,
-                    likeRepository.existsByPostIdAndUserId(requireNotNull(bookmark.post.id), actorId),
-                    true,
-                )
+        val page = bookmarkRepository.findByUserIdAndPostDeletedAtIsNull(actorId, PublishStatus.PUBLIC, pageable)
+
+        // 항목마다 existsByPostIdAndUserId를 부르는 N+1 대신 postId 목록으로 한 번에 조회한다.
+        val postIds = page.content.mapNotNull { it.post.id }
+        val likedPostIds =
+            if (postIds.isEmpty()) {
+                emptySet()
+            } else {
+                likeRepository.findPostIdsByPostIdInAndUserId(postIds, actorId).toSet()
             }
+
+        return page.map { bookmark ->
+            PostListResponse(
+                bookmark.post,
+                likedPostIds.contains(bookmark.post.id),
+                true,
+            )
+        }
     }
 
     @Transactional
@@ -62,10 +78,11 @@ class BookmarkService(
         postRepository.findByIdAndDeletedAtIsNull(postId)
             ?: throw BusinessException(ErrorCode.POST_NOT_FOUND)
 
-        val bookmark =
-            bookmarkRepository.findByPostIdAndUserId(postId, requireNotNull(actor.id))
-                ?: throw BusinessException(ErrorCode.BOOKMARK_NOT_FOUND)
-        bookmarkRepository.delete(bookmark)
+        val actorId = requireNotNull(actor.id)
+        val deletedCount = bookmarkRepository.deleteByPostIdAndUserId(postId, actorId)
+        if (deletedCount == 0) {
+            throw BusinessException(ErrorCode.BOOKMARK_NOT_FOUND)
+        }
         postRepository.decreaseBookmarkCount(postId)
     }
 }

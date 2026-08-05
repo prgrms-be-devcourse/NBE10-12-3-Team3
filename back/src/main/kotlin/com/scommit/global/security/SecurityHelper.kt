@@ -1,12 +1,10 @@
 package com.scommit.global.security
 
-import com.scommit.domain.user.user.entity.User
 import com.scommit.global.security.jwt.AuthTokenProperties
 import jakarta.servlet.http.Cookie
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import org.springframework.beans.factory.annotation.Value
-import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.stereotype.Component
 
 @Component
@@ -17,11 +15,6 @@ class SecurityHelper(
 ) { // 14183의 Rq 복붙
     @Value("\${cookie.domain}")
     private lateinit var cookieDomain: String
-
-    val actor: User?
-        get() =
-            (SecurityContextHolder.getContext().authentication?.principal as? SecurityUser)
-                ?.let { User(it.id, it.username, it.nickname) }
 
     fun getHeader(
         name: String,

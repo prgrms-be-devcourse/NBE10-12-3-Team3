@@ -45,7 +45,7 @@ export function CreatorCard({ id, nickname, subscriberCount, introduction, profi
       
       {/* Follow / Membership Button */}
       <div className="flex-none pb-5 px-5 relative z-10">
-        <FollowButton creatorId={id} initialTier={initialTier} className="w-full" />
+        <FollowButton creatorId={id} creatorName={nickname} initialTier={initialTier} className="w-full" />
       </div>
     </div>
   );
