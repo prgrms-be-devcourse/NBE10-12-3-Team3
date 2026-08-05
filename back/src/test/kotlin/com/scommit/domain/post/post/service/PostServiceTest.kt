@@ -781,6 +781,7 @@ class PostServiceTest {
             val series = buildSeries(5L, mockUser)
             val post = buildPost(1L, mockUser, series)
 
+            given(seriesRepository.findByIdAndDeletedAtIsNull(5L)).willReturn(series)
             given(postRepository.findBySeriesIdAndDeletedAtIsNull(5L)).willReturn(listOf(post))
 
             val result = postService.getPostsBySeriesId(5L, null)
@@ -792,6 +793,8 @@ class PostServiceTest {
         @Test
         @DisplayName("성공: 시리즈 게시글이 없으면 빈 목록을 반환한다.")
         fun getPostsBySeriesId_empty() {
+            val series = buildSeries(5L, mockUser)
+            given(seriesRepository.findByIdAndDeletedAtIsNull(5L)).willReturn(series)
             given(postRepository.findBySeriesIdAndDeletedAtIsNull(5L)).willReturn(emptyList())
 
             val result = postService.getPostsBySeriesId(5L, null)
@@ -805,6 +808,7 @@ class PostServiceTest {
             val series = buildSeries(5L, otherUser)
             val post = buildPost(1L, otherUser, series)
 
+            given(seriesRepository.findByIdAndDeletedAtIsNull(5L)).willReturn(series)
             given(postRepository.findBySeriesIdAndDeletedAtIsNull(5L)).willReturn(listOf(post))
             given(likeRepository.findPostIdsByPostIdInAndUserId(listOf(1L), checkNotNull(mockUser.id)))
                 .willReturn(listOf(1L))
@@ -820,6 +824,7 @@ class PostServiceTest {
             val series = buildSeries(5L, mockUser)
             val post = buildPost(1L, mockUser, series)
 
+            given(seriesRepository.findByIdAndDeletedAtIsNull(5L)).willReturn(series)
             given(postRepository.findBySeriesIdAndDeletedAtIsNull(5L)).willReturn(listOf(post))
 
             val result = postService.getPostsBySeriesId(5L, null)
@@ -828,6 +833,18 @@ class PostServiceTest {
             assertThat(result[0].isBookmarked).isFalse()
             verify(likeRepository, never()).findPostIdsByPostIdInAndUserId(anyOfType(), anyLong())
             verify(bookmarkRepository, never()).findPostIdsByPostIdInAndUserId(anyOfType(), anyLong())
+        }
+
+        @Test
+        @DisplayName("실패: 존재하지 않는(혹은 삭제된) 시리즈면 SERIES_NOT_FOUND 예외를 던진다.")
+        fun getPostsBySeriesId_seriesNotFound() {
+            given(seriesRepository.findByIdAndDeletedAtIsNull(999L)).willReturn(null)
+
+            assertThatThrownBy { postService.getPostsBySeriesId(999L, null) }
+                .isInstanceOf(BusinessException::class.java)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.SERIES_NOT_FOUND)
+
+            verify(postRepository, never()).findBySeriesIdAndDeletedAtIsNull(anyLong())
         }
     }
 }

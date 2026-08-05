@@ -2299,35 +2299,17 @@ class SeriesControllerE2ETest {
             assertThat(post.get("accessLevel").asString()).isEqualTo("PAID")
         }
 
-        // FIXME: PostService.getPostsBySeriesId()는 seriesRepository를 아예 참조하지 않고
-        // postRepository.findBySeriesIdAndDeletedAtIsNull(seriesId)만 호출한다. 그래서 같은 id에 대해
-        // GET /api/series/{id}는 404-5인데 /posts는 200 + 빈 배열이 되고, 클라이언트는 "글이 없는
-        // 시리즈"와 "없는 시리즈"를 구분할 수 없다. 상세: docs/series-e2e-known-issues.md #1
         @Test
-        @DisplayName("9. 존재하지 않는 시리즈여도 실제 동작을 그대로 고정한다 (200 + 빈 배열)")
-        @Suppress("ForbiddenComment")
-        fun getSeriesPosts_nonExistentSeries_returns200WithEmptyList() {
-            // 같은 id에 대해 상세 조회는 404-5라는 점을 나란히 고정한다.
+        @DisplayName("9. 존재하지 않는 시리즈면 404-5를 반환한다")
+        fun getSeriesPosts_nonExistentSeries_returns404_5() {
+            // 같은 id에 대해 상세 조회와 동일하게 404-5여야 "글이 없는 시리즈"와 "없는 시리즈"를 구분할 수 있다.
             expectResultCode(getSeries(NON_EXISTENT_SERIES_ID), HttpStatus.NOT_FOUND, "404-5")
-
-            getSeriesPostsRequest(NON_EXISTENT_SERIES_ID)
-                .expectStatus()
-                .isOk()
-                .expectBody<ApiResponse<List<PostListResponse>>>()
-                .value { body ->
-                    checkNotNull(body)
-                    assertThat(body.resultCode).isEqualTo("200-1")
-                    assertThat(body.data).isEmpty()
-                }
+            expectResultCode(getSeriesPostsRequest(NON_EXISTENT_SERIES_ID), HttpStatus.NOT_FOUND, "404-5")
         }
 
-        // FIXME: 9번과 같은 원인이다. 시리즈를 삭제하면 그 시리즈의 살아있는 포스트는 series_id가
-        // null로 떨어져 나가므로(B-3) 목록은 비어 보이지만, 시리즈가 없다는 사실 자체는 알려 주지 않는다.
-        // 상세: docs/series-e2e-known-issues.md #1
         @Test
-        @DisplayName("10. soft delete된 시리즈여도 실제 동작을 그대로 고정한다 (200 + 빈 배열)")
-        @Suppress("ForbiddenComment")
-        fun getSeriesPosts_softDeletedSeries_returns200WithEmptyList() {
+        @DisplayName("10. soft delete된 시리즈면 404-5를 반환한다")
+        fun getSeriesPosts_softDeletedSeries_returns404_5() {
             val accessToken = newUserToken()
             val seriesId = createSeries(accessToken, "삭제 후 포스트 목록을 조회할 시리즈", "본문")
             val postId = createPostInSeries(accessToken, seriesId, "시리즈와 함께 떨어져 나올 포스트")
@@ -2337,16 +2319,7 @@ class SeriesControllerE2ETest {
             deleteSeriesRequest(accessToken, seriesId).expectStatus().isOk()
 
             expectResultCode(getSeries(seriesId), HttpStatus.NOT_FOUND, "404-5")
-
-            getSeriesPostsRequest(seriesId)
-                .expectStatus()
-                .isOk()
-                .expectBody<ApiResponse<List<PostListResponse>>>()
-                .value { body ->
-                    checkNotNull(body)
-                    assertThat(body.resultCode).isEqualTo("200-1")
-                    assertThat(body.data).isEmpty()
-                }
+            expectResultCode(getSeriesPostsRequest(seriesId), HttpStatus.NOT_FOUND, "404-5")
         }
 
         @Test
