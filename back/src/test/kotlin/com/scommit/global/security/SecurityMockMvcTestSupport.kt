@@ -7,7 +7,7 @@ import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequ
 import org.springframework.test.web.servlet.request.RequestPostProcessor
 
 private fun authenticationOf(user: User): UsernamePasswordAuthenticationToken {
-    val securityUser = SecurityUser(checkNotNull(user.id), user.email, user.nickname, user.authorities)
+    val securityUser = SecurityUser(checkNotNull(user.id), user.email, user.nickname, user.role, user.authorities)
     return UsernamePasswordAuthenticationToken(securityUser, null, securityUser.authorities)
 }
 

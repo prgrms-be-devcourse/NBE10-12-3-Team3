@@ -24,6 +24,7 @@ import org.mockito.ArgumentMatchers.anyString
 import org.mockito.ArgumentMatchers.eq
 import org.mockito.BDDMockito.given
 import org.mockito.Mockito.doThrow
+import org.mockito.Mockito.verify
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest
 import org.springframework.context.annotation.ComponentScan
@@ -343,6 +344,21 @@ class SeriesControllerTest {
                     .with(csrf()),
             ).andExpect(status().isForbidden)
             .andExpect(jsonPath("$.resultCode").value("403-1"))
+    }
+
+    @Test
+    @DisplayName("DELETE /api/series/{id} - 관리자는 소유자가 아니어도 시리즈를 삭제할 수 있다")
+    fun deleteSeries_AdminOverride() {
+        val adminActor = User(2L, "admin@example.com", "관리자", UserRole.ADMIN)
+
+        mockMvc
+            .perform(
+                delete("/api/series/{id}", 1L)
+                    .with(currentUser(adminActor))
+                    .with(csrf()),
+            ).andExpect(status().isOk)
+
+        verify(seriesService).deleteSeries(1L, 2L, UserRole.ADMIN)
     }
 
     @Test
