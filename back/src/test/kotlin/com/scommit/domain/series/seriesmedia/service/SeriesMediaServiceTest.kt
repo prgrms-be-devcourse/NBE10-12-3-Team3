@@ -401,4 +401,37 @@ class SeriesMediaServiceTest {
             verify(mediaService).deleteMedia(10L)
         }
     }
+
+    @Nested
+    @DisplayName("deleteMediaIfExists")
+    inner class DeleteMediaIfExists {
+        @Test
+        @DisplayName("성공: 썸네일이 있으면 SeriesMedia와 Media를 정리한다")
+        fun deleteMediaIfExists_Success() {
+            val series = mock(Series::class.java)
+            val media = mock(Media::class.java)
+            given(media.id).willReturn(10L)
+            val seriesMedia = mock(SeriesMedia::class.java)
+            given(seriesMedia.media).willReturn(media)
+
+            given(seriesMediaRepository.findBySeries(series)).willReturn(seriesMedia)
+
+            seriesMediaService.deleteMediaIfExists(series)
+
+            verify(seriesMediaRepository).delete(seriesMedia)
+            verify(mediaService).deleteMedia(10L)
+        }
+
+        @Test
+        @DisplayName("성공: 썸네일이 없으면 아무 것도 하지 않는다")
+        fun deleteMediaIfExists_NoMedia_NoOp() {
+            val series = mock(Series::class.java)
+            given(seriesMediaRepository.findBySeries(series)).willReturn(null)
+
+            seriesMediaService.deleteMediaIfExists(series)
+
+            verify(seriesMediaRepository, never()).delete(any<SeriesMedia>())
+            verify(mediaService, never()).deleteMedia(anyLong())
+        }
+    }
 }

@@ -4,6 +4,7 @@ import com.scommit.domain.post.post.repository.PostRepository
 import com.scommit.domain.series.series.dto.SeriesListResponse
 import com.scommit.domain.series.series.entity.Series
 import com.scommit.domain.series.series.repository.SeriesRepository
+import com.scommit.domain.series.seriesmedia.service.SeriesMediaService
 import com.scommit.domain.user.user.entity.User
 import com.scommit.domain.user.user.entity.UserRole
 import com.scommit.domain.user.user.repository.UserRepository
@@ -63,6 +64,9 @@ class SeriesServiceTest {
 
     @Mock
     private lateinit var postRepository: PostRepository
+
+    @Mock
+    private lateinit var seriesMediaService: SeriesMediaService
 
     @InjectMocks
     private lateinit var seriesService: SeriesService
@@ -345,6 +349,7 @@ class SeriesServiceTest {
 
             assertThat(series.deletedAt).isNotNull
             verify(postRepository, times(1)).findBySeriesIdAndDeletedAtIsNull(1L)
+            verify(seriesMediaService, times(1)).deleteMediaIfExists(series)
         }
 
         @Test
