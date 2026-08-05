@@ -175,9 +175,11 @@ class PostController(
     @Operation(summary = "게시글 미디어 전체 조회", description = "특정 게시글의 모든 미디어를 조회합니다.")
     @GetMapping("/{id}/medias")
     fun getMediaList(
+        @AuthenticationPrincipal securityUser: SecurityUser?,
         @PathVariable id: Long,
     ): RsData<List<PostMediaResponse>> {
-        val response = postMediaService.getMediaList(id)
+        val actor = securityUser?.user
+        val response = postMediaService.getMediaList(id, actor)
         return RsData("200-1", "게시글 미디어 목록입니다.", response)
     }
 
@@ -185,9 +187,11 @@ class PostController(
     @Operation(summary = "게시글 썸네일 조회", description = "특정 게시글의 썸네일을 조회합니다.")
     @GetMapping("/{id}/medias/thumbnail")
     fun getThumbnail(
+        @AuthenticationPrincipal securityUser: SecurityUser?,
         @PathVariable id: Long,
     ): RsData<PostMediaResponse?> {
-        val response = postMediaService.getThumbnail(id)
+        val actor = securityUser?.user
+        val response = postMediaService.getThumbnail(id, actor)
         return RsData("200-1", "게시글 썸네일입니다.", response)
     }
 

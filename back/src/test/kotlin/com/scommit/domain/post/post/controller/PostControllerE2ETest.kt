@@ -1347,6 +1347,175 @@ class PostControllerE2ETest {
 
             assertThat(postMediaRepository.findByIdOrNull(mediaIdOfPost1)).isNotNull()
         }
+
+        // TRIPLES-54: PRIVATE/PAID 게시글의 미디어(썸네일/목록)가 접근 제어 없이 노출되던 버그의 회귀 테스트.
+        // getPost()의 PRIVATE(작성자만)/PAID(작성자·구독자만) 체크를 미디어 조회에도 동일하게 적용했는지 확인한다.
+
+        @Test
+        @DisplayName("11. PRIVATE 게시글의 썸네일은 비로그인이면 403-1을 반환한다")
+        fun getThumbnail_private_anonymous_returns403_1() {
+            val ownerToken = newUserToken()
+            val postId = createPost(ownerToken, "비공개 글", PublishStatus.PRIVATE, PostAccessLevel.FREE)
+            uploadMediaRequest(ownerToken, postId, PostMediaType.THUMBNAIL, PNG_BYTES, "thumb.png", MediaType.IMAGE_PNG)
+                .expectStatus()
+                .isCreated()
+
+            expectResultCode(
+                client.get().uri("/api/posts/$postId/medias/thumbnail").exchange(),
+                HttpStatus.FORBIDDEN,
+                "403-1",
+            )
+        }
+
+        @Test
+        @DisplayName("12. PRIVATE 게시글의 썸네일은 작성자가 아닌 로그인 유저에게 403-1을 반환한다")
+        fun getThumbnail_private_otherUser_returns403_1() {
+            val ownerToken = newUserToken()
+            val postId = createPost(ownerToken, "비공개 글", PublishStatus.PRIVATE, PostAccessLevel.FREE)
+            uploadMediaRequest(ownerToken, postId, PostMediaType.THUMBNAIL, PNG_BYTES, "thumb.png", MediaType.IMAGE_PNG)
+                .expectStatus()
+                .isCreated()
+
+            val otherToken = newUserToken()
+            expectResultCode(
+                client
+                    .get()
+                    .uri("/api/posts/$postId/medias/thumbnail")
+                    .header("Authorization", bearer(otherToken))
+                    .exchange(),
+                HttpStatus.FORBIDDEN,
+                "403-1",
+            )
+        }
+
+        @Test
+        @DisplayName("13. PRIVATE 게시글의 미디어 목록은 작성자가 아닌 로그인 유저에게 403-1을 반환한다")
+        fun getMediaList_private_otherUser_returns403_1() {
+            val ownerToken = newUserToken()
+            val postId = createPost(ownerToken, "비공개 글", PublishStatus.PRIVATE, PostAccessLevel.FREE)
+
+            val otherToken = newUserToken()
+            expectResultCode(
+                client
+                    .get()
+                    .uri("/api/posts/$postId/medias")
+                    .header("Authorization", bearer(otherToken))
+                    .exchange(),
+                HttpStatus.FORBIDDEN,
+                "403-1",
+            )
+        }
+
+        @Test
+        @DisplayName("14. PRIVATE 게시글의 썸네일과 미디어 목록은 작성자 본인에게는 정상 조회된다")
+        fun getThumbnailAndMediaList_private_owner_success() {
+            val ownerToken = newUserToken()
+            val postId = createPost(ownerToken, "비공개 글", PublishStatus.PRIVATE, PostAccessLevel.FREE)
+            uploadMediaRequest(ownerToken, postId, PostMediaType.THUMBNAIL, PNG_BYTES, "thumb.png", MediaType.IMAGE_PNG)
+                .expectStatus()
+                .isCreated()
+
+            client
+                .get()
+                .uri("/api/posts/$postId/medias/thumbnail")
+                .header("Authorization", bearer(ownerToken))
+                .exchange()
+                .expectStatus()
+                .isOk()
+
+            client
+                .get()
+                .uri("/api/posts/$postId/medias")
+                .header("Authorization", bearer(ownerToken))
+                .exchange()
+                .expectStatus()
+                .isOk()
+        }
+
+        @Test
+        @DisplayName("15. PAID 게시글의 썸네일은 비구독 로그인 유저에게 403-1을 반환한다")
+        fun getThumbnail_paid_nonSubscriber_returns403_1() {
+            val ownerToken = newUserToken()
+            val postId = createPost(ownerToken, "유료 글", PublishStatus.PUBLIC, PostAccessLevel.PAID)
+            uploadMediaRequest(ownerToken, postId, PostMediaType.THUMBNAIL, PNG_BYTES, "thumb.png", MediaType.IMAGE_PNG)
+                .expectStatus()
+                .isCreated()
+
+            val nonMemberToken = newUserToken()
+            expectResultCode(
+                client
+                    .get()
+                    .uri("/api/posts/$postId/medias/thumbnail")
+                    .header("Authorization", bearer(nonMemberToken))
+                    .exchange(),
+                HttpStatus.FORBIDDEN,
+                "403-1",
+            )
+        }
+
+        @Test
+        @DisplayName("16. PAID 게시글의 썸네일은 작성자 본인과 멤버십 구독자에게는 정상 조회된다")
+        fun getThumbnail_paid_ownerAndMember_success() {
+            val owner = signUpAndLoginHolder()
+            val postId = createPost(owner.accessToken, "유료 글", PublishStatus.PUBLIC, PostAccessLevel.PAID)
+            uploadMediaRequest(
+                owner.accessToken,
+                postId,
+                PostMediaType.THUMBNAIL,
+                PNG_BYTES,
+                "thumb.png",
+                MediaType.IMAGE_PNG,
+            ).expectStatus().isCreated()
+
+            client
+                .get()
+                .uri("/api/posts/$postId/medias/thumbnail")
+                .header("Authorization", bearer(owner.accessToken))
+                .exchange()
+                .expectStatus()
+                .isOk()
+
+            val memberToken = newUserToken()
+            client
+                .post()
+                .uri("/api/subscriptions/membership/${owner.userId}")
+                .header("Authorization", bearer(memberToken))
+                .exchange()
+                .expectStatus()
+                .isOk()
+
+            client
+                .get()
+                .uri("/api/posts/$postId/medias/thumbnail")
+                .header("Authorization", bearer(memberToken))
+                .exchange()
+                .expectStatus()
+                .isOk()
+        }
+
+        @Test
+        @DisplayName("17. PUBLIC 게시글의 썸네일과 미디어 목록은 비로그인으로도 정상 조회된다")
+        fun getThumbnailAndMediaList_publicPost_anonymous_success() {
+            val ownerToken = newUserToken()
+            val postId = createPost(ownerToken, "공개 글", PublishStatus.PUBLIC, PostAccessLevel.FREE)
+            uploadMediaRequest(ownerToken, postId, PostMediaType.THUMBNAIL, PNG_BYTES, "thumb.png", MediaType.IMAGE_PNG)
+                .expectStatus()
+                .isCreated()
+
+            client
+                .get()
+                .uri("/api/posts/$postId/medias/thumbnail")
+                .exchange()
+                .expectStatus()
+                .isOk()
+
+            client
+                .get()
+                .uri("/api/posts/$postId/medias")
+                .exchange()
+                .expectStatus()
+                .isOk()
+        }
     }
 
     // ───────────────────────── 통합 시나리오 ─────────────────────────

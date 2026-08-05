@@ -97,6 +97,7 @@ class SecurityConfig(
                         "/api/posts/users/{userId:\\d+}",
                         "/api/posts/{id:\\d+}",
                         "/api/posts/{id:\\d+}/comments",
+                        "/api/posts/{id:\\d+}/medias",
                         "/api/posts/{id:\\d+}/medias/thumbnail",
                         "/api/users/search",
                         "/api/coupon-policies/active",
