@@ -7,6 +7,7 @@ export interface User {
   id: number;
   email: string;
   nickname: string;
+  introduction?: string;
   avatarUrl?: string;
   role?: "USER" | "ADMIN";
 }
@@ -40,12 +41,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         id: number;
         email: string;
         role?: "USER" | "ADMIN";
-        profile?: { nickname: string; profileImageUrl?: string };
+        profile?: { nickname: string; profileImageUrl?: string; introduction?: string };
       }>("/api/users/me");
       setUser({
         id: userData.id,
         email: userData.email,
         nickname: userData.profile?.nickname ?? "",
+        introduction: userData.profile?.introduction ?? "",
         role: userData.role,
         // 로컬(dev) 프로필에서는 이 URL이 "user/abc123.jpg" 같은 상대 경로로 내려오는데,
         // resolveMediaUrl 없이 그대로 쓰면 이미지가 404나서 Avatar가 계속 깨진 상태로 남습니다.
