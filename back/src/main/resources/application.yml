@@ -33,5 +33,5 @@ auth-token:
 
 toss:
   payment:
-    # 기본값은 토스가 공개한 문서용 테스트 키. 운영에서는 반드시 TOSS_SECRET_KEY 환경변수를 주입한다.
+    # 기본값은 토스가 공개한 문서용 테스트 키.
     secret-key: ${TOSS_SECRET_KEY:test_gsk_docs_OaPz8L5KdmQXkzRz3y47BMw6}
