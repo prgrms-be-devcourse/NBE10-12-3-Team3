@@ -3,12 +3,45 @@ package com.scommit.domain.notification.notification.service
 import com.scommit.domain.notification.notification.dto.NotificationResponse
 import com.scommit.domain.notification.notification.dto.NotificationType
 import com.scommit.domain.notification.notification.repository.SseEmitterRepository
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter
+import java.io.IOException
 
 @Service
 class NotificationService(
     private val sseEmitterRepository: SseEmitterRepository,
 ) {
+    companion object {
+        private val logger = LoggerFactory.getLogger(NotificationService::class.java)
+        private const val SSE_TIMEOUT_MS = 30 * 60 * 1000L
+    }
+
+    @Suppress("TooGenericExceptionThrown")
+    fun subscribe(userId: Long): SseEmitter {
+        val emitter = SseEmitter(SSE_TIMEOUT_MS)
+
+        sseEmitterRepository.add(userId, emitter)
+
+        emitter.onTimeout { sseEmitterRepository.remove(userId, emitter) }
+        emitter.onCompletion { sseEmitterRepository.remove(userId, emitter) }
+
+        try {
+            emitter.send(
+                SseEmitter
+                    .event()
+                    .name("connect")
+                    .data("connected!"),
+            )
+        } catch (e: IOException) {
+            logger.warn("SSE 초기 연결 이벤트 전송 실패 userId={}", userId, e)
+            sseEmitterRepository.remove(userId, emitter)
+            throw RuntimeException(e)
+        }
+
+        return emitter
+    }
+
     fun notifyComment(
         postOwnerId: Long,
         commenterNickname: String,
