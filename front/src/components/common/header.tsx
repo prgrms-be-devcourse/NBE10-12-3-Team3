@@ -8,7 +8,6 @@ import {
     Bookmark,
     ChevronDown,
     Clock,
-    CreditCard,
     History,
     LogOut,
     Menu,
@@ -303,9 +302,6 @@ export function Header() {
                         >
                           <Bookmark className="h-4 w-4" /> 내 북마크
                         </Link>
-                        <button className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-[14px] font-semibold text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-neutral-900">
-                          <CreditCard className="h-4 w-4" /> 결제 내역
-                        </button>
 
                         <div className="my-1 h-px w-full bg-neutral-100" />
 

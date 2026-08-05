@@ -17,6 +17,7 @@ import { useAuth } from "@/providers/auth-provider";
 import { useHasMounted } from "@/hooks/use-has-mounted";
 import { apiFetch, apiPost, apiDelete } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { PaymentWidgetModal } from "@/components/payment/payment-widget-modal";
 import type { UserProfileResponse, PostListResponse, SeriesListResponse } from "./page";
 
 // 팔로우 버튼 폭이 "팔로우"↔"팔로잉" 텍스트 길이 변화에 맞춰 부드럽게 늘어나도록,
@@ -63,6 +64,7 @@ export function UserProfileView({ profile, tab, page, totalPages, isLastPostsPag
   const [showLoginModal, setShowLoginModal] = useState(false);
   // mypage(FollowButton)의 멤버십 해지 확인 팝업과 동일한 UX를 여기서도 제공합니다.
   const [showCancelMembershipModal, setShowCancelMembershipModal] = useState(false);
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   // 로그인한 사용자의 초기 isFollowing/isMember 상태는 프로필 응답(UserProfileResponse)에 없어,
   // 아래 useEffect에서 GET /api/subscriptions/status/{creatorId} 단건 조회로 판단합니다.
   const [isFollowing, setIsFollowing] = useState(false);
@@ -86,6 +88,16 @@ export function UserProfileView({ profile, tab, page, totalPages, isLastPostsPag
     }
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [page]);
+
+  // Check if URL has Toss redirect params, open modal automatically
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("paymentKey") || params.get("payment_fail")) {
+        setIsPaymentModalOpen(true);
+      }
+    }
+  }, []);
 
   // 로그인한 사용자이면서 본인 프로필이 아닐 때만, 이미 팔로우/멤버십 중인지 확인합니다.
   // 로그아웃했거나 본인 프로필일 때는 이전 세션(다른 계정)의 상태가 남지 않도록 초기화합니다.
@@ -177,12 +189,12 @@ export function UserProfileView({ profile, tab, page, totalPages, isLastPostsPag
       return;
     }
     // 해지는 되돌리기 번거로운 동작이라, mypage(FollowButton)와 동일하게 확인 팝업을 먼저 띄웁니다.
-    // 가입은 기존과 동일하게 바로 진행합니다.
     if (isMember) {
       setShowCancelMembershipModal(true);
       return;
     }
-    handleMembership();
+    // 가입은 결제 모달을 띄웁니다.
+    setIsPaymentModalOpen(true);
   };
 
   // ConfirmModal의 useEffect가 onCancel을 deps로 사용하므로, 매 렌더마다 새 함수를
@@ -340,6 +352,20 @@ export function UserProfileView({ profile, tab, page, totalPages, isLastPostsPag
           handleMembership();
         }}
         onCancel={() => setShowCancelMembershipModal(false)}
+      />
+
+      <PaymentWidgetModal
+        isOpen={isPaymentModalOpen}
+        onClose={() => setIsPaymentModalOpen(false)}
+        creatorName={profile.nickname}
+        creatorId={profile.id}
+        onSuccess={() => {
+          setIsMember(true);
+          if (!isFollowing) {
+            setIsFollowing(true);
+            setSubscriberCount((prev) => prev + 1);
+          }
+        }}
       />
     </>
   );

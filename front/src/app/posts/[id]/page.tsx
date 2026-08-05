@@ -175,8 +175,8 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
                 </div>
 
                 {/* 본문 */}
-                {post.isLocked ? (
-                    <BlurPaywall isLoggedIn={hasMounted && isLoggedIn} />
+                {post.isLocked && typeof window !== 'undefined' && !window.location.search.includes('paymentKey') ? (
+                    <BlurPaywall isLoggedIn={hasMounted && isLoggedIn} creatorName={post.nickname} />
                 ) : (
                     <div className="prose max-w-none text-neutral-dark">
                         <div dangerouslySetInnerHTML={{ __html: post.body ?? "" }} />

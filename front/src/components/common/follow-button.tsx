@@ -8,17 +8,20 @@ import { useAuth } from "@/providers/auth-provider";
 import { apiFetch } from "@/lib/api";
 import { ModalOverlay } from "@/components/common/modal-overlay";
 import { CancelMembershipModal } from "@/components/common/cancel-membership-modal";
+import { PaymentWidgetModal } from "@/components/payment/payment-widget-modal";
 
 export type FollowTier = "NONE" | "FOLLOW" | "MEMBERSHIP";
 
 interface FollowButtonProps {
   creatorId?: string | number;
+  creatorName?: string;
   initialTier?: FollowTier;
   className?: string;
 }
 
 export function FollowButton({
   creatorId,
+  creatorName,
   initialTier = "NONE",
   className,
 }: FollowButtonProps) {
@@ -223,36 +226,13 @@ export function FollowButton({
         )}
       </AnimatePresence>
 
-      {/* Join Membership Modal */}
-      <AnimatePresence>
-        {isJoinModalOpen && (
-          <ModalOverlay onClose={() => setIsJoinModalOpen(false)}>
-            <div className="p-6">
-              <div className="w-12 h-12 bg-primary/10 text-primary rounded-2xl flex items-center justify-center mb-4 mx-auto">
-                <Star className="h-6 w-6 fill-primary" />
-              </div>
-              <h3 className="text-xl font-bold text-center text-neutral-900 mb-2">멤버십에 가입하시겠습니까?</h3>
-              <p className="text-center text-neutral-500 text-sm mb-6">
-                멤버십에 가입하면 창작자의 특별한 독점 콘텐츠와 혜택을 누릴 수 있습니다. 지금 바로 가입하고 창작자를 후원해보세요!
-              </p>
-              <div className="flex gap-3 w-full">
-                <button
-                  onClick={() => setIsJoinModalOpen(false)}
-                  className="flex-1 py-2.5 rounded-xl border border-neutral-200 font-semibold text-neutral-600 hover:bg-neutral-50 transition-colors"
-                >
-                  취소
-                </button>
-                <button
-                  onClick={() => executeAction("JOIN_MEMBERSHIP")}
-                  className="flex-1 py-2.5 rounded-xl bg-primary text-white font-semibold hover:bg-primary/90 transition-colors shadow-md"
-                >
-                  가입하기
-                </button>
-              </div>
-            </div>
-          </ModalOverlay>
-        )}
-      </AnimatePresence>
+      {/* Join Membership Modal - PaymentWidgetModal */}
+      <PaymentWidgetModal
+        isOpen={isJoinModalOpen}
+        onClose={() => setIsJoinModalOpen(false)}
+        creatorName={creatorName || "창작자"}
+        creatorId={Number(creatorId) || 0}
+      />
 
       {/* Cancel Membership Modal */}
       <CancelMembershipModal
