@@ -67,17 +67,15 @@ class LocalMediaService(
         }
 
     // 미디어 파일을 삭제하는 메서드
-    @Suppress("SwallowedException") // BusinessException에 cause를 실어줄 생성자가 없어 원인 체이닝 불가
     private fun deleteFile(mediaName: String?) {
         try {
             mediaName?.let { Files.deleteIfExists(Paths.get(mediaPath + it)) }
         } catch (e: IOException) {
-            throw BusinessException(ErrorCode.INTERNAL_SERVER_ERROR)
+            throw BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, e)
         }
     }
 
     // 미디어 파일을 업로드하는 메서드
-    @Suppress("SwallowedException") // BusinessException에 cause를 실어줄 생성자가 없어 원인 체이닝 불가
     private fun uploadFile(
         file: MultipartFile,
         mediaName: String,
@@ -87,7 +85,7 @@ class LocalMediaService(
             Files.createDirectories(path.parent)
             file.transferTo(path.toAbsolutePath())
         } catch (e: IOException) {
-            throw BusinessException(ErrorCode.INTERNAL_SERVER_ERROR)
+            throw BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, e)
         }
     }
 

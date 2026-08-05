@@ -4,6 +4,7 @@ import com.scommit.domain.media.media.entity.Media
 import com.scommit.domain.media.media.entity.MediaType
 import com.scommit.domain.media.media.repository.MediaRepository
 import com.scommit.global.exception.BusinessException
+import com.scommit.global.exception.ErrorCode
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.BeforeEach
@@ -21,6 +22,7 @@ import org.mockito.Mockito.verify
 import org.mockito.junit.jupiter.MockitoExtension
 import org.springframework.mock.web.MockMultipartFile
 import org.springframework.test.util.ReflectionTestUtils
+import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.Optional
@@ -169,6 +171,61 @@ class LocalMediaServiceTest {
                 .isInstanceOf(BusinessException::class.java)
 
             verify(mediaRepository, never()).delete(any<Media>())
+        }
+
+        @Test
+        @DisplayName("실패: 파일 삭제 중 IOException 발생 시 INTERNAL_SERVER_ERROR를 던지고 원인을 체이닝한다")
+        fun deleteMedia_IOException_Fail() {
+            val mediaId = 1L
+            // 읽기 전용 디렉토리를 만들어 deleteIfExists가 IOException을 던지도록 유도
+            val lockedDir = tempDir.resolve("locked")
+            Files.createDirectories(lockedDir)
+            val lockedFile = lockedDir.resolve("file.png")
+            Files.write(lockedFile, "dummy".toByteArray())
+            // 디렉토리를 읽기 전용으로 변경하면 내부 파일 삭제 시 IOException 발생
+            lockedDir.toFile().setReadOnly()
+
+            val relativePath = "locked/file.png"
+            val media = Media(url = relativePath, type = MediaType.IMAGE)
+            given(mediaRepository.findById(mediaId)).willReturn(Optional.of(media))
+
+            try {
+                assertThatThrownBy { localMediaService.deleteMedia(mediaId) }
+                    .isInstanceOf(BusinessException::class.java)
+                    .extracting("errorCode")
+                    .isEqualTo(ErrorCode.INTERNAL_SERVER_ERROR)
+            } finally {
+                // 테스트 정리: 읽기 전용 해제
+                lockedDir.toFile().setWritable(true)
+            }
+        }
+    }
+
+    @Nested
+    @DisplayName("uploadFile IOException")
+    inner class UploadFileIOException {
+        @Test
+        @DisplayName("실패: 파일 업로드 중 IOException 발생 시 INTERNAL_SERVER_ERROR를 던지고 원인을 체이닝한다")
+        fun uploadMedia_IOException_Fail() {
+            // 읽기 전용 디렉토리를 대상 경로로 설정하면 createDirectories/transferTo에서 IOException 발생
+            val readOnlyDir = tempDir.resolve("readonly")
+            Files.createDirectories(readOnlyDir)
+            readOnlyDir.toFile().setReadOnly()
+
+            // mediaPath를 읽기 전용 디렉토리 안의 하위 경로로 지정
+            ReflectionTestUtils.setField(localMediaService, "mediaPath", "$readOnlyDir/sub/")
+            val file = MockMultipartFile("file", "test.png", "image/png", "content".toByteArray())
+
+            try {
+                assertThatThrownBy { localMediaService.uploadMedia(file, "post") }
+                    .isInstanceOf(BusinessException::class.java)
+                    .extracting("errorCode")
+                    .isEqualTo(ErrorCode.INTERNAL_SERVER_ERROR)
+            } finally {
+                readOnlyDir.toFile().setWritable(true)
+                // mediaPath 복구
+                ReflectionTestUtils.setField(localMediaService, "mediaPath", "$tempDir/")
+            }
         }
     }
 }
