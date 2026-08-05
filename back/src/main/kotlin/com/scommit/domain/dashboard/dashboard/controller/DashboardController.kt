@@ -5,11 +5,12 @@ import com.scommit.domain.dashboard.dashboard.dto.CreatorDashboard
 import com.scommit.domain.dashboard.dashboard.dto.Mainpage
 import com.scommit.domain.dashboard.dashboard.service.CreatorDashboardService
 import com.scommit.domain.dashboard.dashboard.service.PlatformDashboardService
+import com.scommit.domain.user.user.entity.User
 import com.scommit.domain.user.user.entity.UserRole
 import com.scommit.global.dto.RsData
 import com.scommit.global.exception.BusinessException
 import com.scommit.global.exception.ErrorCode
-import com.scommit.global.security.SecurityHelper
+import com.scommit.global.security.CurrentUser
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.web.bind.annotation.GetMapping
@@ -23,15 +24,13 @@ import org.springframework.web.bind.annotation.RestController
 class DashboardController(
     private val creatorDashboardService: CreatorDashboardService,
     private val platformDashboardService: PlatformDashboardService,
-    private val securityHelper: SecurityHelper,
 ) {
     @GetMapping("/user")
     @Operation(summary = "창작자 통계 대시보드 조회")
     fun getUserDashboard(
+        @CurrentUser actor: User,
         @RequestParam(defaultValue = "30d") period: String,
     ): RsData<CreatorDashboard> {
-        val actor = securityHelper.actor ?: throw BusinessException(ErrorCode.UNAUTHORIZED)
-
         val data = creatorDashboardService.getCreatorDashboard(checkNotNull(actor.id), period)
         return RsData("200-1", "창작자 대시보드를 조회하였습니다.", data)
     }
@@ -39,9 +38,9 @@ class DashboardController(
     @GetMapping("/admin")
     @Operation(summary = "관리자 통계 대시보드 조회")
     fun getAdminDashboard(
+        @CurrentUser actor: User,
         @RequestParam(defaultValue = "30d") period: String,
     ): RsData<AdminDashboard> {
-        val actor = securityHelper.actor ?: throw BusinessException(ErrorCode.UNAUTHORIZED)
         if (actor.role != UserRole.ADMIN) {
             throw BusinessException(ErrorCode.ACCESS_DENIED)
         }

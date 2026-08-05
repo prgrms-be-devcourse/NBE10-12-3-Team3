@@ -13,12 +13,14 @@ import com.scommit.domain.user.user.dto.UserProfileResponse
 import com.scommit.domain.user.user.dto.UserSearchResponse
 import com.scommit.domain.user.user.dto.UserUpdateRequest
 import com.scommit.domain.user.user.dto.UserUpdateResponse
+import com.scommit.domain.user.user.entity.User
 import com.scommit.domain.user.user.service.UserService
 import com.scommit.domain.user.usermedia.dto.UserMediaResponse
 import com.scommit.domain.user.usermedia.service.UserMediaService
 import com.scommit.global.dto.RsData
 import com.scommit.global.exception.BusinessException
 import com.scommit.global.exception.ErrorCode
+import com.scommit.global.security.CurrentUser
 import com.scommit.global.security.SecurityHelper
 import com.scommit.global.security.jwt.JwtProvider
 import io.swagger.v3.oas.annotations.Operation
@@ -88,8 +90,9 @@ class UserController(
 
     @PostMapping("/logout")
     @Operation(summary = "로그아웃", description = "로그아웃합니다.")
-    fun logout(): RsData<Unit> {
-        val actor = securityHelper.actor ?: throw BusinessException(ErrorCode.UNAUTHORIZED)
+    fun logout(
+        @CurrentUser actor: User,
+    ): RsData<Unit> {
         securityHelper.deleteCookie("accessToken")
         securityHelper.deleteCookie("refreshToken")
         userService.logout(checkNotNull(actor.id))
@@ -99,9 +102,9 @@ class UserController(
     @DeleteMapping
     @Operation(summary = "회원탈퇴", description = "회원탈퇴합니다.")
     fun deleteAccount(
+        @CurrentUser actor: User,
         @Valid @RequestBody request: UserDeleteRequest,
     ): RsData<Unit> {
-        val actor = securityHelper.actor ?: throw BusinessException(ErrorCode.UNAUTHORIZED)
         userService.deleteUser(checkNotNull(actor.id), requireNotNull(request.password))
         securityHelper.deleteCookie("accessToken")
         securityHelper.deleteCookie("refreshToken")
@@ -110,8 +113,9 @@ class UserController(
 
     @GetMapping("/me")
     @Operation(summary = "내 정보 조회", description = "로그인한 유저의 정보를 조회합니다.")
-    fun getMyInfo(): RsData<UserMeResponse> {
-        val actor = securityHelper.actor ?: throw BusinessException(ErrorCode.UNAUTHORIZED)
+    fun getMyInfo(
+        @CurrentUser actor: User,
+    ): RsData<UserMeResponse> {
         val user = userService.getUser(checkNotNull(actor.id)) ?: throw BusinessException(ErrorCode.USER_NOT_FOUND)
         val profileImageUrl = userMediaService.getMedia(checkNotNull(actor.id))?.url
 
@@ -125,11 +129,10 @@ class UserController(
     @PatchMapping("/me")
     @Operation(summary = "내 정보 수정", description = "로그인한 유저의 정보를 수정합니다.")
     fun updateProfile(
+        @CurrentUser actor: User,
         @Valid @RequestPart(value = "request") request: UserUpdateRequest,
         @RequestPart(value = "profileImage", required = false) profileImage: MultipartFile?,
     ): RsData<UserUpdateResponse> {
-        val actor = securityHelper.actor ?: throw BusinessException(ErrorCode.UNAUTHORIZED)
-
         val updatedUser = userService.updateUser(checkNotNull(actor.id), request.nickname, request.introduction)
         val profileImageUrl =
             if (profileImage != null) {
@@ -144,9 +147,9 @@ class UserController(
     @PutMapping("/me/password")
     @Operation(summary = "비밀번호 변경", description = "로그인한 유저의 비밀번호를 변경합니다.")
     fun updatePassword(
+        @CurrentUser actor: User,
         @Valid @RequestBody request: UserPasswordUpdateRequest,
     ): RsData<UserPasswordUpdateResponse> {
-        val actor = securityHelper.actor ?: throw BusinessException(ErrorCode.UNAUTHORIZED)
         userService.updatePassword(checkNotNull(actor.id), requireNotNull(request.currentPassword), request.newPassword)
 
         val user = userService.getUser(checkNotNull(actor.id)) ?: throw BusinessException(ErrorCode.USER_NOT_FOUND)
@@ -197,9 +200,9 @@ class UserController(
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "프로필 이미지 생성")
     fun uploadMedia(
+        @CurrentUser actor: User,
         @RequestPart file: MultipartFile,
     ): RsData<UserMediaResponse> {
-        val actor = securityHelper.actor ?: throw BusinessException(ErrorCode.UNAUTHORIZED)
         val response = userMediaService.uploadMedia(checkNotNull(actor.id), file)
         return RsData("201-1", "프로필 이미지를 생성하였습니다.", response)
     }
@@ -215,8 +218,9 @@ class UserController(
 
     @DeleteMapping("/me/medias")
     @Operation(summary = "프로필 이미지 삭제")
-    fun deleteMedia(): RsData<Unit> {
-        val actor = securityHelper.actor ?: throw BusinessException(ErrorCode.UNAUTHORIZED)
+    fun deleteMedia(
+        @CurrentUser actor: User,
+    ): RsData<Unit> {
         userMediaService.deleteMedia(checkNotNull(actor.id))
         return RsData("200-1", "프로필 이미지가 삭제되었습니다.")
     }
