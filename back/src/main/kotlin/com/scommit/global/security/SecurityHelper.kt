@@ -18,6 +18,8 @@ class SecurityHelper(
     @Value("\${cookie.domain}")
     private lateinit var cookieDomain: String
 
+    // TRIPLES-48에서 @CurrentUser로 대체하는 중. main에 아직 없는 쿠폰 도메인이 이 프로퍼티를 계속 쓰고 있어서
+    // 쿠폰 브랜치가 머지되어 전환되기 전까지는 삭제할 수 없다.
     val actor: User?
         get() =
             (SecurityContextHolder.getContext().authentication?.principal as? SecurityUser)

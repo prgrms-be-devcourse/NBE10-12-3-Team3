@@ -84,4 +84,12 @@ class User(
     fun updatePassword(password: String) {
         this.password = password
     }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is User) return false
+        return id != null && id == other.id
+    }
+
+    override fun hashCode(): Int = javaClass.hashCode()
 }
