@@ -1,12 +1,10 @@
 package com.scommit.global.security
 
-import com.scommit.domain.user.user.entity.User
 import com.scommit.global.security.jwt.AuthTokenProperties
 import jakarta.servlet.http.Cookie
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import org.springframework.beans.factory.annotation.Value
-import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.stereotype.Component
 
 @Component
@@ -17,13 +15,6 @@ class SecurityHelper(
 ) { // 14183의 Rq 복붙
     @Value("\${cookie.domain}")
     private lateinit var cookieDomain: String
-
-    // TRIPLES-48에서 @CurrentUser로 대체하는 중. main에 아직 없는 쿠폰 도메인이 이 프로퍼티를 계속 쓰고 있어서
-    // 쿠폰 브랜치가 머지되어 전환되기 전까지는 삭제할 수 없다.
-    val actor: User?
-        get() =
-            (SecurityContextHolder.getContext().authentication?.principal as? SecurityUser)
-                ?.let { User(it.id, it.username, it.nickname) }
 
     fun getHeader(
         name: String,
