@@ -1,6 +1,7 @@
 package com.scommit.domain.post.post.repository
 
 import com.scommit.domain.post.post.entity.Post
+import com.scommit.domain.post.post.entity.PostAccessLevel
 import com.scommit.domain.post.post.entity.PublishStatus
 import com.scommit.domain.user.user.entity.User
 import org.springframework.data.domain.Page
@@ -10,6 +11,7 @@ import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
+import java.time.LocalDateTime
 
 @Suppress("TooManyFunctions")
 interface PostRepository : JpaRepository<Post, Long> {
@@ -51,13 +53,13 @@ interface PostRepository : JpaRepository<Post, Long> {
         pageable: Pageable,
     ): Page<Post>
 
-    @Modifying(clearAutomatically = true)
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("UPDATE Post p SET p.bookmarkCount = p.bookmarkCount + 1 WHERE p.id = :postId")
     fun increaseBookmarkCount(
         @Param("postId") postId: Long,
     )
 
-    @Modifying(clearAutomatically = true)
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query(
         "UPDATE Post p SET p.bookmarkCount = CASE WHEN p.bookmarkCount > 0 THEN p.bookmarkCount - 1 ELSE 0 END " +
             "WHERE p.id = :postId",
@@ -66,13 +68,13 @@ interface PostRepository : JpaRepository<Post, Long> {
         @Param("postId") postId: Long,
     )
 
-    @Modifying(clearAutomatically = true)
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("UPDATE Post p SET p.likeCount = p.likeCount + 1 WHERE p.id = :postId")
     fun increaseLikeCount(
         @Param("postId") postId: Long,
     )
 
-    @Modifying(clearAutomatically = true)
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query(
         "UPDATE Post p SET p.likeCount = CASE WHEN p.likeCount > 0 THEN p.likeCount - 1 ELSE 0 END " +
             "WHERE p.id = :postId",
@@ -80,4 +82,106 @@ interface PostRepository : JpaRepository<Post, Long> {
     fun decreaseLikeCount(
         @Param("postId") postId: Long,
     )
+
+    // 대시보드 통계용 쿼리
+    fun countByUserIdAndDeletedAtIsNull(userId: Long): Long
+
+    fun countByUserIdAndCreatedAtGreaterThanEqualAndDeletedAtIsNull(
+        userId: Long,
+        createdAt: LocalDateTime,
+    ): Long
+
+    fun countByUserIdAndAccessLevelAndDeletedAtIsNull(
+        userId: Long,
+        accessLevel: PostAccessLevel,
+    ): Long
+
+    @Query("SELECT SUM(p.viewCount) FROM Post p WHERE p.user.id = :userId AND p.deletedAt IS NULL")
+    fun sumViewCountByUserId(
+        @Param("userId") userId: Long,
+    ): Long?
+
+    @Query(
+        "SELECT SUM(p.viewCount) FROM Post p WHERE p.user.id = :userId " +
+            "AND p.createdAt >= :createdAt AND p.deletedAt IS NULL",
+    )
+    fun sumViewCountByUserIdAndPeriod(
+        @Param("userId") userId: Long,
+        @Param("createdAt") createdAt: LocalDateTime,
+    ): Long?
+
+    @Query("SELECT SUM(p.likeCount) FROM Post p WHERE p.user.id = :userId AND p.deletedAt IS NULL")
+    fun sumLikeCountByUserId(
+        @Param("userId") userId: Long,
+    ): Long?
+
+    @Query(
+        "SELECT SUM(p.likeCount) FROM Post p WHERE p.user.id = :userId " +
+            "AND p.createdAt >= :createdAt AND p.deletedAt IS NULL",
+    )
+    fun sumLikeCountByUserIdAndPeriod(
+        @Param("userId") userId: Long,
+        @Param("createdAt") createdAt: LocalDateTime,
+    ): Long?
+
+    @Query("SELECT SUM(p.bookmarkCount) FROM Post p WHERE p.user.id = :userId AND p.deletedAt IS NULL")
+    fun sumBookmarkCountByUserId(
+        @Param("userId") userId: Long,
+    ): Long?
+
+    @Query(
+        "SELECT SUM(p.bookmarkCount) FROM Post p WHERE p.user.id = :userId " +
+            "AND p.createdAt >= :createdAt AND p.deletedAt IS NULL",
+    )
+    fun sumBookmarkCountByUserIdAndPeriod(
+        @Param("userId") userId: Long,
+        @Param("createdAt") createdAt: LocalDateTime,
+    ): Long?
+
+    @Query(
+        "SELECT p FROM Post p WHERE p.user.id = :userId AND p.createdAt >= :createdAt " +
+            "AND p.deletedAt IS NULL ORDER BY p.viewCount DESC",
+    )
+    fun findTop5ByUserIdAndPeriod(
+        @Param("userId") userId: Long,
+        @Param("createdAt") createdAt: LocalDateTime,
+        pageable: Pageable,
+    ): List<Post>
+
+    @Query("SELECT p FROM Post p WHERE p.user.id = :userId AND p.createdAt >= :createdAt AND p.deletedAt IS NULL")
+    fun findActivityHeatmapByUserId(
+        @Param("userId") userId: Long,
+        @Param("createdAt") createdAt: LocalDateTime,
+    ): List<Post>
+
+    @Query("SELECT p FROM Post p WHERE p.createdAt >= :createdAt AND p.deletedAt IS NULL ORDER BY p.viewCount DESC")
+    fun findTop5PostsByPeriod(
+        @Param("createdAt") createdAt: LocalDateTime,
+        pageable: Pageable,
+    ): List<Post>
+
+    // 전체 통계 (userId=null 대신 사용)
+    fun countByDeletedAtIsNull(): Long
+
+    fun countByCreatedAtGreaterThanEqualAndDeletedAtIsNull(createdAt: LocalDateTime): Long
+
+    fun countByAccessLevelAndDeletedAtIsNull(accessLevel: PostAccessLevel): Long
+
+    @Query("SELECT SUM(p.viewCount) FROM Post p WHERE p.deletedAt IS NULL")
+    fun sumAllViewCount(): Long?
+
+    @Query("SELECT SUM(p.viewCount) FROM Post p WHERE p.createdAt >= :createdAt AND p.deletedAt IS NULL")
+    fun sumAllViewCountByPeriod(
+        @Param("createdAt") createdAt: LocalDateTime,
+    ): Long?
+
+    @Query(
+        "SELECT p FROM Post p WHERE p.accessLevel = :accessLevel AND p.createdAt >= :createdAt " +
+            "AND p.deletedAt IS NULL ORDER BY p.viewCount DESC",
+    )
+    fun findTop5PostsByAccessLevelAndPeriod(
+        @Param("createdAt") createdAt: LocalDateTime,
+        @Param("accessLevel") accessLevel: PostAccessLevel,
+        pageable: Pageable,
+    ): List<Post>
 }

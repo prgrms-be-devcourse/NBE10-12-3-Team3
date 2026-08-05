@@ -16,6 +16,7 @@ import com.scommit.domain.post.bookmark.repository.BookmarkRepository
 import com.scommit.domain.post.post.dto.PostCreateRequest
 import com.scommit.domain.post.post.dto.PostListResponse
 import com.scommit.domain.post.post.dto.PostResponse
+import com.scommit.domain.post.post.dto.PostUpdateRequest
 import com.scommit.domain.post.post.entity.PostAccessLevel
 import com.scommit.domain.post.post.entity.PublishStatus
 import com.scommit.domain.post.post.repository.PostRepository
@@ -301,48 +302,43 @@ class BookmarkControllerE2ETest {
             assertThat(getMyBookmarks(accessToken).totalElements).isEqualTo(1)
         }
 
-        // FIXME(#3): BookmarkService.createBookmark 는 findByIdAndDeletedAtIsNull 만 보고 publishStatus 를
-        // 검사하지 않는다. PostService.getPost 는 PRIVATE 게시글을 작성자 외에게 403-1 로 막는데 북마크는 뚫려 있다.
-        // 상세: docs/like-bookmark-notification-e2e-known-issues.md #3
         @Test
-        @DisplayName("7. 타인의 PRIVATE 게시글에도 북마크가 된다")
-        fun createBookmark_onOthersPrivatePost_returns201() {
+        @DisplayName("7. 타인의 PRIVATE 게시글에는 북마크할 수 없고 403-1을 반환한다")
+        fun createBookmark_onOthersPrivatePost_returns403_1() {
             val authorToken = createUserAndGetAccessToken(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
             val postId = createPost(authorToken, PublishStatus.PRIVATE, PostAccessLevel.FREE)
 
             val other = createUserAndLogin(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
 
-            // 게시글 상세는 403-1 로 막힌다.
-            expectResultCode(
-                client
-                    .get()
-                    .uri("/api/posts/$postId")
-                    .header("Authorization", bearer(other.accessToken))
-                    .exchange(),
-                HttpStatus.FORBIDDEN,
-                "403-1",
-            )
+            expectResultCode(createBookmarkRequest(other.accessToken, postId), HttpStatus.FORBIDDEN, "403-1")
 
-            // 그런데 북마크는 통과한다.
-            expectResultCode(createBookmarkRequest(other.accessToken, postId), HttpStatus.CREATED, "201-1")
-
-            assertThat(findBookmark(postId, other.user.id)).isPresent()
-            assertThat(bookmarkCountOf(postId)).isEqualTo(1L)
+            assertThat(findBookmark(postId, other.user.id)).isEmpty()
+            assertThat(bookmarkCountOf(postId)).isZero()
         }
 
-        // FIXME(#3): 바로 위 케이스와 같은 원인. 아직 발행되지 않은(DRAFT) 게시글도 제3자가 북마크할 수 있다.
         @Test
-        @DisplayName("8. 타인의 DRAFT 게시글에도 북마크가 된다")
-        fun createBookmark_onOthersDraftPost_returns201() {
+        @DisplayName("8. 타인의 DRAFT 게시글에는 북마크할 수 없고 403-1을 반환한다")
+        fun createBookmark_onOthersDraftPost_returns403_1() {
             val authorToken = createUserAndGetAccessToken(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
             val postId = createPost(authorToken, PublishStatus.DRAFT, PostAccessLevel.FREE)
 
             val other = createUserAndLogin(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
 
-            expectResultCode(createBookmarkRequest(other.accessToken, postId), HttpStatus.CREATED, "201-1")
+            expectResultCode(createBookmarkRequest(other.accessToken, postId), HttpStatus.FORBIDDEN, "403-1")
 
-            assertThat(findBookmark(postId, other.user.id)).isPresent()
-            assertThat(bookmarkCountOf(postId)).isEqualTo(1L)
+            assertThat(findBookmark(postId, other.user.id)).isEmpty()
+            assertThat(bookmarkCountOf(postId)).isZero()
+        }
+
+        @Test
+        @DisplayName("9. 작성자는 자신의 PRIVATE/DRAFT 게시글에도 북마크할 수 있다")
+        fun createBookmark_onOwnNonPublicPost_returns201() {
+            val session = createUserAndLogin(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
+            val postId = createPost(session.accessToken, PublishStatus.PRIVATE, PostAccessLevel.FREE)
+
+            expectResultCode(createBookmarkRequest(session.accessToken, postId), HttpStatus.CREATED, "201-1")
+
+            assertThat(findBookmark(postId, session.user.id)).isPresent()
         }
     }
 
@@ -450,7 +446,7 @@ class BookmarkControllerE2ETest {
         }
 
         @Test
-        @DisplayName("4. 게시글이 삭제되면 목록에서 빠지지만 Bookmark 행은 남는다")
+        @DisplayName("4. 게시글이 삭제되면 목록에서 빠지고 Bookmark 행도 정리된다")
         fun getMyBookmarks_excludesDeletedPosts() {
             val author = createUserAndLogin(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
             val reader = createUserAndLogin(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
@@ -470,8 +466,8 @@ class BookmarkControllerE2ETest {
                 .extracting<Long>(PostListResponse::id)
                 .containsExactly(kept)
 
-            // 다만 북마크 행 자체는 정리되지 않는다(#2).
-            assertThat(findBookmark(removed, reader.user.id)).isPresent()
+            // 북마크 행 자체도 정리된다(#2).
+            assertThat(findBookmark(removed, reader.user.id)).isEmpty()
         }
 
         @Test
@@ -504,20 +500,28 @@ class BookmarkControllerE2ETest {
                 .containsExactly(theirs)
         }
 
-        // FIXME(#4): 목록 쿼리 findByUserIdAndPostDeletedAtIsNull 이 publishStatus 를 보지 않는다.
-        // #3 으로 비공개 글을 북마크할 수 있고, 그 뒤에는 작성자가 상세를 403-1 로 막아 둔 글의 제목·작성자·
-        // 조회수·좋아요 수가 북마크 목록을 통해 계속 보인다(본문은 PostListResponse 에 없어 노출되지 않는다).
-        // 상세: docs/like-bookmark-notification-e2e-known-issues.md #4
         @Test
-        @DisplayName("7. 타인의 PRIVATE 게시글도 내 북마크 목록에 그대로 노출된다")
-        fun getMyBookmarks_showsOthersPrivatePost() {
+        @DisplayName("7. 북마크 이후 PRIVATE로 전환된 타인의 게시글은 내 북마크 목록에서 빠지지만 행은 남는다")
+        fun getMyBookmarks_excludesOthersPostUnpublishedAfterBookmark() {
             val authorToken = createUserAndGetAccessToken(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
-            val postId = createPost(authorToken, PublishStatus.PRIVATE, PostAccessLevel.FREE)
+            val postId = createPost(authorToken, PublishStatus.PUBLIC, PostAccessLevel.FREE)
 
-            val otherToken = createUserAndGetAccessToken(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
+            val other = createUserAndLogin(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
+            val otherToken = other.accessToken
             createBookmark(otherToken, postId)
 
-            // 상세 조회는 여전히 막혀 있는데
+            // 작성자가 사후에 비공개로 전환
+            client
+                .put()
+                .uri("/api/posts/$postId")
+                .header("Authorization", bearer(authorToken))
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(PostUpdateRequest(null, "북마크 E2E 게시글", "게시글 본문", PublishStatus.PRIVATE, PostAccessLevel.FREE))
+                .exchange()
+                .expectStatus()
+                .isOk()
+
+            // 상세 조회는 이제 막혀 있고
             expectResultCode(
                 client
                     .get()
@@ -528,30 +532,36 @@ class BookmarkControllerE2ETest {
                 "403-1",
             )
 
-            // 북마크 목록에는 그대로 실려 온다.
+            // 북마크 목록에서도 빠진다 — 단, 북마크 행 자체는 지워지지 않는다(작성자가 다시 공개하면 복귀).
             val myBookmarks = getMyBookmarks(otherToken)
+            assertThat(myBookmarks.content).isEmpty()
+            assertThat(findBookmark(postId, other.user.id)).isPresent()
+        }
+
+        @Test
+        @DisplayName("8. 자신의 PRIVATE/DRAFT 게시글을 북마크하면 목록에 그대로 남는다")
+        fun getMyBookmarks_includesOwnNonPublicPost() {
+            val session = createUserAndLogin(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
+            val postId = createPost(session.accessToken, PublishStatus.PRIVATE, PostAccessLevel.FREE)
+            createBookmark(session.accessToken, postId)
+
+            val myBookmarks = getMyBookmarks(session.accessToken)
             assertThat(myBookmarks.content)
                 .extracting<Long>(PostListResponse::id)
                 .containsExactly(postId)
-            assertThat(myBookmarks.content[0].publishStatus).isEqualTo(PublishStatus.PRIVATE)
-            assertThat(myBookmarks.content[0].title).isEqualTo("북마크 E2E 게시글")
         }
 
-        // FIXME(#5): @PageableDefault 로 들어온 Sort 의 프로퍼티를 검증하는 곳이 없어서
-        // Spring Data 의 PropertyReferenceException 이 GlobalExceptionHandler 의 Exception 핸들러까지 올라간다.
-        // 클라이언트 입력이 원인인데 500-1(서버 오류)로 응답한다. 400-1 이 기대되는 지점이다.
-        // 상세: docs/like-bookmark-notification-e2e-known-issues.md #5
         @Test
-        @DisplayName("8. 존재하지 않는 정렬 필드를 넘기면 500-1을 반환한다")
-        fun getMyBookmarks_invalidSortProperty_returns500_1() {
+        @DisplayName("9. 존재하지 않는 정렬 필드를 넘기면 400-1을 반환한다")
+        fun getMyBookmarks_invalidSortProperty_returns400_1() {
             val accessToken = createUserAndGetAccessToken(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
             val postId = createPublicPost(accessToken)
             createBookmark(accessToken, postId)
 
             expectResultCode(
                 getMyBookmarksRequest(accessToken, "?sort=notAField,desc"),
-                HttpStatus.INTERNAL_SERVER_ERROR,
-                "500-1",
+                HttpStatus.BAD_REQUEST,
+                "400-1",
             )
         }
     }
@@ -559,18 +569,9 @@ class BookmarkControllerE2ETest {
     @Nested
     @DisplayName("DELETE /api/posts/{postId}/bookmarks — 북마크 취소")
     inner class DeleteBookmark {
-        // FIXME(#1): BookmarkService.deleteBookmark 가 bookmarkRepository.delete(bookmark) 로 삭제를 예약한 뒤
-        // postRepository.decreaseBookmarkCount(postId) 를 호출하는데, 이 @Modifying 쿼리가
-        // clearAutomatically = true / flushAutomatically = false 다. 대상 테이블이 서로 달라
-        // (post_bookmarks ↔ posts) Hibernate 의 auto-flush 가 걸리지 않고, 쿼리 직후 영속성 컨텍스트가
-        // clear 되면서 예약된 DELETE 가 통째로 버려진다. LikeService.deleteLike 도 같은 모양이다.
-        // 2026-07-27 커밋 c2360f8("count 로직 DB로 마이그레이션")에서 post.decreaseBookmarkCount() 를
-        // postRepository.decreaseBookmarkCount() 로 바꾸며 생긴 회귀다 — 그 이전 버전은 정상 동작했다.
-        // 순수 JDBC 조회와 Hibernate SQL 로그(DELETE 문 미발행)로 확인했다.
-        // 상세: docs/like-bookmark-notification-e2e-known-issues.md #1
         @Test
-        @DisplayName("1. 200-1을 반환하고 bookmarkCount는 줄지만 Bookmark 행과 목록 노출은 그대로다")
-        fun deleteBookmark_returns200ButBookmarkRowSurvives() {
+        @DisplayName("1. 200-1을 반환하고 bookmarkCount가 줄면서 Bookmark 행과 목록 노출도 같이 사라진다")
+        fun deleteBookmark_returns200AndPersistsDeletion() {
             val session = createUserAndLogin(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
             val accessToken = session.accessToken
             val userId = session.user.id
@@ -594,18 +595,13 @@ class BookmarkControllerE2ETest {
                     assertThat(body.data).isNull()
                 }
 
-            // 카운트는 줄었는데
+            // 카운트도 줄고
             assertThat(bookmarkCountOf(postId)).isZero()
-            // 행은 그대로 남아 있고
-            assertThat(findBookmark(postId, userId)).isPresent()
-            // 취소한 게시글이 내 북마크 목록에 계속 보인다 — 사용자에게 바로 드러나는 증상이다.
+            // 행도 실제로 지워진다.
+            assertThat(findBookmark(postId, userId)).isEmpty()
+            // 취소한 게시글은 내 북마크 목록에서도 사라진다.
             val myBookmarks = getMyBookmarks(accessToken)
-            assertThat(myBookmarks.totalElements).isEqualTo(1)
-            assertThat(myBookmarks.content)
-                .extracting<Long>(PostListResponse::id)
-                .containsExactly(postId)
-            assertThat(myBookmarks.content[0].bookmarkCount).isZero()
-            assertThat(myBookmarks.content[0].isBookmarked).isTrue()
+            assertThat(myBookmarks.totalElements).isZero()
         }
 
         @Test
@@ -691,12 +687,9 @@ class BookmarkControllerE2ETest {
             assertThat(getMyBookmarks(owner.accessToken).totalElements).isEqualTo(1)
         }
 
-        // FIXME(#1): 첫 취소에서 행이 실제로 지워지지 않기 때문에(#1) 두 번째 취소도 대상을 찾아 성공한다.
-        // 정상 구현이라면 두 번째는 404-8이어야 한다. bookmarkCount 가 음수가 되지 않는 것은
-        // decreaseBookmarkCount 의 CASE WHEN 가드 덕분이지, 취소가 멱등해서가 아니다.
         @Test
-        @DisplayName("7. 같은 북마크를 두 번 취소해도 200-1이고 bookmarkCount는 0 아래로 내려가지 않는다")
-        fun deleteBookmark_twice_returns200BothTimes() {
+        @DisplayName("7. 같은 북마크를 두 번 취소하면 첫 번째만 200-1이고 두 번째는 404-8이다")
+        fun deleteBookmark_twice_secondReturns404_8() {
             val session = createUserAndLogin(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
             val accessToken = session.accessToken
             val postId = createPublicPost(accessToken)
@@ -705,26 +698,41 @@ class BookmarkControllerE2ETest {
             expectResultCode(deleteBookmarkRequest(accessToken, postId), HttpStatus.OK, "200-1")
             assertThat(bookmarkCountOf(postId)).isZero()
 
-            expectResultCode(deleteBookmarkRequest(accessToken, postId), HttpStatus.OK, "200-1")
+            expectResultCode(deleteBookmarkRequest(accessToken, postId), HttpStatus.NOT_FOUND, "404-8")
             assertThat(bookmarkCountOf(postId)).isZero()
-            assertThat(findBookmark(postId, session.user.id)).isPresent()
+            assertThat(findBookmark(postId, session.user.id)).isEmpty()
         }
 
-        // FIXME(#1): 취소가 행을 지우지 않으므로(#1) 유니크 제약(uk_post_bookmarks_post_user)이 살아 있어
-        // 같은 게시글을 다시 북마크할 수 없다. 목록에는 계속 남아 있는데 "다시 북마크"만 막히는 상태다.
         @Test
-        @DisplayName("8. 취소한 뒤 다시 북마크하면 409-8이라 재북마크가 불가능하다")
-        fun createBookmark_afterDelete_returns409_8() {
+        @DisplayName("8. 취소한 뒤 다시 북마크하면 201-1로 재북마크가 된다")
+        fun createBookmark_afterDelete_returns201_1() {
             val accessToken = createUserAndGetAccessToken(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
             val postId = createPublicPost(accessToken)
 
             createBookmark(accessToken, postId)
             expectResultCode(deleteBookmarkRequest(accessToken, postId), HttpStatus.OK, "200-1")
 
-            expectResultCode(createBookmarkRequest(accessToken, postId), HttpStatus.CONFLICT, "409-8")
+            expectResultCode(createBookmarkRequest(accessToken, postId), HttpStatus.CREATED, "201-1")
 
-            assertThat(bookmarkCountOf(postId)).isZero()
+            assertThat(bookmarkCountOf(postId)).isEqualTo(1L)
             assertThat(getMyBookmarks(accessToken).totalElements).isEqualTo(1)
+        }
+
+        @Test
+        @DisplayName("9. 게시글을 삭제하면 북마크 추가·취소가 모두 404-3이 되고 연관 Bookmark 행도 정리된다")
+        fun deletingPost_blocksBookmarkApis_andCleansUpBookmarkRows() {
+            val session = createUserAndLogin(client, uniqueEmail(), DEFAULT_PASSWORD, uniqueNickname())
+            val accessToken = session.accessToken
+            val postId = createPublicPost(accessToken)
+            createBookmark(accessToken, postId)
+
+            deletePost(accessToken, postId)
+
+            expectResultCode(createBookmarkRequest(accessToken, postId), HttpStatus.NOT_FOUND, "404-3")
+            expectResultCode(deleteBookmarkRequest(accessToken, postId), HttpStatus.NOT_FOUND, "404-3")
+
+            assertThat(checkNotNull(postRepository.findByIdOrNull(postId)).deletedAt).isNotNull()
+            assertThat(findBookmark(postId, session.user.id)).isEmpty()
         }
     }
 
