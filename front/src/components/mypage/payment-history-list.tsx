@@ -14,6 +14,23 @@ interface PaymentResponse {
   createDate: string;
 }
 
+/**
+ * 결제 상태를 사용자용 문구로 옮깁니다.
+ *
+ * READY는 주문만 만들어지고 승인까지 가지 못한 상태입니다.
+ * (결제창을 닫았거나 토스에서 취소한 경우) 사용자 입장에서는 결제가 되지 않은 것이므로
+ * ABORTED와 같은 문구로 보여줍니다.
+ */
+const STATUS_LABEL: Record<string, { label: string; className: string }> = {
+  DONE: { label: "결제 완료", className: "bg-green-100 text-green-700" },
+  READY: { label: "결제 실패", className: "bg-red-100 text-red-700" },
+  IN_PROGRESS: { label: "결제 실패", className: "bg-red-100 text-red-700" },
+  ABORTED: { label: "결제 실패", className: "bg-red-100 text-red-700" },
+  CANCELED: { label: "결제 취소", className: "bg-neutral-100 text-neutral-600" },
+};
+
+const UNKNOWN_STATUS = { label: "확인 필요", className: "bg-neutral-100 text-neutral-600" };
+
 export function PaymentHistoryList() {
   const [items, setItems] = useState<PaymentResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -81,7 +98,7 @@ export function PaymentHistoryList() {
           minute: "2-digit",
         });
 
-        const isSuccess = payment.status === "DONE";
+        const statusView = STATUS_LABEL[payment.status] ?? UNKNOWN_STATUS;
 
         return (
           <div
@@ -104,13 +121,9 @@ export function PaymentHistoryList() {
                 {payment.amount.toLocaleString()}원
               </p>
               <span
-                className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${
-                  isSuccess
-                    ? "bg-green-100 text-green-700"
-                    : "bg-red-100 text-red-700"
-                }`}
+                className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${statusView.className}`}
               >
-                {isSuccess ? "결제 완료" : payment.status}
+                {statusView.label}
               </span>
             </div>
           </div>
