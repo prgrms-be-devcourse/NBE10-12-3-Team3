@@ -45,12 +45,6 @@ import org.springframework.data.domain.SliceImpl
 import org.springframework.test.util.ReflectionTestUtils
 import java.util.Optional
 
-// any() returns null at runtime, which fails Kotlin's non-null check on Kotlin-declared repository params.
-private fun <T> anyOfType(): T {
-    any<T>()
-    @Suppress("UNCHECKED_CAST")
-    return null as T
-}
 
 /**
  * PostService 단위 테스트
