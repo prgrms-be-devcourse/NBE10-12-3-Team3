@@ -353,10 +353,11 @@ class PostService
         private fun getThumbnailMap(posts: List<Post>): Map<Long, String> {
             if (posts.isEmpty()) return emptyMap()
             val mediaList = postMediaRepository.findByPostInAndType(posts, PostMediaType.THUMBNAIL)
-            return mediaList.mapNotNull { pm ->
-                val postId = pm.post.id
-                val url = pm.media.url
-                if (postId != null && url != null) postId to url else null
-            }.toMap()
+            return mediaList
+                .mapNotNull { pm ->
+                    val postId = pm.post.id
+                    val url = pm.media.url
+                    if (postId != null && url != null) postId to url else null
+                }.toMap()
         }
     }
