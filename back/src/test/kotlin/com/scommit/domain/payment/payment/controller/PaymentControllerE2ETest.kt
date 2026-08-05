@@ -170,7 +170,7 @@ class PaymentControllerE2ETest {
                 .body("""{"paymentKey":"pk","orderId":"order_notexist"}""")
                 .exchange(),
             HttpStatus.NOT_FOUND,
-            "404-10",
+            "404-11",
         )
     }
 

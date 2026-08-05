@@ -37,8 +37,8 @@ enum class ErrorCode(
     MEDIA_NOT_FOUND(HttpStatus.NOT_FOUND, "404-7", "미디어를 찾을 수 없습니다."),
     BOOKMARK_NOT_FOUND(HttpStatus.NOT_FOUND, "404-8", "북마크를 찾을 수 없습니다."),
     LIKE_NOT_FOUND(HttpStatus.NOT_FOUND, "404-9", "좋아요 기록이 없습니다."),
-    PAYMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "404-10", "결제 정보를 찾을 수 없습니다."),
-    COUPON_POLICY_NOT_FOUND(HttpStatus.NOT_FOUND, "404-11", "쿠폰 이벤트를 찾을 수 없습니다."),
+    COUPON_POLICY_NOT_FOUND(HttpStatus.NOT_FOUND, "404-10", "쿠폰 이벤트를 찾을 수 없습니다."),
+    PAYMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "404-11", "결제 정보를 찾을 수 없습니다."),
 
     // 409 Conflict
     DUPLICATE_EMAIL(HttpStatus.CONFLICT, "409-1", "이미 사용중인 이메일입니다."),
