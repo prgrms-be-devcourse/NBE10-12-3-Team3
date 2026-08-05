@@ -7,23 +7,27 @@ import jakarta.persistence.Entity
 import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
 import jakarta.persistence.FetchType
-import jakarta.persistence.Index
 import jakarta.persistence.JoinColumn
 import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
+import jakarta.persistence.UniqueConstraint
 
 @Entity
 @Table(
     name = "payments",
-    indexes = [
-        Index(name = "idx_payment_order_id", columnList = "order_id", unique = true),
+    uniqueConstraints = [
+        UniqueConstraint(
+            name = "uk_payments_order_id",
+            columnNames = ["order_id"],
+        ),
     ],
 )
 class Payment(
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     val user: User,
-    @Column(name = "order_id", nullable = false, unique = true)
+    // 유니크 제약은 테이블 레벨(uk_payments_order_id)에서 이름과 함께 선언한다.
+    @Column(name = "order_id", nullable = false)
     val orderId: String,
     @Column(name = "order_name", nullable = false)
     val orderName: String,

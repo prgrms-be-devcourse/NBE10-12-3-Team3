@@ -8,7 +8,6 @@ import {
     Bookmark,
     ChevronDown,
     Clock,
-    CreditCard,
     History,
     LogOut,
     Menu,
