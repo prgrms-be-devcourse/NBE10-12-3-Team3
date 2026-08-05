@@ -73,6 +73,19 @@ jobs:
             const cellsOf = row => [...row.matchAll(CELL_RE)].map(m => m[1] ?? '');
             const num = s => parseInt(String(s).replace(/,/g, ''), 10);
 
+            // Missed Branches 바 셀은 텍스트 없이 <img title="N"> 두 개(빨강=missed, 초록=covered)만 담고 있다.
+            // 분모가 작은 클래스는 분기 1개만 놓쳐도 퍼센트가 크게 출렁이므로, 실제 개수를 같이 보여줘야 판단할 수 있다.
+            const branchCounts = cell => {
+              if (!cell.trim()) return null;
+              let missed = 0;
+              let covered = 0;
+              for (const m of cell.matchAll(/(red|green)bar\.gif"[^>]*title="(\d+)"/g)) {
+                if (m[1] === 'red') missed = num(m[2]);
+                else covered = num(m[2]);
+              }
+              return { missed, total: missed + covered };
+            };
+
             // 컬럼 순서(고정): Element, MissedInstr, Instr%, MissedBranch, Branch%|n/a,
             //                  MissedCxty, Cxty, MissedLines, Lines, MissedMethods, Methods, MissedClasses, Classes
             // "라인"에 필요한 실제 Line%는 jacoco가 텍스트로 안 주므로 MissedLines/Lines로 직접 계산한다
@@ -120,6 +133,7 @@ jobs:
                 name: nameMatch[1].replace(/com\.scommit\.domain\./, ''),
                 line: lineCov,
                 branch: branchCov,
+                branchCounts: branchCounts(cells[3]),
               });
             });
 
@@ -130,9 +144,12 @@ jobs:
               packageReport = `### 📦 패키지별 커버리지\n| 패키지 | 라인 | 브랜치 |\n|--------|------|--------|\n`;
               packages.forEach(pkg => {
                 const lineStatus = pkg.line >= 80 ? '✅' : pkg.line >= 70 ? '⚠️' : '❌';
-                const branchCell = pkg.branch === null
-                  ? 'n/a'
-                  : `${pkg.branch}% ${pkg.branch >= 70 ? '✅' : pkg.branch >= 60 ? '⚠️' : '❌'}`;
+                let branchCell = 'n/a';
+                if (pkg.branch !== null) {
+                  const branchStatus = pkg.branch >= 70 ? '✅' : pkg.branch >= 60 ? '⚠️' : '❌';
+                  const counts = pkg.branchCounts ? ` (${pkg.branchCounts.total - pkg.branchCounts.missed}/${pkg.branchCounts.total})` : '';
+                  branchCell = `${pkg.branch}% ${branchStatus}${counts}`;
+                }
                 packageReport += `| ${pkg.name} | ${pkg.line}% ${lineStatus} | ${branchCell} |\n`;
               });
             }
