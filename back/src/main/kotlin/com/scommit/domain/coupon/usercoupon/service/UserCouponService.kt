@@ -24,7 +24,7 @@ class UserCouponService(
         couponPolicyId: Long,
     ): UserCouponResponse {
         val couponPolicy =
-            couponPolicyRepository.findByIdAndDeletedAtIsNull(couponPolicyId)
+            couponPolicyRepository.findByIdAndDeletedAtIsNullForUpdate(couponPolicyId)
                 ?: throw BusinessException(ErrorCode.COUPON_POLICY_NOT_FOUND)
 
         if (!couponPolicy.isActive()) {

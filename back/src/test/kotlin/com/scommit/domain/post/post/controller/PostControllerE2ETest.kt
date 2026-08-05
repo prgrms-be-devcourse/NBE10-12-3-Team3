@@ -944,13 +944,9 @@ class PostControllerE2ETest {
                 }
         }
 
-        // FIXME(#5): 이 프로젝트에 Pageable 정렬 예외(PropertyReferenceException) 전용 핸들러가 없어
-        // GlobalExceptionHandler의 포괄 Exception 핸들러로 떨어져 500-1이 된다.
-        // 같은 근본 원인(클라이언트가 잘못 준 정렬/파라미터가 500으로 응답됨)이 BookmarkControllerE2ETest.java,
-        // SeriesControllerE2ETest.java에도 각각 별도 케이스로 나타난다.
         @Test
-        @DisplayName("3. 존재하지 않는 정렬 프로퍼티를 쓰면 실제 동작을 그대로 고정한다 — 500-1이 난다")
-        fun getPosts_invalidSortProperty_actualBehaviorReturns500_1() {
+        @DisplayName("3. 존재하지 않는 정렬 프로퍼티를 쓰면 400-1을 반환한다")
+        fun getPosts_invalidSortProperty_returns400_1() {
             val accessToken = newUserToken()
 
             client
@@ -959,11 +955,11 @@ class PostControllerE2ETest {
                 .header("Authorization", bearer(accessToken))
                 .exchange()
                 .expectStatus()
-                .is5xxServerError()
+                .isBadRequest()
                 .expectBody<ApiResponse<Void>>()
                 .value { body ->
                     checkNotNull(body)
-                    assertThat(body.resultCode).isEqualTo("500-1")
+                    assertThat(body.resultCode).isEqualTo("400-1")
                 }
         }
     }

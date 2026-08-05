@@ -501,6 +501,7 @@ class UserControllerTest {
             given(mockUser.email).willReturn(email)
             given(mockUser.nickname).willReturn(nickname)
             given(mockUser.introduction).willReturn(introduction)
+            given(mockUser.role).willReturn(UserRole.USER)
             given(mockUser.createdAt).willReturn(LocalDateTime.of(2026, 1, 1, 0, 0))
             given(mockUser.updatedAt).willReturn(LocalDateTime.of(2026, 1, 2, 0, 0))
             return mockUser
