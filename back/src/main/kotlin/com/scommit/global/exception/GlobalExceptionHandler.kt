@@ -1,7 +1,10 @@
 package com.scommit.global.exception
 
 import com.scommit.global.dto.RsData
+import org.hibernate.query.sqm.UnknownPathException
 import org.slf4j.LoggerFactory
+import org.springframework.dao.InvalidDataAccessApiUsageException
+import org.springframework.data.core.PropertyReferenceException
 import org.springframework.http.ResponseEntity
 import org.springframework.http.converter.HttpMessageNotReadableException
 import org.springframework.validation.BindException
@@ -86,6 +89,43 @@ class GlobalExceptionHandler {
         val errorCode = ErrorCode.INVALID_INPUT_VALUE
         val rsData: RsData<Void> = RsData(errorCode.code, "올바른 JSON 요청 형식이 아닙니다.")
         return ResponseEntity(rsData, errorCode.httpStatus)
+    }
+
+    /**
+     * 존재하지 않는 정렬 프로퍼티(예: ?sort=notAField)를 요청했을 때
+     * (클라이언트 입력 오류이므로 500이 아닌 400으로 응답한다)
+     */
+    @ExceptionHandler(PropertyReferenceException::class)
+    fun handlePropertyReferenceException(e: PropertyReferenceException): ResponseEntity<RsData<Void>> {
+        log.warn("PropertyReferenceException: {}", e.message)
+        return invalidSortFieldResponse()
+    }
+
+    /**
+     * 위와 같은 문제지만 리포지토리 메서드가 파생 쿼리가 아니라 @Query(JPQL)일 때 나오는 경로.
+     * 이 경우 Spring Data의 자체 Sort 검증(PropertyReferenceException)을 안 타고, Sort가 JPQL
+     * 문자열에 그대로 덧붙은 채로 Hibernate까지 넘어가 UnknownPathException으로 실패한다.
+     * InvalidDataAccessApiUsageException은 이 원인 말고도 다른 JPA 오용 상황에서도 나오므로,
+     * 원인이 UnknownPathException일 때만 400으로 좁혀서 응답하고 나머지는 500으로 그대로 둔다.
+     * 주의: 이 경로에서 Spring의 Hibernate 예외 변환기가 cause를 채우지 않고 메시지에만
+     * "org.hibernate.query.sqm.UnknownPathException: ..."을 실어 보낸다(실제 로그로 확인함) —
+     * 그래서 e.cause가 아니라 메시지 문자열로 판별한다.
+     */
+    @ExceptionHandler(InvalidDataAccessApiUsageException::class)
+    fun handleInvalidDataAccessApiUsageException(e: InvalidDataAccessApiUsageException): ResponseEntity<RsData<Void>> {
+        val isUnknownPath = e.cause is UnknownPathException || e.message?.contains("UnknownPathException") == true
+        if (isUnknownPath) {
+            log.warn("UnknownPathException(존재하지 않는 정렬/쿼리 필드): {}", e.message)
+            return invalidSortFieldResponse()
+        }
+        log.error("InvalidDataAccessApiUsageException", e)
+        val errorCode = ErrorCode.INTERNAL_SERVER_ERROR
+        return ResponseEntity(RsData(errorCode.code, errorCode.message), errorCode.httpStatus)
+    }
+
+    private fun invalidSortFieldResponse(): ResponseEntity<RsData<Void>> {
+        val errorCode = ErrorCode.INVALID_INPUT_VALUE
+        return ResponseEntity(RsData(errorCode.code, "존재하지 않는 정렬 필드입니다."), errorCode.httpStatus)
     }
 
     /**

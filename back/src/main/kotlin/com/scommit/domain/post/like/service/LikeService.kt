@@ -2,6 +2,7 @@ package com.scommit.domain.post.like.service
 
 import com.scommit.domain.post.like.entity.Like
 import com.scommit.domain.post.like.repository.LikeRepository
+import com.scommit.domain.post.post.entity.PublishStatus
 import com.scommit.domain.post.post.repository.PostRepository
 import com.scommit.domain.user.user.entity.User
 import com.scommit.global.exception.BusinessException
@@ -15,6 +16,7 @@ class LikeService(
     private val likeRepository: LikeRepository,
     private val postRepository: PostRepository,
 ) {
+    @Suppress("ThrowsCount")
     @Transactional
     fun createLike(
         postId: Long,
@@ -23,6 +25,11 @@ class LikeService(
         val post =
             postRepository.findByIdAndDeletedAtIsNull(postId)
                 ?: throw BusinessException(ErrorCode.POST_NOT_FOUND)
+
+        val isOwner = post.user.id == actor.id
+        if (post.publishStatus != PublishStatus.PUBLIC && !isOwner) {
+            throw BusinessException(ErrorCode.ACCESS_DENIED)
+        }
 
         try {
             likeRepository.save(Like(post, actor))
@@ -41,10 +48,10 @@ class LikeService(
             ?: throw BusinessException(ErrorCode.POST_NOT_FOUND)
 
         val actorId = requireNotNull(actor.id)
-        val like =
-            likeRepository.findByPostIdAndUserId(postId, actorId)
-                ?: throw BusinessException(ErrorCode.LIKE_NOT_FOUND)
-        likeRepository.delete(like)
+        val deletedCount = likeRepository.deleteByPostIdAndUserId(postId, actorId)
+        if (deletedCount == 0) {
+            throw BusinessException(ErrorCode.LIKE_NOT_FOUND)
+        }
         postRepository.decreaseLikeCount(postId)
     }
 }
