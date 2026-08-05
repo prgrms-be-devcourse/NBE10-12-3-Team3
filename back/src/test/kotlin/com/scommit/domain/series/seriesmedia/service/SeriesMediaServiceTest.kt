@@ -251,15 +251,16 @@ class SeriesMediaServiceTest {
         }
 
         @Test
-        @DisplayName("성공: 썸네일 없는 시리즈 조회 시 null을 반환한다")
-        fun getMedia_NoMedia_Success() {
+        @DisplayName("실패: 썸네일 없는 시리즈 조회 시 MEDIA_NOT_FOUND 예외를 던진다")
+        fun getMedia_NoMedia_Fail() {
             val series = mock(Series::class.java)
 
             given(seriesRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(series)
             given(seriesMediaRepository.findBySeries(series)).willReturn(null)
 
-            val result = seriesMediaService.getMedia(1L)
-            assertThat(result).isNull()
+            assertThatThrownBy { seriesMediaService.getMedia(1L) }
+                .isInstanceOf(BusinessException::class.java)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.MEDIA_NOT_FOUND)
         }
     }
 

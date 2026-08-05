@@ -1662,25 +1662,13 @@ class SeriesControllerE2ETest {
                 }
         }
 
-        // FIXME: SeriesMediaService.getMedia()는 orElse(null)로 끝내고 컨트롤러가 그 null을 그대로
-        // 200-1로 감싼다. 반면 같은 상황에서 DELETE /{id}/medias는 404-7(MEDIA_NOT_FOUND)을 던진다 —
-        // 한 리소스의 "없음"이 메서드에 따라 200과 404로 갈린다. 상세: docs/series-e2e-known-issues.md #3
         @Test
-        @DisplayName("3. 썸네일이 없으면 실제 동작을 그대로 고정한다 (200 + data:null)")
-        @Suppress("ForbiddenComment")
-        fun getMedia_withoutMedia_returns200WithNullData() {
+        @DisplayName("3. 썸네일이 없으면 404-7을 반환한다 (DELETE와 동일한 '없음' 표현)")
+        fun getMedia_withoutMedia_returns404_7() {
             val accessToken = newUserToken()
             val seriesId = createSeries(accessToken, "썸네일 없는 시리즈", "본문")
 
-            getMediaRequest(seriesId)
-                .expectStatus()
-                .isOk()
-                .expectBody<ApiResponse<SeriesMediaResponse>>()
-                .value { body ->
-                    checkNotNull(body)
-                    assertThat(body.resultCode).isEqualTo("200-1")
-                    assertThat(body.data).isNull()
-                }
+            expectResultCode(getMediaRequest(seriesId), HttpStatus.NOT_FOUND, "404-7")
         }
 
         @Test
@@ -1716,7 +1704,7 @@ class SeriesControllerE2ETest {
         }
 
         @Test
-        @DisplayName("2. 소유자가 삭제하면 200을 반환하고, GET은 data:null이 되며 파일도 삭제된다")
+        @DisplayName("2. 소유자가 삭제하면 200을 반환하고, GET은 404-7이 되며 파일도 삭제된다")
         fun deleteMedia_owner_returns200_andMediaAndFileAreGone() {
             val accessToken = newUserToken()
             val seriesId = createSeries(accessToken, "썸네일 삭제 대상", "본문")
@@ -1726,14 +1714,7 @@ class SeriesControllerE2ETest {
 
             expectResultCode(deleteMediaRequest(accessToken, seriesId), HttpStatus.OK, "200-1")
 
-            getMediaRequest(seriesId)
-                .expectStatus()
-                .isOk()
-                .expectBody<ApiResponse<SeriesMediaResponse>>()
-                .value { body ->
-                    checkNotNull(body)
-                    assertThat(body.data).isNull()
-                }
+            expectResultCode(getMediaRequest(seriesId), HttpStatus.NOT_FOUND, "404-7")
             assertThat(Files.exists(filePath)).isFalse()
         }
 

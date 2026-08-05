@@ -49,12 +49,13 @@ class SeriesMediaService(
     }
 
     @Transactional(readOnly = true)
-    fun getMedia(seriesId: Long): SeriesMediaResponse? {
+    fun getMedia(seriesId: Long): SeriesMediaResponse {
         val series =
             seriesRepository.findByIdAndDeletedAtIsNull(seriesId)
                 ?: throw BusinessException(ErrorCode.SERIES_NOT_FOUND)
 
-        val seriesMedia = seriesMediaRepository.findBySeries(series) ?: return null
+        val seriesMedia =
+            seriesMediaRepository.findBySeries(series) ?: throw BusinessException(ErrorCode.MEDIA_NOT_FOUND)
         return SeriesMediaResponse(seriesMedia)
     }
 
