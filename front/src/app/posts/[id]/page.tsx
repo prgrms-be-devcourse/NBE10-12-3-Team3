@@ -2,6 +2,7 @@
 
 import React, {useEffect, useState} from "react";
 import {notFound, useRouter} from "next/navigation";
+import {PaymentWidgetModal} from "@/components/payment/payment-widget-modal";
 import Link from "next/link";
 import {Bookmark, BookOpen, Calendar, Eye, Heart, Pencil, Trash2} from "lucide-react";
 import {Avatar} from "@/components/ui/avatar";
@@ -43,19 +44,34 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
     const [bookmarked, setBookmarked] = useState(false);
     const [likeCount, setLikeCount] = useState(0);
     const [bookmarkCount, setBookmarkCount] = useState(0);
+    const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+
+    const fetchPost = React.useCallback(
+        () =>
+            apiFetch<Post>(`/api/posts/${id}`)
+                .then((data) => {
+                    setPost(data);
+                    setLiked(data.isLiked);
+                    setBookmarked(data.isBookmarked);
+                    setLikeCount(data.likeCount);
+                    setBookmarkCount(data.bookmarkCount);
+                })
+                .catch(() => setPost(null)),
+        [id]
+    );
 
     useEffect(() => {
-        apiFetch<Post>(`/api/posts/${id}`)
-            .then((data) => {
-                setPost(data);
-                setLiked(data.isLiked);
-                setBookmarked(data.isBookmarked);
-                setLikeCount(data.likeCount);
-                setBookmarkCount(data.bookmarkCount);
-            })
-            .catch(() => setPost(null))
-            .finally(() => setLoading(false));
-    }, [id]);
+        fetchPost().finally(() => setLoading(false));
+    }, [fetchPost]);
+
+    // 토스 결제 후 리다이렉트로 돌아온 경우 승인 모달을 자동으로 띄웁니다.
+    // 모달은 페이월과 형제로 페이지가 소유하므로, 잠금 상태가 어떻든 언마운트되지 않습니다.
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get("paymentKey") || params.get("payment_fail")) {
+            setIsPaymentModalOpen(true);
+        }
+    }, []);
 
     if (loading) return <div className="min-h-screen bg-neutral-50 pt-20 flex justify-center"><div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent mt-20" /></div>;
     if (!post) return notFound();
@@ -175,8 +191,11 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
                 </div>
 
                 {/* 본문 */}
-                {post.isLocked && typeof window !== 'undefined' && !window.location.search.includes('paymentKey') ? (
-                    <BlurPaywall isLoggedIn={hasMounted && isLoggedIn} creatorName={post.nickname} />
+                {post.isLocked ? (
+                    <BlurPaywall
+                        isLoggedIn={hasMounted && isLoggedIn}
+                        onJoinClick={() => setIsPaymentModalOpen(true)}
+                    />
                 ) : (
                     <div className="prose max-w-none text-neutral-dark">
                         <div dangerouslySetInnerHTML={{ __html: post.body ?? "" }} />
@@ -206,6 +225,21 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
                 {/* 댓글 */}
                 <CommentList postId={Number(id)} isLocked={post.isLocked} />
             </div>
+
+            {/*
+              결제 모달은 페이월과 형제로 두어야 합니다.
+              페이월 안에 두면 잠금이 풀리는 순간 함께 언마운트되어 승인 요청이 유실됩니다.
+            */}
+            <PaymentWidgetModal
+                isOpen={isPaymentModalOpen}
+                onClose={() => setIsPaymentModalOpen(false)}
+                creatorName={post.nickname}
+                creatorId={post.userId}
+                onSuccess={() => {
+                    // 승인이 끝나면 서버가 멤버십을 반영하므로 isLocked가 풀립니다.
+                    fetchPost();
+                }}
+            />
         </div>
     );
 }
