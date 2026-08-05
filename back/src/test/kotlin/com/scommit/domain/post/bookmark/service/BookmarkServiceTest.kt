@@ -14,16 +14,19 @@ import com.scommit.global.exception.BusinessException
 import com.scommit.global.exception.ErrorCode
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
+import org.assertj.core.api.Assertions.tuple
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.ArgumentMatchers.any
+import org.mockito.ArgumentMatchers.anyLong
 import org.mockito.BDDMockito.given
 import org.mockito.InjectMocks
 import org.mockito.Mock
 import org.mockito.Mockito.never
+import org.mockito.Mockito.times
 import org.mockito.Mockito.verify
 import org.mockito.junit.jupiter.MockitoExtension
 import org.springframework.dao.DataIntegrityViolationException
@@ -32,6 +35,13 @@ import org.springframework.data.domain.PageImpl
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Pageable
 import org.springframework.test.util.ReflectionTestUtils
+
+// any() returns null at runtime, which fails Kotlin's non-null check on Kotlin-declared repository params.
+private fun <T> anyOfType(): T {
+    any<T>()
+    @Suppress("UNCHECKED_CAST")
+    return null as T
+}
 
 @ExtendWith(MockitoExtension::class)
 class BookmarkServiceTest {
@@ -124,31 +134,30 @@ class BookmarkServiceTest {
         fun deleteBookmark_success() {
             // given
             ReflectionTestUtils.setField(post, "bookmarkCount", 1L)
-            val bookmark = Bookmark(post = post, user = actor)
             given(postRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(post)
-            given(bookmarkRepository.findByPostIdAndUserId(10L, 1L)).willReturn(bookmark)
+            given(bookmarkRepository.deleteByPostIdAndUserId(10L, 1L)).willReturn(1)
 
             // when
             bookmarkService.deleteBookmark(10L, actor)
 
             // then
-            verify(bookmarkRepository).delete(bookmark)
+            verify(bookmarkRepository).deleteByPostIdAndUserId(10L, 1L)
             verify(postRepository).decreaseBookmarkCount(10L)
         }
 
         @Test
-        @DisplayName("실패: 북마크가 없는 경우 BOOKMARK_NOT_FOUND 예외를 던진다")
+        @DisplayName("실패: 북마크가 없는 경우 BOOKMARK_NOT_FOUND 예외를 던지고 bookmarkCount를 건드리지 않는다")
         fun deleteBookmark_bookmarkNotFound() {
             // given
             given(postRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(post)
-            given(bookmarkRepository.findByPostIdAndUserId(10L, 1L)).willReturn(null)
+            given(bookmarkRepository.deleteByPostIdAndUserId(10L, 1L)).willReturn(0)
 
             // when & then
             assertThatThrownBy { bookmarkService.deleteBookmark(10L, actor) }
                 .isInstanceOf(BusinessException::class.java)
                 .hasFieldOrPropertyWithValue("errorCode", ErrorCode.BOOKMARK_NOT_FOUND)
 
-            verify(bookmarkRepository, never()).delete(any())
+            verify(postRepository, never()).decreaseBookmarkCount(anyLong())
         }
 
         @Test
@@ -162,7 +171,7 @@ class BookmarkServiceTest {
                 .isInstanceOf(BusinessException::class.java)
                 .hasFieldOrPropertyWithValue("errorCode", ErrorCode.POST_NOT_FOUND)
 
-            verify(bookmarkRepository, never()).delete(any())
+            verify(bookmarkRepository, never()).deleteByPostIdAndUserId(anyLong(), anyLong())
         }
     }
 
@@ -176,7 +185,8 @@ class BookmarkServiceTest {
             val pageable: Pageable = PageRequest.of(0, 10)
             val bookmark = Bookmark(post = post, user = actor)
             val page: Page<Bookmark> = PageImpl(listOf(bookmark))
-            given(bookmarkRepository.findByUserIdAndPostDeletedAtIsNull(1L, pageable)).willReturn(page)
+            given(bookmarkRepository.findByUserIdAndPostDeletedAtIsNull(1L, PublishStatus.PUBLIC, pageable))
+                .willReturn(page)
 
             // when
             val result: Page<PostListResponse> = bookmarkService.getMyBookmarks(actor, pageable)
@@ -192,7 +202,8 @@ class BookmarkServiceTest {
             // given
             val pageable: Pageable = PageRequest.of(0, 10)
             val emptyPage: Page<Bookmark> = PageImpl(emptyList())
-            given(bookmarkRepository.findByUserIdAndPostDeletedAtIsNull(1L, pageable)).willReturn(emptyPage)
+            given(bookmarkRepository.findByUserIdAndPostDeletedAtIsNull(1L, PublishStatus.PUBLIC, pageable))
+                .willReturn(emptyPage)
 
             // when
             val result: Page<PostListResponse> = bookmarkService.getMyBookmarks(actor, pageable)
@@ -208,7 +219,8 @@ class BookmarkServiceTest {
             val pageable: Pageable = PageRequest.of(0, 10)
             val bookmark = Bookmark(post = post, user = actor)
             val page: Page<Bookmark> = PageImpl(listOf(bookmark))
-            given(bookmarkRepository.findByUserIdAndPostDeletedAtIsNull(1L, pageable)).willReturn(page)
+            given(bookmarkRepository.findByUserIdAndPostDeletedAtIsNull(1L, PublishStatus.PUBLIC, pageable))
+                .willReturn(page)
 
             // when
             val result: Page<PostListResponse> = bookmarkService.getMyBookmarks(actor, pageable)
@@ -224,8 +236,9 @@ class BookmarkServiceTest {
             val pageable: Pageable = PageRequest.of(0, 10)
             val bookmark = Bookmark(post = post, user = actor)
             val page: Page<Bookmark> = PageImpl(listOf(bookmark))
-            given(bookmarkRepository.findByUserIdAndPostDeletedAtIsNull(1L, pageable)).willReturn(page)
-            given(likeRepository.existsByPostIdAndUserId(10L, 1L)).willReturn(true)
+            given(bookmarkRepository.findByUserIdAndPostDeletedAtIsNull(1L, PublishStatus.PUBLIC, pageable))
+                .willReturn(page)
+            given(likeRepository.findPostIdsByPostIdInAndUserId(listOf(10L), 1L)).willReturn(listOf(10L))
 
             // when
             val result: Page<PostListResponse> = bookmarkService.getMyBookmarks(actor, pageable)
@@ -241,14 +254,45 @@ class BookmarkServiceTest {
             val pageable: Pageable = PageRequest.of(0, 10)
             val bookmark = Bookmark(post = post, user = actor)
             val page: Page<Bookmark> = PageImpl(listOf(bookmark))
-            given(bookmarkRepository.findByUserIdAndPostDeletedAtIsNull(1L, pageable)).willReturn(page)
-            given(likeRepository.existsByPostIdAndUserId(10L, 1L)).willReturn(false)
+            given(bookmarkRepository.findByUserIdAndPostDeletedAtIsNull(1L, PublishStatus.PUBLIC, pageable))
+                .willReturn(page)
+            given(likeRepository.findPostIdsByPostIdInAndUserId(listOf(10L), 1L)).willReturn(emptyList())
 
             // when
             val result: Page<PostListResponse> = bookmarkService.getMyBookmarks(actor, pageable)
 
             // then
             assertThat(result.content[0].isLiked).isFalse()
+        }
+
+        @Test
+        @DisplayName("성공: 북마크가 여러 건이어도 좋아요 여부는 배치 조회 1번으로 해결한다(N+1 방지)")
+        fun getMyBookmarks_multipleItems_batchesLikeLookup() {
+            // given
+            val pageable: Pageable = PageRequest.of(0, 10)
+            val otherPost =
+                Post(
+                    user = actor,
+                    series = null,
+                    title = "다른 게시글",
+                    body = "내용",
+                    publishStatus = PublishStatus.PUBLIC,
+                    accessLevel = PostAccessLevel.FREE,
+                ).also { ReflectionTestUtils.setField(it, "id", 11L) }
+            val bookmarks = listOf(Bookmark(post = post, user = actor), Bookmark(post = otherPost, user = actor))
+            val page: Page<Bookmark> = PageImpl(bookmarks)
+            given(bookmarkRepository.findByUserIdAndPostDeletedAtIsNull(1L, PublishStatus.PUBLIC, pageable))
+                .willReturn(page)
+            given(likeRepository.findPostIdsByPostIdInAndUserId(listOf(10L, 11L), 1L)).willReturn(listOf(11L))
+
+            // when
+            val result: Page<PostListResponse> = bookmarkService.getMyBookmarks(actor, pageable)
+
+            // then
+            assertThat(result.content)
+                .extracting("id", "isLiked")
+                .containsExactly(tuple(10L, false), tuple(11L, true))
+            verify(likeRepository, times(1)).findPostIdsByPostIdInAndUserId(anyOfType(), anyLong())
         }
     }
 }

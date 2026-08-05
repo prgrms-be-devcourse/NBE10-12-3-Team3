@@ -22,6 +22,7 @@ import com.scommit.global.exception.BusinessException
 import com.scommit.global.exception.ErrorCode
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
+import org.assertj.core.api.Assertions.tuple
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
@@ -34,6 +35,7 @@ import org.mockito.BDDMockito.given
 import org.mockito.InjectMocks
 import org.mockito.Mock
 import org.mockito.Mockito.never
+import org.mockito.Mockito.times
 import org.mockito.Mockito.verify
 import org.mockito.junit.jupiter.MockitoExtension
 import org.springframework.data.domain.Page
@@ -205,7 +207,8 @@ class PostServiceTest {
 
             given(postRepository.findAllByDeletedAtIsNullAndPublishStatus(PublishStatus.PUBLIC, pageable))
                 .willReturn(slice)
-            given(likeRepository.existsByPostIdAndUserId(1L, checkNotNull(mockUser.id))).willReturn(true)
+            given(likeRepository.findPostIdsByPostIdInAndUserId(listOf(1L), checkNotNull(mockUser.id)))
+                .willReturn(listOf(1L))
 
             val result = postService.getPosts(null, mockUser, pageable)
 
@@ -221,7 +224,8 @@ class PostServiceTest {
 
             given(postRepository.findAllByDeletedAtIsNullAndPublishStatus(PublishStatus.PUBLIC, pageable))
                 .willReturn(slice)
-            given(bookmarkRepository.existsByPostIdAndUserId(1L, checkNotNull(mockUser.id))).willReturn(true)
+            given(bookmarkRepository.findPostIdsByPostIdInAndUserId(listOf(1L), checkNotNull(mockUser.id)))
+                .willReturn(listOf(1L))
 
             val result = postService.getPosts(null, mockUser, pageable)
 
@@ -242,8 +246,34 @@ class PostServiceTest {
 
             assertThat(result.content[0].isLiked).isFalse()
             assertThat(result.content[0].isBookmarked).isFalse()
-            verify(likeRepository, never()).existsByPostIdAndUserId(anyLong(), anyLong())
-            verify(bookmarkRepository, never()).existsByPostIdAndUserId(anyLong(), anyLong())
+            verify(likeRepository, never()).findPostIdsByPostIdInAndUserId(anyOfType(), anyLong())
+            verify(bookmarkRepository, never()).findPostIdsByPostIdInAndUserId(anyOfType(), anyLong())
+        }
+
+        @Test
+        @DisplayName("성공: 목록이 여러 건이어도 좋아요/북마크 여부는 배치 조회 1번으로 해결한다(N+1 방지).")
+        fun getPosts_multipleItems_batchesLikeAndBookmarkLookup() {
+            val pageable: Pageable = PageRequest.of(0, 8)
+            val posts = listOf(buildPost(1L, otherUser, null), buildPost(2L, otherUser, null))
+            val slice = SliceImpl(posts, pageable, false)
+
+            given(postRepository.findAllByDeletedAtIsNullAndPublishStatus(PublishStatus.PUBLIC, pageable))
+                .willReturn(slice)
+            given(likeRepository.findPostIdsByPostIdInAndUserId(listOf(1L, 2L), checkNotNull(mockUser.id)))
+                .willReturn(listOf(2L))
+            given(bookmarkRepository.findPostIdsByPostIdInAndUserId(listOf(1L, 2L), checkNotNull(mockUser.id)))
+                .willReturn(listOf(1L))
+
+            val result = postService.getPosts(null, mockUser, pageable)
+
+            assertThat(result.content)
+                .extracting("id", "isLiked", "isBookmarked")
+                .containsExactly(
+                    tuple(1L, false, true),
+                    tuple(2L, true, false),
+                )
+            verify(likeRepository, times(1)).findPostIdsByPostIdInAndUserId(anyOfType(), anyLong())
+            verify(bookmarkRepository, times(1)).findPostIdsByPostIdInAndUserId(anyOfType(), anyLong())
         }
     }
 
@@ -304,7 +334,8 @@ class PostServiceTest {
 
             given(userRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(mockUser)
             given(postRepository.findByUserAndDeletedAtIsNull(mockUser, pageable)).willReturn(postPage)
-            given(likeRepository.existsByPostIdAndUserId(1L, checkNotNull(otherUser.id))).willReturn(true)
+            given(likeRepository.findPostIdsByPostIdInAndUserId(listOf(1L), checkNotNull(otherUser.id)))
+                .willReturn(listOf(1L))
 
             val result = postService.getUserPosts(1L, otherUser, pageable)
 
@@ -775,7 +806,8 @@ class PostServiceTest {
             val post = buildPost(1L, otherUser, series)
 
             given(postRepository.findBySeriesIdAndDeletedAtIsNull(5L)).willReturn(listOf(post))
-            given(likeRepository.existsByPostIdAndUserId(1L, checkNotNull(mockUser.id))).willReturn(true)
+            given(likeRepository.findPostIdsByPostIdInAndUserId(listOf(1L), checkNotNull(mockUser.id)))
+                .willReturn(listOf(1L))
 
             val result = postService.getPostsBySeriesId(5L, mockUser)
 
@@ -794,8 +826,8 @@ class PostServiceTest {
 
             assertThat(result[0].isLiked).isFalse()
             assertThat(result[0].isBookmarked).isFalse()
-            verify(likeRepository, never()).existsByPostIdAndUserId(anyLong(), anyLong())
-            verify(bookmarkRepository, never()).existsByPostIdAndUserId(anyLong(), anyLong())
+            verify(likeRepository, never()).findPostIdsByPostIdInAndUserId(anyOfType(), anyLong())
+            verify(bookmarkRepository, never()).findPostIdsByPostIdInAndUserId(anyOfType(), anyLong())
         }
     }
 }
