@@ -1,6 +1,5 @@
 package com.scommit.domain.payment.payment.service
 
-import com.scommit.domain.payment.payment.dto.PaymentReadyRequest
 import com.scommit.domain.payment.payment.dto.PaymentReadyResponse
 import com.scommit.domain.payment.payment.dto.PaymentResponse
 import com.scommit.domain.payment.payment.dto.TossConfirmResponse
@@ -48,10 +47,8 @@ class PaymentService(
     @Transactional
     fun readyPayment(
         userId: Long,
-        request: PaymentReadyRequest,
+        creatorId: Long,
     ): PaymentReadyResponse {
-        val creatorId = request.targetCreatorId
-
         if (userId == creatorId) {
             throw BusinessException(ErrorCode.SELF_SUBSCRIPTION_NOT_ALLOWED)
         }

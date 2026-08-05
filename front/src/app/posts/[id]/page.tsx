@@ -179,7 +179,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
                     <BlurPaywall isLoggedIn={hasMounted && isLoggedIn} creatorName={post.nickname} />
                 ) : (
                     <div className="prose max-w-none text-neutral-dark">
-                        <div dangerouslySetInnerHTML={{ __html: post.body || "" }} />
+                        <div dangerouslySetInnerHTML={{ __html: post.body ?? "" }} />
                     </div>
                 )}
 

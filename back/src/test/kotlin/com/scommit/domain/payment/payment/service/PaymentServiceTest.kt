@@ -1,6 +1,5 @@
 package com.scommit.domain.payment.payment.service
 
-import com.scommit.domain.payment.payment.dto.PaymentReadyRequest
 import com.scommit.domain.payment.payment.entity.Payment
 import com.scommit.domain.payment.payment.entity.PaymentStatus
 import com.scommit.domain.payment.payment.repository.PaymentRepository
@@ -127,7 +126,7 @@ class PaymentServiceTest {
             given(userRepository.findById(CREATOR_ID)).willReturn(Optional.of(creator))
 
             // when
-            val response = paymentService.readyPayment(BUYER_ID, PaymentReadyRequest(CREATOR_ID))
+            val response = paymentService.readyPayment(BUYER_ID, CREATOR_ID)
 
             // then: 응답 금액과 실제 저장 금액이 모두 서버가 정한 가격이어야 한다.
             // 상수끼리 비교하면 가격이 바뀌어도 통과하므로 리터럴로 못박는다.
@@ -142,7 +141,7 @@ class PaymentServiceTest {
         @Test
         @DisplayName("자기 자신에게는 결제를 시작할 수 없다")
         fun rejectSelfSubscription() {
-            assertThatThrownBy { paymentService.readyPayment(BUYER_ID, PaymentReadyRequest(BUYER_ID)) }
+            assertThatThrownBy { paymentService.readyPayment(BUYER_ID, BUYER_ID) }
                 .isInstanceOf(BusinessException::class.java)
                 .hasFieldOrPropertyWithValue("errorCode", ErrorCode.SELF_SUBSCRIPTION_NOT_ALLOWED)
 
@@ -156,7 +155,7 @@ class PaymentServiceTest {
             given(subscriptionService.getSubscriptionStatus(BUYER_ID, CREATOR_ID))
                 .willReturn(SubscriptionStatus.MEMBERSHIP)
 
-            assertThatThrownBy { paymentService.readyPayment(BUYER_ID, PaymentReadyRequest(CREATOR_ID)) }
+            assertThatThrownBy { paymentService.readyPayment(BUYER_ID, CREATOR_ID) }
                 .isInstanceOf(BusinessException::class.java)
                 .hasFieldOrPropertyWithValue("errorCode", ErrorCode.ALREADY_JOINED_MEMBERSHIP)
 

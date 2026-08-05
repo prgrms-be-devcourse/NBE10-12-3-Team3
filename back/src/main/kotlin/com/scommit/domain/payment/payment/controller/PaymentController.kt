@@ -30,7 +30,7 @@ class PaymentController(
         @AuthenticationPrincipal user: SecurityUser,
         @RequestBody @Valid request: PaymentReadyRequest,
     ): ResponseEntity<RsData<PaymentReadyResponse>> {
-        val response = paymentService.readyPayment(user.id, request)
+        val response = paymentService.readyPayment(user.id, request.targetCreatorId)
         return ResponseEntity.ok(RsData("200-1", "결제 준비 성공", response))
     }
 
