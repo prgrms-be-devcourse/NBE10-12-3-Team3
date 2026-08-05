@@ -1,6 +1,7 @@
 package com.scommit.global.security
 
 import com.scommit.domain.user.user.entity.User
+import com.scommit.domain.user.user.entity.UserRole
 import com.scommit.global.security.jwt.AuthTokenProperties
 import jakarta.servlet.http.Cookie
 import jakarta.servlet.http.HttpServletRequest
@@ -21,7 +22,11 @@ class SecurityHelper(
     val actor: User?
         get() =
             (SecurityContextHolder.getContext().authentication?.principal as? SecurityUser)
-                ?.let { User(it.id, it.username, it.nickname) }
+                ?.let {
+                    val isAdmin = it.authorities.any { authority -> authority.authority == "ROLE_ADMIN" }
+                    val role = if (isAdmin) UserRole.ADMIN else UserRole.USER
+                    User(it.id, it.username, it.nickname, role)
+                }
 
     fun getHeader(
         name: String,

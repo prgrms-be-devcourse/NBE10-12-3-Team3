@@ -4,6 +4,9 @@ import com.scommit.domain.user.user.entity.User
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Query
+import org.springframework.data.repository.query.Param
+import java.time.LocalDateTime
 
 interface UserRepository : JpaRepository<User, Long> {
     fun existsByEmail(email: String): Boolean
@@ -21,4 +24,14 @@ interface UserRepository : JpaRepository<User, Long> {
         nickname: String,
         pageable: Pageable,
     ): Page<User>
+
+    // 관리자 대시보드 통계용
+    fun countByDeletedAtIsNull(): Long
+
+    fun countByCreatedAtGreaterThanEqualAndDeletedAtIsNull(createdAt: LocalDateTime): Long
+
+    @Query("SELECT u.createdAt FROM User u WHERE u.createdAt >= :startDate AND u.deletedAt IS NULL")
+    fun findCreatedAtByPeriod(
+        @Param("startDate") startDate: LocalDateTime,
+    ): List<LocalDateTime>
 }
