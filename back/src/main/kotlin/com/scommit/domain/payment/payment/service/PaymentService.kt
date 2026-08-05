@@ -12,6 +12,7 @@ import com.scommit.domain.user.user.repository.UserRepository
 import com.scommit.global.exception.BusinessException
 import com.scommit.global.exception.ErrorCode
 import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.ObjectProvider
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.http.HttpHeaders
@@ -28,11 +29,14 @@ class PaymentService(
     private val paymentRepository: PaymentRepository,
     private val subscriptionService: SubscriptionService,
     private val userRepository: UserRepository,
+    // 테스트에서 MockRestServiceServer로 토스 응답을 대체할 수 있도록 빌더를 주입받는다.
+    // RestClient.Builder 빈이 없는 컨텍스트(슬라이스 테스트 등)에서도 뜨도록 기본 빌더로 대체한다.
+    restClientBuilderProvider: ObjectProvider<RestClient.Builder>,
     @Value("\${toss.payment.secret-key}")
     private val secretKey: String,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
-    private val restClient = RestClient.create()
+    private val restClient = restClientBuilderProvider.getIfAvailable { RestClient.builder() }.build()
 
     /**
      * 결제 준비 단계.
