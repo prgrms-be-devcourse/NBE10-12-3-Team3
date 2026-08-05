@@ -9,18 +9,17 @@ data class PaymentResponse(
     val orderName: String,
     val amount: Long,
     val status: String,
-    val createDate: LocalDateTime?
+    val createDate: LocalDateTime?,
 ) {
     companion object {
-        fun from(payment: Payment): PaymentResponse {
-            return PaymentResponse(
+        fun from(payment: Payment): PaymentResponse =
+            PaymentResponse(
                 id = payment.id,
                 orderId = payment.orderId,
                 orderName = payment.orderName,
                 amount = payment.amount,
                 status = payment.status.name,
-                createDate = payment.createdAt
+                createDate = payment.createdAt,
             )
-        }
     }
 }

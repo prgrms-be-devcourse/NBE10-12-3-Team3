@@ -5,77 +5,89 @@ import { loadPaymentWidget, PaymentWidgetInstance } from '@tosspayments/payment-
 import { useRouter, useSearchParams } from 'next/navigation';
 import { X, CheckCircle2, AlertCircle } from 'lucide-react';
 import { apiPost } from '@/lib/api';
+import { useAuth } from '@/providers/auth-provider';
 
-const clientKey = 'test_gck_docs_Ovk5rk1EwkEbP0W43n07xlzm';
-const customerKey = 'test_customer_123'; // 임시로 고정된 키 사용
+// 운영 키는 빌드 시 환경변수로 주입합니다. (미설정 시 토스 공개 문서용 테스트 키로 동작)
+const clientKey =
+  process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY ?? 'test_gck_docs_Ovk5rk1EwkEbP0W43n07xlzm';
+
+/**
+ * 위젯에 처음 표시할 금액입니다. 실제 청구 금액은 서버(PaymentService.MEMBERSHIP_PRICE)가
+ * 결정하며, 결제 준비 응답과 다르면 requestPayment 직전에 서버 금액으로 교체됩니다.
+ */
+export const MEMBERSHIP_PRICE = 9900;
 
 interface PaymentWidgetModalProps {
   isOpen: boolean;
   onClose: () => void;
   creatorName: string;
   creatorId: number;
-  amount: number;
+  amount?: number;
   onSuccess?: () => void;
 }
 
-export function PaymentWidgetModal({ isOpen, onClose, creatorName, creatorId, amount, onSuccess }: PaymentWidgetModalProps) {
+export function PaymentWidgetModal({ isOpen, onClose, creatorName, creatorId, amount = MEMBERSHIP_PRICE, onSuccess }: PaymentWidgetModalProps) {
   const [paymentWidget, setPaymentWidget] = useState<PaymentWidgetInstance | null>(null);
   const paymentMethodsWidgetRef = useRef<ReturnType<PaymentWidgetInstance['renderPaymentMethods']> | null>(null);
   
   const searchParams = useSearchParams();
   const router = useRouter();
-  
+  const { user } = useAuth();
+
+  // 토스는 customerKey로 고객을 식별합니다. 전 유저가 같은 값을 쓰면
+  // 결제수단 정보가 서로 섞이므로 반드시 유저별로 구분되는 값을 사용합니다.
+  const customerKey = user ? `scommit_user_${user.id}` : null;
+
   // 상태 관리: IDLE (결제위젯 표시), SUCCESS (성공 화면), FAIL (실패 화면)
   const [status, setStatus] = useState<'IDLE' | 'SUCCESS' | 'FAIL'>('IDLE');
   const [errorMessage, setErrorMessage] = useState('');
-  const [isConfirming, setIsConfirming] = useState(false);
+  // 승인 요청 중복 방지는 state로 하면 반영 전에 effect가 다시 돌아 중복 호출될 수 있으므로
+  // 즉시 반영되는 ref로 처리하고, 이미 승인을 시도한 주문번호를 기록해 둡니다.
+  const confirmedOrderIdRef = useRef<string | null>(null);
 
   // 결제 완료/실패 꼬리표(파라미터) 감지 로직
   useEffect(() => {
     if (!isOpen) return;
-    
+
     const paymentKey = searchParams.get('paymentKey');
     const orderId = searchParams.get('orderId');
-    const returnedAmount = searchParams.get('amount');
     const isFail = searchParams.get('payment_fail');
     const msg = searchParams.get('message');
-    
-    if (paymentKey && orderId && returnedAmount && !isConfirming) {
+
+    if (paymentKey && orderId && confirmedOrderIdRef.current !== orderId) {
       // 1. 프론트엔드 URL로 결제 성공 파라미터가 들어온 경우
-      setIsConfirming(true);
-      
+      confirmedOrderIdRef.current = orderId;
+
       const confirmPayment = async () => {
         try {
           // 2. 백엔드에 최종 승인 요청 (토스 서버와 통신 및 멤버십 승급)
+          // 금액은 서버가 보관 중인 값을 사용하므로 전달하지 않습니다.
           // apiPost는 성공 시 반환 데이터를, 실패 시 ApiError를 던집니다.
           await apiPost('/api/payments/toss/confirm', {
             paymentKey,
-            orderId,
-            amount: Number(returnedAmount)
+            orderId
           });
-          
+
           setStatus('SUCCESS');
         } catch (err: any) {
           setStatus('FAIL');
-          setErrorMessage('서버와 통신 중 오류가 발생했습니다.');
-        } finally {
-          setIsConfirming(false);
+          setErrorMessage(err?.msg || err?.message || '서버와 통신 중 오류가 발생했습니다.');
         }
       };
-      
+
       confirmPayment();
     } else if (isFail) {
       // 결제 실패!
       setStatus('FAIL');
       setErrorMessage(msg || '결제 중 오류가 발생했습니다.');
-    } else if (!paymentKey && !isConfirming) {
+    } else if (!paymentKey) {
       setStatus('IDLE');
     }
   }, [searchParams, isOpen]);
 
   // 토스 결제 위젯 SDK 로드
   useEffect(() => {
-    if (!isOpen || status !== 'IDLE') return;
+    if (!isOpen || status !== 'IDLE' || !customerKey) return;
 
     const fetchPaymentWidget = async () => {
       try {
@@ -87,7 +99,7 @@ export function PaymentWidgetModal({ isOpen, onClose, creatorName, creatorId, am
     };
 
     fetchPaymentWidget();
-  }, [isOpen, status]);
+  }, [isOpen, status, customerKey]);
 
   // 토스 결제 위젯 화면 렌더링
   useEffect(() => {
@@ -114,31 +126,36 @@ export function PaymentWidgetModal({ isOpen, onClose, creatorName, creatorId, am
     
     try {
       // 1. 백엔드에 결제 준비 요청 (orderId 생성 및 DB 저장)
-      const res = await apiPost<{ orderId: string }>('/api/payments/toss/ready', {
-        amount,
-        orderName: `${creatorName} 멤버십 구독`,
-        targetCreatorId: creatorId
-      });
-      
+      //    결제 금액과 주문명은 서버가 확정해 내려줍니다.
+      const res = await apiPost<{ orderId: string; orderName: string; amount: number }>(
+        '/api/payments/toss/ready',
+        { targetCreatorId: creatorId }
+      );
+
       if (!res?.orderId) {
         throw new Error('결제 준비에 실패했습니다.');
       }
-      
-      const orderId = res.orderId;
-      
+
+      const { orderId, orderName, amount: confirmedAmount } = res;
+
+      // 2. 위젯에 표시된 금액을 서버가 확정한 금액으로 맞춥니다.
+      if (confirmedAmount !== amount) {
+        await paymentMethodsWidgetRef.current?.updateAmount(confirmedAmount);
+      }
+
       const currentUrl = new URL(window.location.href);
       currentUrl.searchParams.delete('paymentKey');
       currentUrl.searchParams.delete('payment_fail');
       currentUrl.searchParams.delete('message');
-      
-      // 2. 토스 페이먼츠 결제 팝업 띄우기
+
+      // 3. 토스 페이먼츠 결제 팝업 띄우기
       await paymentWidget.requestPayment({
         orderId: orderId,
-        orderName: `${creatorName} 멤버십 구독`,
+        orderName: orderName,
         successUrl: `${currentUrl.origin}${currentUrl.pathname}`,
         failUrl: `${currentUrl.origin}${currentUrl.pathname}?payment_fail=true`,
-        customerEmail: 'customer123@gmail.com', // TODO: 실제 유저 정보로 변경
-        customerName: 'SCommit 유저', // TODO: 실제 유저 정보로 변경
+        customerEmail: user?.email,
+        customerName: user?.nickname,
       });
     } catch (error: any) {
       console.error(error);
@@ -147,7 +164,7 @@ export function PaymentWidgetModal({ isOpen, onClose, creatorName, creatorId, am
         setErrorMessage('결제를 취소하셨습니다.');
       } else {
         setStatus('FAIL');
-        setErrorMessage(error.message || '결제 요청 중 오류가 발생했습니다.');
+        setErrorMessage(error.msg || error.message || '결제 요청 중 오류가 발생했습니다.');
       }
     }
   };
@@ -171,7 +188,9 @@ export function PaymentWidgetModal({ isOpen, onClose, creatorName, creatorId, am
         onSuccess?.();
       }
     }
-    
+
+    confirmedOrderIdRef.current = null;
+
     setStatus('IDLE');
     onClose();
   };

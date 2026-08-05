@@ -75,7 +75,6 @@ export function BlurPaywall({ isLoggedIn = false, className, creatorName = "ì°½ì
         onClose={() => setIsModalOpen(false)}
         creatorName={creatorName}
         creatorId={creatorId}
-        amount={9900}
       />
     </>
   );

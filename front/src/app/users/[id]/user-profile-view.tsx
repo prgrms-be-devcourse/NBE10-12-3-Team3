@@ -359,7 +359,6 @@ export function UserProfileView({ profile, tab, page, totalPages, isLastPostsPag
         onClose={() => setIsPaymentModalOpen(false)}
         creatorName={profile.nickname}
         creatorId={profile.id}
-        amount={9900}
         onSuccess={() => {
           setIsMember(true);
           if (!isFollowing) {

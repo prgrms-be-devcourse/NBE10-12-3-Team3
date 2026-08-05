@@ -232,7 +232,6 @@ export function FollowButton({
         onClose={() => setIsJoinModalOpen(false)}
         creatorName={creatorName || "창작자"}
         creatorId={Number(creatorId) || 0}
-        amount={10000}
       />
 
       {/* Cancel Membership Modal */}

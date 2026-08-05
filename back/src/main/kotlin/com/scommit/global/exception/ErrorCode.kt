@@ -12,6 +12,9 @@ enum class ErrorCode(
     INVALID_PASSWORD(HttpStatus.BAD_REQUEST, "400-2", "현재 비밀번호가 일치하지 않습니다."),
     SELF_SUBSCRIPTION_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "400-3", "자기 자신을 구독할 수 없습니다."),
     EMPTY_FILE(HttpStatus.BAD_REQUEST, "400-4", "업로드할 파일이 비어 있습니다."),
+    PAYMENT_AMOUNT_MISMATCH(HttpStatus.BAD_REQUEST, "400-5", "결제 요청 금액이 올바르지 않습니다."),
+    PAYMENT_ALREADY_PROCESSED(HttpStatus.BAD_REQUEST, "400-6", "이미 처리되었거나 취소된 결제입니다."),
+    PAYMENT_NOT_APPROVED(HttpStatus.BAD_REQUEST, "400-7", "결제가 정상적으로 승인되지 않았습니다."),
 
     // 401 Unauthorized
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "401-1", "인증되지 않은 사용자입니다."),
@@ -22,6 +25,7 @@ enum class ErrorCode(
 
     // 403 Forbidden
     ACCESS_DENIED(HttpStatus.FORBIDDEN, "403-1", "접근 권한이 없습니다."),
+    PAYMENT_OWNER_MISMATCH(HttpStatus.FORBIDDEN, "403-2", "본인의 결제 건만 승인할 수 있습니다."),
 
     // 404 Not Found
     RESOURCE_NOT_FOUND(HttpStatus.NOT_FOUND, "404-1", "요청한 리소스를 찾을 수 없습니다."),
@@ -35,6 +39,7 @@ enum class ErrorCode(
     LIKE_NOT_FOUND(HttpStatus.NOT_FOUND, "404-9", "좋아요 기록이 없습니다."),
     PAYMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "404-10", "결제 정보를 찾을 수 없습니다."),
     COUPON_POLICY_NOT_FOUND(HttpStatus.NOT_FOUND, "404-11", "쿠폰 이벤트를 찾을 수 없습니다."),
+
     // 409 Conflict
     DUPLICATE_EMAIL(HttpStatus.CONFLICT, "409-1", "이미 사용중인 이메일입니다."),
     ALREADY_SUBSCRIBED(HttpStatus.CONFLICT, "409-2", "이미 구독중인 창작자입니다."),
@@ -53,4 +58,7 @@ enum class ErrorCode(
 
     // 500 Internal Server Error
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "500-1", "서버 내부 오류가 발생했습니다."),
+
+    // 502 Bad Gateway
+    PAYMENT_GATEWAY_ERROR(HttpStatus.BAD_GATEWAY, "502-1", "결제 승인 중 오류가 발생했습니다."),
 }
