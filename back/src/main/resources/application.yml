@@ -1,4 +1,5 @@
 spring:
+  
   profiles:
     active: dev
   application:
@@ -28,3 +29,9 @@ auth-token:
     cookie-max-age: 30m      # 브라우저가 액세스 토큰 쿠키를 유지하는 기간
   refresh-token:
     cookie-max-age: 30d      # 브라우저가 리프레시 토큰 쿠키를 유지하는 기간
+
+
+toss:
+  payment:
+    # 기본값은 토스가 공개한 문서용 테스트 키.
+    secret-key: ${TOSS_SECRET_KEY:test_gsk_docs_OaPz8L5KdmQXkzRz3y47BMw6}
