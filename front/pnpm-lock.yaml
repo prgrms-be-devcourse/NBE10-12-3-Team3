@@ -38,6 +38,9 @@ importers:
       '@tiptap/starter-kit':
         specifier: ^3.27.1
         version: 3.27.1
+      '@tosspayments/payment-widget-sdk':
+        specifier: ^0.12.2
+        version: 0.12.2(typescript@5.9.3)
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
@@ -765,6 +768,34 @@ packages:
 
   '@tiptap/starter-kit@3.27.1':
     resolution: {integrity: sha512-vfxRsqW8rCc0k4pzo0ilU3wobVi2wqVj88VZI2SlgZlNnUAkrDGDIAph7CTa9k9fshV+O1ivpEgPC5yC046jow==}
+
+  '@tosspayments/brandpay-types@0.2.6':
+    resolution: {integrity: sha512-FY8aOm/2rqtXjYux9ZdNTL6GC5+VNIw8eOQ7TP01dS2uGWSzAtR6uuw9HVsgkmJtSyJgmo97tjmbio5oyeyFlg==}
+    peerDependencies:
+      typescript: ^4.1.0
+    peerDependenciesMeta:
+      typescript:
+        optional: true
+
+  '@tosspayments/payment-widget-sdk@0.12.2':
+    resolution: {integrity: sha512-11On0JQ9FNWbx/J0+jxXc1khg+aTePvn16RUtC2gNuONkfH/cDA0X7pD8XeWnq2cBoA5wzMDFuKy28SMFIpyJA==}
+
+  '@tosspayments/payment-widget-types@0.0.5':
+    resolution: {integrity: sha512-Daaui9u7aRPzJhw4omJIUAbYBSmNAFNjWWkuUnX9uHxzE3gtjcJHIpGrjlzmCFm+j3ZH4rgyrgv4pkazVYH3OQ==}
+    peerDependencies:
+      typescript: ^4.7.4
+    peerDependenciesMeta:
+      typescript:
+        optional: true
+
+  '@tosspayments/payment-widget__types@1.1.0':
+    resolution: {integrity: sha512-1yVQIDNwgjzpm/n8ppsAk3Q0IKha+vOTuRIP6INzL9AkzCsrVjhHr5/eT0fe+tjyekSRL902Uq0TuRyG2sjsWw==}
+
+  '@tosspayments/payment__types@1.69.1':
+    resolution: {integrity: sha512-QX9WSPiIke9VPch1zA80VFBSu7yKNuv/UnKy1V9B+YkC6sPN+sBcq/sl2fhj5tadTvkuYXDv139iR5TFwU2ayw==}
+
+  '@tosspayments/sdk-constants@1.2.2':
+    resolution: {integrity: sha512-6WxRHaiycSfz8gY9R/+StdkX5bprHyJ/rf2ak+b8YgBorxUwns8Ev+oyViNBmsPoE77RusaVFNv1kuiJpSNoDA==}
 
   '@tybys/wasm-util@0.10.3':
     resolution: {integrity: sha512-F3fo1MYrRJYL3zER0OUOmkutjr1Vp23m7OsSgp7nq4SP6OqX6C/56XFIPAl5bt3zaBRjmW7SGz3u/6LwFpYcOg==}
@@ -2955,6 +2986,34 @@ snapshots:
       '@tiptap/extension-underline': 3.27.1(@tiptap/core@3.27.1(@tiptap/pm@3.27.1))
       '@tiptap/extensions': 3.27.1(@tiptap/core@3.27.1(@tiptap/pm@3.27.1))(@tiptap/pm@3.27.1)
       '@tiptap/pm': 3.27.1
+
+  '@tosspayments/brandpay-types@0.2.6(typescript@5.9.3)':
+    optionalDependencies:
+      typescript: 5.9.3
+
+  '@tosspayments/payment-widget-sdk@0.12.2(typescript@5.9.3)':
+    dependencies:
+      '@tosspayments/payment-widget__types': 1.1.0(typescript@5.9.3)
+    transitivePeerDependencies:
+      - typescript
+
+  '@tosspayments/payment-widget-types@0.0.5(typescript@5.9.3)':
+    optionalDependencies:
+      typescript: 5.9.3
+
+  '@tosspayments/payment-widget__types@1.1.0(typescript@5.9.3)':
+    dependencies:
+      '@tosspayments/brandpay-types': 0.2.6(typescript@5.9.3)
+      '@tosspayments/payment-widget-types': 0.0.5(typescript@5.9.3)
+      '@tosspayments/payment__types': 1.69.1
+    transitivePeerDependencies:
+      - typescript
+
+  '@tosspayments/payment__types@1.69.1':
+    dependencies:
+      '@tosspayments/sdk-constants': 1.2.2
+
+  '@tosspayments/sdk-constants@1.2.2': {}
 
   '@tybys/wasm-util@0.10.3':
     dependencies:
