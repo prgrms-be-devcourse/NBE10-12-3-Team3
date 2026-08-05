@@ -1172,14 +1172,10 @@ class SeriesControllerE2ETest {
             expectResultCode(searchSeriesRequest("?keyword= "), HttpStatus.BAD_REQUEST, "400-1")
         }
 
-        // FIXME: keyword는 @RequestParam(required=true)이고 기본값이 없다. 파라미터 누락 시
-        // MissingServletRequestParameterException이 발생하는데 GlobalExceptionHandler는 이 예외를
-        // 명시적으로 잡지 않아 포괄 Exception 핸들러로 떨어져 500-1이 된다. 상세: docs/series-e2e-known-issues.md #4
         @Test
-        @DisplayName("6. keyword 파라미터 자체가 없으면 실제 동작을 그대로 고정한다 (D-4, FIXME)")
-        @Suppress("ForbiddenComment")
-        fun searchSeries_missingKeyword_returns500_1() {
-            expectResultCode(searchSeriesRequest(""), HttpStatus.INTERNAL_SERVER_ERROR, "500-1")
+        @DisplayName("6. keyword 파라미터 자체가 없으면 400-1을 반환한다")
+        fun searchSeries_missingKeyword_returns400_1() {
+            expectResultCode(searchSeriesRequest(""), HttpStatus.BAD_REQUEST, "400-1")
         }
 
         @Test
