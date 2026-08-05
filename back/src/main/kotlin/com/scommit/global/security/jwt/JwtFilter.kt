@@ -143,6 +143,7 @@ class JwtFilter(
                 checkNotNull(actor.id),
                 actor.email, // email에 해당
                 actor.nickname,
+                actor.role,
                 actor.authorities,
             )
 

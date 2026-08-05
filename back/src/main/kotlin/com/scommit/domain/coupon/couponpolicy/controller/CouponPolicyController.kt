@@ -3,10 +3,9 @@ package com.scommit.domain.coupon.couponpolicy.controller
 import com.scommit.domain.coupon.couponpolicy.dto.CouponPolicyCreateRequest
 import com.scommit.domain.coupon.couponpolicy.dto.CouponPolicyResponse
 import com.scommit.domain.coupon.couponpolicy.service.CouponPolicyService
+import com.scommit.domain.user.user.entity.User
 import com.scommit.global.dto.RsData
-import com.scommit.global.exception.BusinessException
-import com.scommit.global.exception.ErrorCode
-import com.scommit.global.security.SecurityHelper
+import com.scommit.global.security.CurrentUser
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.http.HttpStatus
@@ -20,16 +19,15 @@ import org.springframework.web.bind.annotation.RestController
 @RestController
 class CouponPolicyController(
     private val couponPolicyService: CouponPolicyService,
-    private val securityHelper: SecurityHelper,
 ) {
     // POST /api/admin/coupon-policies 쿠폰 이벤트 생성 (관리자 전용)
     @Operation(summary = "쿠폰 이벤트 생성", description = "관리자가 선착순 쿠폰 이벤트를 생성합니다.")
     @ResponseStatus(HttpStatus.CREATED)
     @PostMapping("/api/admin/coupon-policies")
     fun createCouponPolicy(
+        @CurrentUser actor: User,
         @RequestBody request: CouponPolicyCreateRequest,
     ): RsData<CouponPolicyResponse> {
-        val actor = securityHelper.actor ?: throw BusinessException(ErrorCode.UNAUTHORIZED)
         val response =
             couponPolicyService.createCouponPolicy(
                 actor,

@@ -8,10 +8,10 @@ import com.scommit.domain.post.post.service.PostService
 import com.scommit.domain.post.postmedia.dto.PostMediaResponse
 import com.scommit.domain.post.postmedia.entity.PostMediaType
 import com.scommit.domain.post.postmedia.service.PostMediaService
+import com.scommit.domain.user.user.entity.User
 import com.scommit.global.dto.RsData
-import com.scommit.global.exception.BusinessException
-import com.scommit.global.exception.ErrorCode
-import com.scommit.global.security.SecurityHelper
+import com.scommit.global.security.CurrentUser
+import com.scommit.global.security.SecurityUser
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.data.domain.Page
@@ -21,6 +21,7 @@ import org.springframework.data.domain.Sort
 import org.springframework.data.web.PageableDefault
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
+import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
@@ -41,15 +42,14 @@ import org.springframework.web.multipart.MultipartFile
 class PostController(
     private val postService: PostService,
     private val postMediaService: PostMediaService,
-    private val securityHelper: SecurityHelper,
 ) {
     // GET /api/posts/me 내가 쓴 게시글 조회 - 페이지 번호 방식
     @Operation(summary = "내 게시글 조회", description = "로그인한 유저가 작성한 게시글 목록을 조회합니다.")
     @GetMapping("/me")
     fun getMyPosts(
+        @CurrentUser actor: User,
         @PageableDefault(size = 10, sort = ["id"], direction = Sort.Direction.DESC) pageable: Pageable,
     ): RsData<Page<PostListResponse>> {
-        val actor = securityHelper.actor ?: throw BusinessException(ErrorCode.UNAUTHORIZED)
         val response = postService.getMyPosts(actor, pageable)
         return RsData("200-1", "내가 쓴 게시글 목록입니다.", response)
     }
@@ -59,9 +59,9 @@ class PostController(
     @ResponseStatus(HttpStatus.CREATED)
     @PostMapping
     fun createPost(
+        @CurrentUser actor: User,
         @RequestBody request: PostCreateRequest,
     ): RsData<PostResponse> {
-        val actor = securityHelper.actor ?: throw BusinessException(ErrorCode.UNAUTHORIZED)
         val response =
             postService.createPost(
                 actor,
@@ -78,10 +78,11 @@ class PostController(
     @Operation(summary = "유저 게시글 목록 조회", description = "특정 유저가 작성한 게시글 목록을 번호 페이지네이션으로 조회합니다.")
     @GetMapping("/users/{userId}")
     fun getUserPosts(
+        @AuthenticationPrincipal securityUser: SecurityUser?,
         @PathVariable userId: Long,
         @PageableDefault(size = 10, sort = ["id"], direction = Sort.Direction.DESC) pageable: Pageable,
     ): RsData<Page<PostListResponse>> {
-        val actor = securityHelper.actor
+        val actor = securityUser?.user
         val response = postService.getUserPosts(userId, actor, pageable)
         return RsData("200-1", "유저의 게시글 목록입니다.", response)
     }
@@ -104,10 +105,11 @@ class PostController(
     @Operation(summary = "게시글 전체 조회", description = "전체 게시글 목록을 조회합니다. creatorId 입력 시 특정 유저의 게시글만 조회합니다.")
     @GetMapping
     fun getPosts(
+        @AuthenticationPrincipal securityUser: SecurityUser?,
         @RequestParam(required = false) creatorId: Long?,
         @PageableDefault(size = 10, sort = ["id"], direction = Sort.Direction.DESC) pageable: Pageable,
     ): RsData<Slice<PostListResponse>> {
-        val actor = securityHelper.actor
+        val actor = securityUser?.user
         val response = postService.getPosts(creatorId, actor, pageable)
         return RsData("200-1", "게시글 목록입니다.", response)
     }
@@ -116,9 +118,10 @@ class PostController(
     @Operation(summary = "게시글 상세 조회", description = "게시글 ID로 특정 게시글의 상세 정보를 조회합니다.")
     @GetMapping("/{id}")
     fun getPost(
+        @AuthenticationPrincipal securityUser: SecurityUser?,
         @PathVariable id: Long,
     ): RsData<PostResponse> {
-        val actor = securityHelper.actor
+        val actor = securityUser?.user
         val response = postService.getPost(id, actor)
         return RsData("200-1", "게시글 상세 정보입니다.", response)
     }
@@ -127,10 +130,10 @@ class PostController(
     @Operation(summary = "게시글 수정", description = "게시글 ID로 특정 게시글을 수정합니다.")
     @PutMapping("/{id}")
     fun updatePost(
+        @CurrentUser actor: User,
         @PathVariable id: Long,
         @RequestBody request: PostUpdateRequest,
     ): RsData<PostResponse> {
-        val actor = securityHelper.actor ?: throw BusinessException(ErrorCode.UNAUTHORIZED)
         val response =
             postService.updatePost(
                 actor,
@@ -148,9 +151,9 @@ class PostController(
     @Operation(summary = "게시글 삭제", description = "게시글 ID로 특정 게시글을 삭제합니다.")
     @DeleteMapping("/{id}")
     fun deletePost(
+        @CurrentUser actor: User,
         @PathVariable id: Long,
     ): RsData<Void> {
-        val actor = securityHelper.actor ?: throw BusinessException(ErrorCode.UNAUTHORIZED)
         postService.deletePost(actor, id)
         return RsData("200-1", "게시글이 삭제되었습니다.")
     }

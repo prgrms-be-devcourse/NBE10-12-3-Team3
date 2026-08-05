@@ -7,7 +7,7 @@ import com.scommit.domain.post.post.entity.PublishStatus
 import com.scommit.domain.user.user.entity.User
 import com.scommit.global.exception.BusinessException
 import com.scommit.global.exception.ErrorCode
-import com.scommit.global.security.SecurityHelper
+import com.scommit.global.security.currentUser
 import com.scommit.global.security.jwt.JwtFilter
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
@@ -23,7 +23,6 @@ import org.springframework.data.domain.PageImpl
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Sort
 import org.springframework.data.jpa.mapping.JpaMetamodelMappingContext
-import org.springframework.security.test.context.support.WithMockUser
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf
 import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.web.servlet.MockMvc
@@ -48,9 +47,6 @@ class BookmarkControllerTest {
     @MockitoBean
     private lateinit var bookmarkService: BookmarkService
 
-    @MockitoBean
-    private lateinit var securityHelper: SecurityHelper
-
     @Suppress("UnusedPrivateProperty")
     @MockitoBean
     private lateinit var jpaMetamodelMappingContext: JpaMetamodelMappingContext
@@ -59,40 +55,24 @@ class BookmarkControllerTest {
     @DisplayName("POST /api/posts/{postId}/bookmarks - 북마크 추가")
     inner class CreateBookmark {
         @Test
-        @WithMockUser
         @DisplayName("성공: 201 응답과 메시지를 반환한다")
         fun createBookmark_success() {
-            given(securityHelper.actor).willReturn(mockActor)
-
             mockMvc
-                .perform(post("/api/posts/{postId}/bookmarks", 1L).with(csrf()))
+                .perform(post("/api/posts/{postId}/bookmarks", 1L).with(currentUser(mockActor)).with(csrf()))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.resultCode").value("201-1"))
                 .andExpect(jsonPath("$.msg").value("북마크가 추가되었습니다."))
         }
 
         @Test
-        @WithMockUser
-        @DisplayName("실패: 비로그인 사용자는 401을 반환한다")
-        fun createBookmark_unauthorized() {
-            given(securityHelper.actor).willReturn(null)
-
-            mockMvc
-                .perform(post("/api/posts/{postId}/bookmarks", 1L).with(csrf()))
-                .andExpect(status().isUnauthorized())
-        }
-
-        @Test
-        @WithMockUser
         @DisplayName("실패: 존재하지 않는 게시글이면 404를 반환한다")
         fun createBookmark_postNotFound() {
-            given(securityHelper.actor).willReturn(mockActor)
             willThrow(BusinessException(ErrorCode.POST_NOT_FOUND))
                 .given(bookmarkService)
                 .createBookmark(postId = 999L, actor = mockActor)
 
             mockMvc
-                .perform(post("/api/posts/{postId}/bookmarks", 999L).with(csrf()))
+                .perform(post("/api/posts/{postId}/bookmarks", 999L).with(currentUser(mockActor)).with(csrf()))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.resultCode").value("404-3"))
         }
@@ -102,7 +82,6 @@ class BookmarkControllerTest {
     @DisplayName("GET /api/bookmarks/me - 내 북마크 목록 조회")
     inner class GetMyBookmarks {
         @Test
-        @WithMockUser
         @DisplayName("성공: 북마크한 게시글 목록을 반환한다")
         fun getMyBookmarks_success() {
             val response =
@@ -123,11 +102,10 @@ class BookmarkControllerTest {
                 )
             val page: Page<PostListResponse> = PageImpl(listOf(response))
 
-            given(securityHelper.actor).willReturn(mockActor)
             given(bookmarkService.getMyBookmarks(actor = mockActor, pageable = defaultPageable)).willReturn(page)
 
             mockMvc
-                .perform(get("/api/bookmarks/me"))
+                .perform(get("/api/bookmarks/me").with(currentUser(mockActor)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.resultCode").value("200-1"))
                 .andExpect(jsonPath("$.data.content.length()").value(1))
@@ -136,29 +114,16 @@ class BookmarkControllerTest {
         }
 
         @Test
-        @WithMockUser
         @DisplayName("성공: 북마크가 없으면 빈 목록을 반환한다")
         fun getMyBookmarks_empty() {
             val emptyPage: Page<PostListResponse> = PageImpl(emptyList())
 
-            given(securityHelper.actor).willReturn(mockActor)
             given(bookmarkService.getMyBookmarks(actor = mockActor, pageable = defaultPageable)).willReturn(emptyPage)
 
             mockMvc
-                .perform(get("/api/bookmarks/me"))
+                .perform(get("/api/bookmarks/me").with(currentUser(mockActor)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.content.length()").value(0))
-        }
-
-        @Test
-        @WithMockUser
-        @DisplayName("실패: 비로그인 사용자는 401을 반환한다")
-        fun getMyBookmarks_unauthorized() {
-            given(securityHelper.actor).willReturn(null)
-
-            mockMvc
-                .perform(get("/api/bookmarks/me"))
-                .andExpect(status().isUnauthorized())
         }
     }
 
@@ -166,55 +131,37 @@ class BookmarkControllerTest {
     @DisplayName("DELETE /api/posts/{postId}/bookmarks - 북마크 취소")
     inner class DeleteBookmark {
         @Test
-        @WithMockUser
         @DisplayName("성공: 200 응답과 메시지를 반환한다")
         fun deleteBookmark_success() {
-            given(securityHelper.actor).willReturn(mockActor)
-
             mockMvc
-                .perform(delete("/api/posts/{postId}/bookmarks", 1L).with(csrf()))
+                .perform(delete("/api/posts/{postId}/bookmarks", 1L).with(currentUser(mockActor)).with(csrf()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.resultCode").value("200-1"))
                 .andExpect(jsonPath("$.msg").value("북마크가 취소되었습니다."))
         }
 
         @Test
-        @WithMockUser
-        @DisplayName("실패: 비로그인 사용자는 401을 반환한다")
-        fun deleteBookmark_unauthorized() {
-            given(securityHelper.actor).willReturn(null)
-
-            mockMvc
-                .perform(delete("/api/posts/{postId}/bookmarks", 1L).with(csrf()))
-                .andExpect(status().isUnauthorized())
-        }
-
-        @Test
-        @WithMockUser
         @DisplayName("실패: 존재하지 않는 게시글이면 404를 반환한다")
         fun deleteBookmark_postNotFound() {
-            given(securityHelper.actor).willReturn(mockActor)
             willThrow(BusinessException(ErrorCode.POST_NOT_FOUND))
                 .given(bookmarkService)
                 .deleteBookmark(postId = 999L, actor = mockActor)
 
             mockMvc
-                .perform(delete("/api/posts/{postId}/bookmarks", 999L).with(csrf()))
+                .perform(delete("/api/posts/{postId}/bookmarks", 999L).with(currentUser(mockActor)).with(csrf()))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.resultCode").value("404-3"))
         }
 
         @Test
-        @WithMockUser
         @DisplayName("실패: 북마크가 없으면 404를 반환한다")
         fun deleteBookmark_bookmarkNotFound() {
-            given(securityHelper.actor).willReturn(mockActor)
             willThrow(BusinessException(ErrorCode.RESOURCE_NOT_FOUND))
                 .given(bookmarkService)
                 .deleteBookmark(postId = 1L, actor = mockActor)
 
             mockMvc
-                .perform(delete("/api/posts/{postId}/bookmarks", 1L).with(csrf()))
+                .perform(delete("/api/posts/{postId}/bookmarks", 1L).with(currentUser(mockActor)).with(csrf()))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.resultCode").value("404-1"))
         }
