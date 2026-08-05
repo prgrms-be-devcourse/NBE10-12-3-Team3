@@ -54,6 +54,7 @@ interface BookmarkRepository : JpaRepository<Bookmark, Long> {
         @Param("postIds") postIds: List<Long>,
         @Param("userId") userId: Long,
     ): List<Long>
+
     // 사용자 Radar 차트용 (최근 1년 고정)
     @Query(
         "SELECT COUNT(b) FROM Bookmark b WHERE b.user.id = :userId " +

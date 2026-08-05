@@ -36,7 +36,7 @@ interface LikeRepository : JpaRepository<Like, Long> {
         @Param("postIds") postIds: List<Long>,
         @Param("userId") userId: Long,
     ): List<Long>
-  
+
     // 사용자 Radar 차트용 (최근 1년 고정)
     @Query(
         "SELECT COUNT(l) FROM Like l WHERE l.user.id = :userId AND l.createdAt >= :createdAt AND l.deletedAt IS NULL",
