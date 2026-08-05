@@ -1347,6 +1347,97 @@ class PostControllerE2ETest {
 
             assertThat(postMediaRepository.findByIdOrNull(mediaIdOfPost1)).isNotNull()
         }
+
+        @Test
+        @DisplayName("11. 타인의 게시글에 업로드 시도하면 403-1을 반환하고 미디어가 생성/변경되지 않는다")
+        fun uploadMedia_notOwner_returns403_1AndDoesNotChangeMedia() {
+            val ownerToken = newUserToken()
+            val intruderToken = newUserToken()
+            val postId = createPost(ownerToken, "소유권 침해 업로드 테스트", PublishStatus.PUBLIC, PostAccessLevel.FREE)
+
+            val original =
+                checkNotNull(
+                    uploadMediaRequest(
+                        ownerToken,
+                        postId,
+                        PostMediaType.THUMBNAIL,
+                        PNG_BYTES,
+                        "owner.png",
+                        MediaType.IMAGE_PNG,
+                    ).expectStatus()
+                        .isCreated()
+                        .expectBody<ApiResponse<PostMediaResponse>>()
+                        .returnResult()
+                        .responseBody,
+                ).data
+
+            expectResultCode(
+                uploadMediaRequest(
+                    intruderToken,
+                    postId,
+                    PostMediaType.THUMBNAIL,
+                    PNG_BYTES,
+                    "intruder.png",
+                    MediaType.IMAGE_PNG,
+                ),
+                HttpStatus.FORBIDDEN,
+                "403-1",
+            )
+
+            // owner의 썸네일이 그대로인지(교체되지 않았는지) DB에 남은 행 수와 조회 API로 확인한다.
+            // PostMedia.media는 지연 로딩이라 트랜잭션 밖에서 엔티티 필드에 직접 접근할 수 없어 API로 검증한다.
+            val post = checkNotNull(postRepository.findByIdOrNull(postId))
+            assertThat(postMediaRepository.findAllByPost(post)).hasSize(1)
+
+            client
+                .get()
+                .uri("/api/posts/$postId/medias/thumbnail")
+                .header("Authorization", bearer(ownerToken))
+                .exchange()
+                .expectBody<ApiResponse<PostMediaResponse>>()
+                .value { body ->
+                    checkNotNull(body)
+                    assertThat(body.data.id).isEqualTo(original.id)
+                    assertThat(body.data.url).isEqualTo(original.url)
+                }
+        }
+
+        @Test
+        @DisplayName("12. 타인의 게시글 미디어 삭제 시도하면 403-1을 반환하고 미디어가 삭제되지 않는다")
+        fun deleteMedia_notOwner_returns403_1AndDoesNotDeleteMedia() {
+            val ownerToken = newUserToken()
+            val intruderToken = newUserToken()
+            val postId = createPost(ownerToken, "소유권 침해 삭제 테스트", PublishStatus.PUBLIC, PostAccessLevel.FREE)
+            val mediaId =
+                checkNotNull(
+                    checkNotNull(
+                        uploadMediaRequest(
+                            ownerToken,
+                            postId,
+                            PostMediaType.BODY,
+                            PNG_BYTES,
+                            "body.png",
+                            MediaType.IMAGE_PNG,
+                        ).expectStatus()
+                            .isCreated()
+                            .expectBody<ApiResponse<PostMediaResponse>>()
+                            .returnResult()
+                            .responseBody,
+                    ).data.id,
+                )
+
+            expectResultCode(
+                client
+                    .method(HttpMethod.DELETE)
+                    .uri("/api/posts/$postId/medias/$mediaId")
+                    .header("Authorization", bearer(intruderToken))
+                    .exchange(),
+                HttpStatus.FORBIDDEN,
+                "403-1",
+            )
+
+            assertThat(postMediaRepository.findByIdOrNull(mediaId)).isNotNull()
+        }
     }
 
     // ───────────────────────── 통합 시나리오 ─────────────────────────

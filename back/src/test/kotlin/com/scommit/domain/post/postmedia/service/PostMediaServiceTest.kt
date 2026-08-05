@@ -9,6 +9,8 @@ import com.scommit.domain.post.postmedia.dto.PostMediaResponse
 import com.scommit.domain.post.postmedia.entity.PostMedia
 import com.scommit.domain.post.postmedia.entity.PostMediaType
 import com.scommit.domain.post.postmedia.repository.PostMediaRepository
+import com.scommit.domain.user.user.entity.User
+import com.scommit.domain.user.user.entity.UserRole
 import com.scommit.global.exception.BusinessException
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
@@ -60,12 +62,16 @@ class PostMediaServiceTest {
         @DisplayName("성공: BODY 타입은 중복 체크 없이 추가된다")
         fun uploadMedia_Body_Success() {
             val postId = 1L
+            val ownerId = 100L
             val post = mock(Post::class.java)
+            val owner = mock(User::class.java)
             val media = mock(Media::class.java)
             val postMedia = mock(PostMedia::class.java)
 
             given(postRepository.findById(postId)).willReturn(Optional.of(post))
             given(post.deletedAt).willReturn(null)
+            given(post.user).willReturn(owner)
+            given(owner.id).willReturn(ownerId)
             given(mediaService.uploadMedia(file, "post")).willReturn(media)
             given(postMediaRepository.save(any(PostMedia::class.java))).willReturn(postMedia)
             given(postMedia.post).willReturn(post)
@@ -74,7 +80,7 @@ class PostMediaServiceTest {
             given(media.url).willReturn("post/uuid_test.png")
             given(media.type).willReturn(MediaType.IMAGE)
 
-            val result = postMediaService.uploadMedia(postId, file, PostMediaType.BODY)
+            val result = postMediaService.uploadMedia(postId, file, PostMediaType.BODY, ownerId, UserRole.USER)
 
             assertThat(result).isNotNull()
             verify(postMediaRepository, never()).findByPostAndType(anyOfType(), anyOfType())
@@ -84,12 +90,16 @@ class PostMediaServiceTest {
         @DisplayName("성공: THUMBNAIL 첫 업로드 시 기존 삭제 없이 저장된다")
         fun uploadMedia_Thumbnail_First_Success() {
             val postId = 1L
+            val ownerId = 100L
             val post = mock(Post::class.java)
+            val owner = mock(User::class.java)
             val media = mock(Media::class.java)
             val postMedia = mock(PostMedia::class.java)
 
             given(postRepository.findById(postId)).willReturn(Optional.of(post))
             given(post.deletedAt).willReturn(null)
+            given(post.user).willReturn(owner)
+            given(owner.id).willReturn(ownerId)
             given(postMediaRepository.findByPostAndType(post, PostMediaType.THUMBNAIL)).willReturn(null)
             given(mediaService.uploadMedia(file, "post")).willReturn(media)
             given(postMediaRepository.save(any(PostMedia::class.java))).willReturn(postMedia)
@@ -99,7 +109,7 @@ class PostMediaServiceTest {
             given(media.url).willReturn("post/uuid_test.png")
             given(media.type).willReturn(MediaType.IMAGE)
 
-            postMediaService.uploadMedia(postId, file, PostMediaType.THUMBNAIL)
+            postMediaService.uploadMedia(postId, file, PostMediaType.THUMBNAIL, ownerId, UserRole.USER)
 
             verify(postMediaRepository, never()).delete(any(PostMedia::class.java))
             verify(mediaService, never()).deleteMedia(anyLong())
@@ -109,7 +119,9 @@ class PostMediaServiceTest {
         @DisplayName("성공: THUMBNAIL 중복 업로드 시 기존 썸네일을 교체한다")
         fun uploadMedia_Thumbnail_Replace_Success() {
             val postId = 1L
+            val ownerId = 100L
             val post = mock(Post::class.java)
+            val owner = mock(User::class.java)
 
             val existingMedia = mock(Media::class.java)
             given(existingMedia.id).willReturn(10L)
@@ -124,10 +136,12 @@ class PostMediaServiceTest {
 
             given(postRepository.findById(postId)).willReturn(Optional.of(post))
             given(post.deletedAt).willReturn(null)
+            given(post.user).willReturn(owner)
+            given(owner.id).willReturn(ownerId)
             given(postMediaRepository.findByPostAndType(post, PostMediaType.THUMBNAIL)).willReturn(existingPostMedia)
             given(mediaService.uploadMedia(file, "post")).willReturn(newMedia)
 
-            postMediaService.uploadMedia(postId, file, PostMediaType.THUMBNAIL)
+            postMediaService.uploadMedia(postId, file, PostMediaType.THUMBNAIL, ownerId, UserRole.USER)
 
             verify(existingPostMedia).updateMedia(newMedia)
             verify(mediaService).deleteMedia(10L)
@@ -140,7 +154,7 @@ class PostMediaServiceTest {
         fun uploadMedia_PostNotFound_Fail() {
             given(postRepository.findById(999L)).willReturn(Optional.empty())
 
-            assertThatThrownBy { postMediaService.uploadMedia(999L, file, PostMediaType.BODY) }
+            assertThatThrownBy { postMediaService.uploadMedia(999L, file, PostMediaType.BODY, 1L, UserRole.USER) }
                 .isInstanceOf(BusinessException::class.java)
 
             verify(mediaService, never()).uploadMedia(any(), anyOfType<String>())
@@ -155,8 +169,30 @@ class PostMediaServiceTest {
             given(postRepository.findById(postId)).willReturn(Optional.of(post))
             given(post.deletedAt).willReturn(LocalDateTime.now())
 
-            assertThatThrownBy { postMediaService.uploadMedia(postId, file, PostMediaType.BODY) }
-                .isInstanceOf(BusinessException::class.java)
+            assertThatThrownBy {
+                postMediaService.uploadMedia(postId, file, PostMediaType.BODY, 1L, UserRole.USER)
+            }.isInstanceOf(BusinessException::class.java)
+
+            verify(mediaService, never()).uploadMedia(any(), anyOfType<String>())
+        }
+
+        @Test
+        @DisplayName("실패: 소유자가 아닌 유저가 업로드 시도 시 예외를 던진다")
+        fun uploadMedia_NotOwner_Fail() {
+            val postId = 1L
+            val ownerId = 100L
+            val intruderId = 200L
+            val post = mock(Post::class.java)
+            val owner = mock(User::class.java)
+
+            given(postRepository.findById(postId)).willReturn(Optional.of(post))
+            given(post.deletedAt).willReturn(null)
+            given(post.user).willReturn(owner)
+            given(owner.id).willReturn(ownerId)
+
+            assertThatThrownBy {
+                postMediaService.uploadMedia(postId, file, PostMediaType.BODY, intruderId, UserRole.USER)
+            }.isInstanceOf(BusinessException::class.java)
 
             verify(mediaService, never()).uploadMedia(any(), anyOfType<String>())
         }
@@ -303,10 +339,14 @@ class PostMediaServiceTest {
         fun deleteMedia_Success_Order() {
             val postId = 1L
             val postMediaId = 5L
+            val ownerId = 100L
 
             val post = mock(Post::class.java)
             given(post.id).willReturn(postId)
             given(post.deletedAt).willReturn(null)
+            val owner = mock(User::class.java)
+            given(post.user).willReturn(owner)
+            given(owner.id).willReturn(ownerId)
 
             val media = mock(Media::class.java)
             given(media.id).willReturn(10L)
@@ -316,7 +356,7 @@ class PostMediaServiceTest {
             given(postMedia.media).willReturn(media)
             given(postMediaRepository.findById(postMediaId)).willReturn(Optional.of(postMedia))
 
-            postMediaService.deleteMedia(postId, postMediaId)
+            postMediaService.deleteMedia(postId, postMediaId, ownerId, UserRole.USER)
 
             val order = inOrder(postMediaRepository, mediaService)
             order.verify(postMediaRepository).delete(postMedia)
@@ -328,7 +368,7 @@ class PostMediaServiceTest {
         fun deleteMedia_NotFound_Fail() {
             given(postMediaRepository.findById(999L)).willReturn(Optional.empty())
 
-            assertThatThrownBy { postMediaService.deleteMedia(1L, 999L) }
+            assertThatThrownBy { postMediaService.deleteMedia(1L, 999L, 1L, UserRole.USER) }
                 .isInstanceOf(BusinessException::class.java)
 
             verify(postMediaRepository, never()).delete(any())
@@ -347,7 +387,7 @@ class PostMediaServiceTest {
             given(postMedia.post).willReturn(anotherPost)
             given(postMediaRepository.findById(postMediaId)).willReturn(Optional.of(postMedia))
 
-            assertThatThrownBy { postMediaService.deleteMedia(postId, postMediaId) }
+            assertThatThrownBy { postMediaService.deleteMedia(postId, postMediaId, 1L, UserRole.USER) }
                 .isInstanceOf(BusinessException::class.java)
 
             verify(postMediaRepository, never()).delete(any())
@@ -368,8 +408,35 @@ class PostMediaServiceTest {
             given(postMedia.post).willReturn(post)
             given(postMediaRepository.findById(postMediaId)).willReturn(Optional.of(postMedia))
 
-            assertThatThrownBy { postMediaService.deleteMedia(postId, postMediaId) }
+            assertThatThrownBy { postMediaService.deleteMedia(postId, postMediaId, 1L, UserRole.USER) }
                 .isInstanceOf(BusinessException::class.java)
+
+            verify(postMediaRepository, never()).delete(any())
+            verify(mediaService, never()).deleteMedia(anyLong())
+        }
+
+        @Test
+        @DisplayName("실패: 소유자가 아닌 유저가 삭제 시도 시 예외를 던진다")
+        fun deleteMedia_NotOwner_Fail() {
+            val postId = 1L
+            val postMediaId = 5L
+            val ownerId = 100L
+            val intruderId = 200L
+
+            val post = mock(Post::class.java)
+            given(post.id).willReturn(postId)
+            given(post.deletedAt).willReturn(null)
+            val owner = mock(User::class.java)
+            given(post.user).willReturn(owner)
+            given(owner.id).willReturn(ownerId)
+
+            val postMedia = mock(PostMedia::class.java)
+            given(postMedia.post).willReturn(post)
+            given(postMediaRepository.findById(postMediaId)).willReturn(Optional.of(postMedia))
+
+            assertThatThrownBy {
+                postMediaService.deleteMedia(postId, postMediaId, intruderId, UserRole.USER)
+            }.isInstanceOf(BusinessException::class.java)
 
             verify(postMediaRepository, never()).delete(any())
             verify(mediaService, never()).deleteMedia(anyLong())
