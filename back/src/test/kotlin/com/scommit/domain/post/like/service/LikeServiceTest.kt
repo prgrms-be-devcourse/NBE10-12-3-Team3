@@ -68,7 +68,8 @@ class LikeServiceTest {
         @DisplayName("성공: 좋아요가 추가되고 likeCount가 증가한다")
         fun createLike_success() {
             // given
-            given(postRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(post)
+            given(postRepository.findByIdAndDeletedAtIsNullForUpdate(10L)).willReturn(post)
+            given(likeRepository.existsByPostIdAndUserId(10L, 1L)).willReturn(false)
 
             // when
             likeService.createLike(10L, actor)
@@ -79,24 +80,25 @@ class LikeServiceTest {
         }
 
         @Test
-        @DisplayName("실패: 이미 좋아요한 경우 DataIntegrityViolationException이 발생하면 ALREADY_LIKED 예외를 던진다")
+        @DisplayName("실패: 이미 좋아요한 경우 ALREADY_LIKED 예외를 던진다")
         fun createLike_alreadyLiked() {
             // given
-            given(postRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(post)
-            given(likeRepository.save(any(Like::class.java)))
-                .willThrow(DataIntegrityViolationException("Duplicate entry"))
+            given(postRepository.findByIdAndDeletedAtIsNullForUpdate(10L)).willReturn(post)
+            given(likeRepository.existsByPostIdAndUserId(10L, 1L)).willReturn(true)
 
             // when & then
             assertThatThrownBy { likeService.createLike(10L, actor) }
                 .isInstanceOf(BusinessException::class.java)
                 .hasFieldOrPropertyWithValue("errorCode", ErrorCode.ALREADY_LIKED)
+
+            verify(likeRepository, never()).save(any())
         }
 
         @Test
         @DisplayName("실패: 존재하지 않는 게시글이면 POST_NOT_FOUND 예외를 던진다")
         fun createLike_postNotFound() {
             // given
-            given(postRepository.findByIdAndDeletedAtIsNull(999L)).willReturn(null)
+            given(postRepository.findByIdAndDeletedAtIsNullForUpdate(999L)).willReturn(null)
 
             // when & then
             assertThatThrownBy { likeService.createLike(999L, actor) }
@@ -104,6 +106,23 @@ class LikeServiceTest {
                 .hasFieldOrPropertyWithValue("errorCode", ErrorCode.POST_NOT_FOUND)
 
             verify(likeRepository, never()).save(any())
+        }
+
+        @Test
+        @DisplayName("실패: exists 체크를 통과해도 유니크 제약 위반 시 ALREADY_LIKED 예외를 던진다 (최후 방어선)")
+        fun createLike_raceConditionFallback() {
+            // given
+            given(postRepository.findByIdAndDeletedAtIsNullForUpdate(10L)).willReturn(post)
+            given(likeRepository.existsByPostIdAndUserId(10L, 1L)).willReturn(false)
+            given(likeRepository.save(any(Like::class.java)))
+                .willThrow(DataIntegrityViolationException("Duplicate entry"))
+
+            // when & then
+            assertThatThrownBy { likeService.createLike(10L, actor) }
+                .isInstanceOf(BusinessException::class.java)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.ALREADY_LIKED)
+
+            verify(postRepository, never()).increaseLikeCount(anyLong())
         }
     }
 
@@ -115,7 +134,7 @@ class LikeServiceTest {
         fun deleteLike_success() {
             // given
             ReflectionTestUtils.setField(post, "likeCount", 1L)
-            given(postRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(post)
+            given(postRepository.findByIdAndDeletedAtIsNullForUpdate(10L)).willReturn(post)
             given(likeRepository.deleteByPostIdAndUserId(10L, 1L)).willReturn(1)
 
             // when
@@ -130,7 +149,7 @@ class LikeServiceTest {
         @DisplayName("실패: 좋아요가 없는 경우 LIKE_NOT_FOUND 예외를 던지고 likeCount를 건드리지 않는다")
         fun deleteLike_likeNotFound() {
             // given
-            given(postRepository.findByIdAndDeletedAtIsNull(10L)).willReturn(post)
+            given(postRepository.findByIdAndDeletedAtIsNullForUpdate(10L)).willReturn(post)
             given(likeRepository.deleteByPostIdAndUserId(10L, 1L)).willReturn(0)
 
             // when & then
@@ -145,7 +164,7 @@ class LikeServiceTest {
         @DisplayName("실패: 존재하지 않는 게시글이면 POST_NOT_FOUND 예외를 던진다")
         fun deleteLike_postNotFound() {
             // given
-            given(postRepository.findByIdAndDeletedAtIsNull(999L)).willReturn(null)
+            given(postRepository.findByIdAndDeletedAtIsNullForUpdate(999L)).willReturn(null)
 
             // when & then
             assertThatThrownBy { likeService.deleteLike(999L, actor) }
