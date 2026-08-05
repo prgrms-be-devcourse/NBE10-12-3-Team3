@@ -11,6 +11,8 @@ import com.scommit.domain.post.post.entity.Post
 import com.scommit.domain.post.post.entity.PostAccessLevel
 import com.scommit.domain.post.post.entity.PublishStatus
 import com.scommit.domain.post.post.repository.PostRepository
+import com.scommit.domain.post.postmedia.entity.PostMediaType
+import com.scommit.domain.post.postmedia.repository.PostMediaRepository
 import com.scommit.domain.series.series.repository.SeriesRepository
 import com.scommit.domain.subscription.subscription.entity.SubscriptionTier
 import com.scommit.domain.subscription.subscription.repository.SubscriptionRepository
@@ -38,6 +40,7 @@ class PostService
         private val sseEmitterRepository: SseEmitterRepository,
         private val likeRepository: LikeRepository,
         private val bookmarkRepository: BookmarkRepository,
+        private val postMediaRepository: PostMediaRepository,
     ) {
         // 게시글 생성
         @Suppress("LongParameterList")
@@ -79,14 +82,18 @@ class PostService
                 val slice = postRepository.findSliceByUserAndDeletedAtIsNull(creator, pageable)
                 val liked = likedPostIds(slice.content, actor)
                 val bookmarked = bookmarkedPostIds(slice.content, actor)
+                val thumbnails = getThumbnailMap(slice.content)
                 return slice.map { post ->
-                    PostListResponse(post, liked.contains(post.id), bookmarked.contains(post.id))
+                    PostListResponse(post, liked.contains(post.id), bookmarked.contains(post.id), thumbnails[post.id])
                 }
             }
             val slice = postRepository.findAllByDeletedAtIsNullAndPublishStatus(PublishStatus.PUBLIC, pageable)
             val liked = likedPostIds(slice.content, actor)
             val bookmarked = bookmarkedPostIds(slice.content, actor)
-            return slice.map { post -> PostListResponse(post, liked.contains(post.id), bookmarked.contains(post.id)) }
+            val thumbnails = getThumbnailMap(slice.content)
+            return slice.map { post ->
+                PostListResponse(post, liked.contains(post.id), bookmarked.contains(post.id), thumbnails[post.id])
+            }
         }
 
         // 게시글 상세 조회
@@ -108,6 +115,8 @@ class PostService
 
             post.increaseViewCount()
 
+            val thumbnailUrl = postMediaRepository.findByPostAndType(post, PostMediaType.THUMBNAIL)?.media?.url
+
             // PAID 게시글은 작성자 또는 멤버십 구독자만 본문 열람 가능
             if (post.accessLevel == PostAccessLevel.PAID && !isOwner) {
                 val isMember =
@@ -116,11 +125,11 @@ class PostService
                             .findByUserIdAndCreatorId(checkNotNull(actor.id), checkNotNull(post.user.id))
                             ?.tier == SubscriptionTier.MEMBERSHIP
                 if (!isMember) {
-                    return PostResponse(post, true, isLiked(id, actor), isBookmarked(id, actor))
+                    return PostResponse(post, true, isLiked(id, actor), isBookmarked(id, actor), thumbnailUrl)
                 }
             }
 
-            return PostResponse(post, false, isLiked(id, actor), isBookmarked(id, actor))
+            return PostResponse(post, false, isLiked(id, actor), isBookmarked(id, actor), thumbnailUrl)
         }
 
         // 게시글 수정
@@ -155,7 +164,9 @@ class PostService
                 sendSse(post)
             }
 
-            return PostResponse(post, false, isLiked(id, actor), isBookmarked(id, actor))
+            val thumbnailUrl = postMediaRepository.findByPostAndType(post, PostMediaType.THUMBNAIL)?.media?.url
+
+            return PostResponse(post, false, isLiked(id, actor), isBookmarked(id, actor), thumbnailUrl)
         }
 
         // 게시글 삭제
@@ -193,17 +204,21 @@ class PostService
             val page = postRepository.findByUserAndDeletedAtIsNull(user, pageable)
             val liked = likedPostIds(page.content, actor)
             val bookmarked = bookmarkedPostIds(page.content, actor)
-            return page.map { post -> PostListResponse(post, liked.contains(post.id), bookmarked.contains(post.id)) }
+            val thumbnails = getThumbnailMap(page.content)
+            return page.map { post ->
+                PostListResponse(post, liked.contains(post.id), bookmarked.contains(post.id), thumbnails[post.id])
+            }
         }
 
         // 키워드 검색
         fun searchPosts(
             keyword: String,
             pageable: Pageable,
-        ): Page<PostListResponse> =
-            postRepository
-                .searchByKeyword(keyword, PublishStatus.PUBLIC, pageable)
-                .map { post -> PostListResponse(post, false, false) }
+        ): Page<PostListResponse> {
+            val page = postRepository.searchByKeyword(keyword, PublishStatus.PUBLIC, pageable)
+            val thumbnails = getThumbnailMap(page.content)
+            return page.map { post -> PostListResponse(post, false, false, thumbnails[post.id]) }
+        }
 
         // 로그인 유저의 게시글 조회
         fun getMyPosts(
@@ -213,7 +228,10 @@ class PostService
             val page = postRepository.findByUserAndDeletedAtIsNull(actor, pageable)
             val liked = likedPostIds(page.content, actor)
             val bookmarked = bookmarkedPostIds(page.content, actor)
-            return page.map { post -> PostListResponse(post, liked.contains(post.id), bookmarked.contains(post.id)) }
+            val thumbnails = getThumbnailMap(page.content)
+            return page.map { post ->
+                PostListResponse(post, liked.contains(post.id), bookmarked.contains(post.id), thumbnails[post.id])
+            }
         }
 
         // 시리즈에 포스트 추가
@@ -272,7 +290,10 @@ class PostService
             val posts = postRepository.findBySeriesIdAndDeletedAtIsNull(seriesId)
             val liked = likedPostIds(posts, actor)
             val bookmarked = bookmarkedPostIds(posts, actor)
-            return posts.map { post -> PostListResponse(post, liked.contains(post.id), bookmarked.contains(post.id)) }
+            val thumbnails = getThumbnailMap(posts)
+            return posts.map { post ->
+                PostListResponse(post, liked.contains(post.id), bookmarked.contains(post.id), thumbnails[post.id])
+            }
         }
 
         private fun sendSse(post: Post) {
@@ -327,5 +348,15 @@ class PostService
             if (actor == null || posts.isEmpty()) return emptySet()
             val postIds = posts.mapNotNull { it.id }
             return bookmarkRepository.findPostIdsByPostIdInAndUserId(postIds, checkNotNull(actor.id)).toSet()
+        }
+
+        private fun getThumbnailMap(posts: List<Post>): Map<Long, String> {
+            if (posts.isEmpty()) return emptyMap()
+            val mediaList = postMediaRepository.findByPostInAndType(posts, PostMediaType.THUMBNAIL)
+            return mediaList.mapNotNull { pm ->
+                val postId = pm.post.id
+                val url = pm.media.url
+                if (postId != null && url != null) postId to url else null
+            }.toMap()
         }
     }
