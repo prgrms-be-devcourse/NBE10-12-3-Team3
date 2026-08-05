@@ -28,8 +28,10 @@ const BASE_URL = __ENV.BASE_URL || 'https://api.scommit.store';
 // http_req_failed 하나만으로는 두 상태가 섞여 보여서 문제 여부를 구분할 수 없다.
 const likeCreated = new Counter('like_created'); // 201
 const likeConflict = new Counter('like_conflict'); // 409
+const likeOther = new Counter('like_other'); // 그 외
 const cancelOk = new Counter('cancel_ok'); // 200
 const cancelMissing = new Counter('cancel_missing'); // 404
+const cancelOther = new Counter('cancel_other'); // 그 외
 
 // 매 iteration마다 새로 만들지 않도록 모듈 스코프에서 한 번만 생성한다(init 컨텍스트 밖,
 // 즉 default function 안에서 매번 새로 만들면 VU마다 반복 생성돼 불필요한 오버헤드가 생기고,
@@ -115,7 +117,11 @@ export default function (data) {
     'like 201 or 409': (r) => r.status === 201 || r.status === 409,
   });
   if (likeRes.status === 201) likeCreated.add(1);
-  if (likeRes.status === 409) likeConflict.add(1);
+  else if (likeRes.status === 409) likeConflict.add(1);
+  else {
+    likeOther.add(1);
+    console.log(`LIKE_FAIL status=${likeRes.status} error=${likeRes.error_code || likeRes.error || 'unknown'}`);
+  }
 
   const cancelRes = http.del(`${BASE_URL}/api/posts/${data.postId}/likes`, null, {
     headers,
@@ -126,7 +132,11 @@ export default function (data) {
     'cancel 200 or 404': (r) => r.status === 200 || r.status === 404,
   });
   if (cancelRes.status === 200) cancelOk.add(1);
-  if (cancelRes.status === 404) cancelMissing.add(1);
+  else if (cancelRes.status === 404) cancelMissing.add(1);
+  else {
+    cancelOther.add(1);
+    console.log(`CANCEL_FAIL status=${cancelRes.status} error=${cancelRes.error_code || cancelRes.error || 'unknown'}`);
+  }
 
   // sleep을 넣지 않는 이유:
   // 실제 유저는 클릭 후 대기하지만, 이 시나리오는 "빠른 토글로 인한 DB 부하"를 보는 것이므로
