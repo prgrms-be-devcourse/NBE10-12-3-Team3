@@ -13,7 +13,9 @@ import { PaymentWidgetModal } from "@/components/payment/payment-widget-modal";
 export type FollowTier = "NONE" | "FOLLOW" | "MEMBERSHIP";
 
 interface FollowButtonProps {
-  creatorId?: string | number;
+  // 필수입니다. 누락 시 조용히 0으로 대체되면 결제 요청이 서버에서 거부되므로,
+  // 값이 없는 경우를 런타임이 아니라 타입 단계에서 막습니다.
+  creatorId: string | number;
   creatorName?: string;
   initialTier?: FollowTier;
   className?: string;
@@ -231,7 +233,7 @@ export function FollowButton({
         isOpen={isJoinModalOpen}
         onClose={() => setIsJoinModalOpen(false)}
         creatorName={creatorName || "창작자"}
-        creatorId={Number(creatorId) || 0}
+        creatorId={Number(creatorId)}
       />
 
       {/* Cancel Membership Modal */}

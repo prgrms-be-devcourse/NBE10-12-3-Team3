@@ -1,29 +1,22 @@
-import React, { useState } from "react";
+import React from "react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { PaymentWidgetModal } from "@/components/payment/payment-widget-modal";
 
 interface BlurPaywallProps {
   isLoggedIn?: boolean;
   className?: string;
-  creatorName?: string;
-  creatorId?: number;
+  /**
+   * 멤버십 가입 버튼을 눌렀을 때 호출됩니다.
+   *
+   * 결제 모달은 이 컴포넌트가 아니라 페이지가 소유합니다.
+   * 토스 결제 후 복귀하면 잠금이 풀리기 전까지 페이월이 사라졌다 나타날 수 있는데,
+   * 모달이 여기 있으면 그 순간 함께 언마운트되어 승인 요청이 유실되기 때문입니다.
+   */
+  onJoinClick: () => void;
 }
 
-export function BlurPaywall({ isLoggedIn = false, className, creatorName = "창작자", creatorId = 0 }: BlurPaywallProps) {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-
-  // Check if URL has Toss redirect params, open modal automatically
-  React.useEffect(() => {
-    if (typeof window !== "undefined") {
-      const params = new URLSearchParams(window.location.search);
-      if (params.get("paymentKey") || params.get("payment_fail")) {
-        setIsModalOpen(true);
-      }
-    }
-  }, []);
-
+export function BlurPaywall({ isLoggedIn = false, className, onJoinClick }: BlurPaywallProps) {
   return (
     <>
       <div
@@ -50,7 +43,7 @@ export function BlurPaywall({ isLoggedIn = false, className, creatorName = "창�
         {isLoggedIn ? (
           <Button
             variant="filled"
-            onClick={() => setIsModalOpen(true)}
+            onClick={onJoinClick}
             className="rounded-full px-8 py-6 font-bold text-base shadow-sm hover:shadow-md transition-shadow"
           >
             월 9,900원 멤버십 구독하기
@@ -69,13 +62,6 @@ export function BlurPaywall({ isLoggedIn = false, className, creatorName = "창�
         {/* Top blur gradient to blend with text above */}
         <div className="absolute top-0 left-0 right-0 h-24 bg-gradient-to-b from-white to-transparent opacity-80" />
       </div>
-
-      <PaymentWidgetModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        creatorName={creatorName}
-        creatorId={creatorId}
-      />
     </>
   );
 }
