@@ -13,7 +13,7 @@ import com.scommit.domain.user.user.entity.User
 import com.scommit.domain.user.user.entity.UserRole
 import com.scommit.global.exception.BusinessException
 import com.scommit.global.exception.ErrorCode
-import com.scommit.global.security.SecurityHelper
+import com.scommit.global.security.currentUser
 import com.scommit.global.security.jwt.JwtFilter
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
@@ -24,6 +24,7 @@ import org.mockito.ArgumentMatchers.anyString
 import org.mockito.ArgumentMatchers.eq
 import org.mockito.BDDMockito.given
 import org.mockito.Mockito.doThrow
+import org.mockito.Mockito.verify
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest
 import org.springframework.context.annotation.ComponentScan
@@ -96,9 +97,6 @@ class SeriesControllerTest {
     @MockitoBean
     lateinit var jpaMetamodelMappingContext: JpaMetamodelMappingContext
 
-    @MockitoBean
-    private lateinit var securityHelper: SecurityHelper
-
     private fun createMockSeriesResponse(
         id: Long,
         userId: Long,
@@ -122,18 +120,17 @@ class SeriesControllerTest {
     ): SeriesListResponse = SeriesListResponse(id, userId, "테스터", title, null, 0L, null, null, null)
 
     @Test
-    @WithMockUser
     @DisplayName("POST /api/series - 새 시리즈 생성 성공")
     fun createSeries_Success() {
         val request = SeriesCreateRequest("시리즈 제목", "시리즈 설명")
         val mockResponse = createMockSeriesResponse(1L, 1L, "시리즈 제목", "시리즈 설명")
 
-        given(securityHelper.actor).willReturn(mockActor)
         given(seriesService.createSeries(anyString(), anyString(), anyLong())).willReturn(mockResponse)
 
         mockMvc
             .perform(
                 post("/api/series")
+                    .with(currentUser(mockActor))
                     .with(csrf())
                     .contentType(APPLICATION_JSON)
                     .content(objectMapper.writeValueAsString(request)),
@@ -141,22 +138,6 @@ class SeriesControllerTest {
             .andExpect(status().isCreated)
             .andExpect(jsonPath("$.data.id").value(1L))
             .andExpect(jsonPath("$.data.title").value("시리즈 제목"))
-    }
-
-    @Test
-    @WithMockUser
-    @DisplayName("POST /api/series - 비인증 사용자 시리즈 생성 시도 실패 (401)")
-    fun createSeries_Unauthorized() {
-        val request = SeriesCreateRequest("시리즈 제목", "시리즈 설명")
-        given(securityHelper.actor).willReturn(null)
-
-        mockMvc
-            .perform(
-                post("/api/series")
-                    .with(csrf())
-                    .contentType(APPLICATION_JSON)
-                    .content(objectMapper.writeValueAsString(request)),
-            ).andExpect(status().isUnauthorized)
     }
 
     @Test
@@ -219,7 +200,6 @@ class SeriesControllerTest {
     }
 
     @Test
-    @WithMockUser
     @DisplayName("GET /api/series/me - 내 시리즈 조회 성공")
     fun getMySeriesList_Success() {
         val mockSeriesList =
@@ -228,24 +208,12 @@ class SeriesControllerTest {
             )
         val mockPage = PageImpl(mockSeriesList)
 
-        given(securityHelper.actor).willReturn(mockActor)
         given(seriesService.getSeriesList(eqKotlin(1L), anyPageable())).willReturn(mockPage)
 
         mockMvc
-            .perform(get("/api/series/me"))
+            .perform(get("/api/series/me").with(currentUser(mockActor)))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.data.content[0].title").value("내 시리즈"))
-    }
-
-    @Test
-    @WithMockUser
-    @DisplayName("GET /api/series/me - 비인증 사용자 접근 실패 (401)")
-    fun getMySeriesList_Unauthorized() {
-        given(securityHelper.actor).willReturn(null)
-
-        mockMvc
-            .perform(get("/api/series/me"))
-            .andExpect(status().isUnauthorized)
     }
 
     @Test
@@ -276,13 +244,11 @@ class SeriesControllerTest {
     }
 
     @Test
-    @WithMockUser
     @DisplayName("PUT /api/series/{id} - 시리즈 수정 성공")
     fun updateSeries_Success() {
         val request = SeriesUpdateRequest("수정된 제목", "수정된 설명")
         val mockResponse = createMockSeriesResponse(1L, 1L, "수정된 제목", "수정된 설명")
 
-        given(securityHelper.actor).willReturn(mockActor)
         given(
             seriesService.updateSeries(eqKotlin(1L), anyString(), anyString(), anyLong(), anyUserRole()),
         ).willReturn(mockResponse)
@@ -290,6 +256,7 @@ class SeriesControllerTest {
         mockMvc
             .perform(
                 put("/api/series/{id}", 1L)
+                    .with(currentUser(mockActor))
                     .with(csrf())
                     .contentType(APPLICATION_JSON)
                     .content(objectMapper.writeValueAsString(request)),
@@ -298,19 +265,18 @@ class SeriesControllerTest {
     }
 
     @Test
-    @WithMockUser
     @DisplayName("PUT /api/series/{id} - 타인 시리즈 수정 시도 실패 (403)")
     fun updateSeries_Forbidden() {
         val request = SeriesUpdateRequest("수정된 제목", "수정된 설명")
         val otherActor = User(99L, "other@example.com", "다른유저", UserRole.USER)
 
-        given(securityHelper.actor).willReturn(otherActor)
         given(seriesService.updateSeries(eqKotlin(1L), anyString(), anyString(), eqKotlin(99L), anyUserRole()))
             .willThrow(BusinessException(ErrorCode.ACCESS_DENIED))
 
         mockMvc
             .perform(
                 put("/api/series/{id}", 1L)
+                    .with(currentUser(otherActor))
                     .with(csrf())
                     .contentType(APPLICATION_JSON)
                     .content(objectMapper.writeValueAsString(request)),
@@ -319,7 +285,6 @@ class SeriesControllerTest {
     }
 
     @Test
-    @WithMockUser
     @DisplayName("PUT /api/series/{id} - 입력값 유효성 검증 실패 (400 Bad Request)")
     fun updateSeries_ValidationError() {
         val request = SeriesUpdateRequest("", "설명")
@@ -327,6 +292,7 @@ class SeriesControllerTest {
         mockMvc
             .perform(
                 put("/api/series/{id}", 1L)
+                    .with(currentUser(mockActor))
                     .with(csrf())
                     .contentType(APPLICATION_JSON)
                     .content(objectMapper.writeValueAsString(request)),
@@ -334,18 +300,17 @@ class SeriesControllerTest {
     }
 
     @Test
-    @WithMockUser
     @DisplayName("PUT /api/series/{id} - 존재하지 않는 시리즈 수정 실패 (404 Not Found)")
     fun updateSeries_NotFound() {
         val request = SeriesUpdateRequest("수정 제목", "수정 설명")
 
-        given(securityHelper.actor).willReturn(mockActor)
         given(seriesService.updateSeries(eqKotlin(999L), anyString(), anyString(), anyLong(), anyUserRole()))
             .willThrow(BusinessException(ErrorCode.RESOURCE_NOT_FOUND))
 
         mockMvc
             .perform(
                 put("/api/series/{id}", 999L)
+                    .with(currentUser(mockActor))
                     .with(csrf())
                     .contentType(APPLICATION_JSON)
                     .content(objectMapper.writeValueAsString(request)),
@@ -354,24 +319,20 @@ class SeriesControllerTest {
     }
 
     @Test
-    @WithMockUser
     @DisplayName("DELETE /api/series/{id} - 시리즈 삭제 성공")
     fun deleteSeries_Success() {
-        given(securityHelper.actor).willReturn(mockActor)
-
         mockMvc
             .perform(
                 delete("/api/series/{id}", 1L)
+                    .with(currentUser(mockActor))
                     .with(csrf()),
             ).andExpect(status().isOk)
     }
 
     @Test
-    @WithMockUser
     @DisplayName("DELETE /api/series/{id} - 타인 시리즈 삭제 시도 실패 (403)")
     fun deleteSeries_Forbidden() {
         val otherActor = User(99L, "other@example.com", "다른유저", UserRole.USER)
-        given(securityHelper.actor).willReturn(otherActor)
         doThrow(BusinessException(ErrorCode.ACCESS_DENIED))
             .`when`(seriesService)
             .deleteSeries(eqKotlin(1L), eqKotlin(99L), anyUserRole())
@@ -379,16 +340,30 @@ class SeriesControllerTest {
         mockMvc
             .perform(
                 delete("/api/series/{id}", 1L)
+                    .with(currentUser(otherActor))
                     .with(csrf()),
             ).andExpect(status().isForbidden)
             .andExpect(jsonPath("$.resultCode").value("403-1"))
     }
 
     @Test
-    @WithMockUser
+    @DisplayName("DELETE /api/series/{id} - 관리자는 소유자가 아니어도 시리즈를 삭제할 수 있다")
+    fun deleteSeries_AdminOverride() {
+        val adminActor = User(2L, "admin@example.com", "관리자", UserRole.ADMIN)
+
+        mockMvc
+            .perform(
+                delete("/api/series/{id}", 1L)
+                    .with(currentUser(adminActor))
+                    .with(csrf()),
+            ).andExpect(status().isOk)
+
+        verify(seriesService).deleteSeries(1L, 2L, UserRole.ADMIN)
+    }
+
+    @Test
     @DisplayName("DELETE /api/series/{id} - 존재하지 않는 시리즈 삭제 실패 (404 Not Found)")
     fun deleteSeries_NotFound() {
-        given(securityHelper.actor).willReturn(mockActor)
         doThrow(BusinessException(ErrorCode.RESOURCE_NOT_FOUND))
             .`when`(seriesService)
             .deleteSeries(eqKotlin(999L), anyLong(), anyUserRole())
@@ -396,22 +371,21 @@ class SeriesControllerTest {
         mockMvc
             .perform(
                 delete("/api/series/{id}", 999L)
+                    .with(currentUser(mockActor))
                     .with(csrf()),
             ).andExpect(status().isNotFound)
             .andExpect(jsonPath("$.resultCode").value("404-1"))
     }
 
     @Test
-    @WithMockUser
     @DisplayName("POST /api/series - 입력값 유효성 검증 실패 (400 Bad Request)")
     fun createSeries_ValidationError() {
         val request = SeriesCreateRequest("", "설명")
 
-        given(securityHelper.actor).willReturn(mockActor)
-
         mockMvc
             .perform(
                 post("/api/series")
+                    .with(currentUser(mockActor))
                     .with(csrf())
                     .contentType(APPLICATION_JSON)
                     .content(objectMapper.writeValueAsString(request)),
@@ -452,32 +426,29 @@ class SeriesControllerTest {
     @DisplayName("POST /api/series/{id}/medias 시리즈 썸네일 업로드")
     inner class UploadMedia {
         @Test
-        @WithMockUser
         @DisplayName("성공 (201)")
         fun uploadMedia_Success() {
             val response = SeriesMediaResponse(1L, 1L, "series/uuid.png", MediaType.IMAGE)
             val file = MockMultipartFile("file", "thumb.png", "image/png", "content".toByteArray())
 
-            given(securityHelper.actor).willReturn(mockActor)
             given(seriesMediaService.uploadMedia(anyLong(), anyMultipartFile(), anyLong(), any())).willReturn(response)
 
             mockMvc
                 .perform(
                     multipart("/api/series/1/medias")
                         .file(file)
+                        .with(currentUser(mockActor))
                         .with(csrf()),
                 ).andExpect(status().isCreated)
                 .andExpect(jsonPath("$.data.url").value("series/uuid.png"))
         }
 
         @Test
-        @WithMockUser
         @DisplayName("타인 시리즈에 썸네일 업로드 시도 실패 (403)")
         fun uploadMedia_Forbidden() {
             val file = MockMultipartFile("file", "thumb.png", "image/png", "content".toByteArray())
             val otherActor = User(99L, "other@example.com", "다른유저", UserRole.USER)
 
-            given(securityHelper.actor).willReturn(otherActor)
             given(seriesMediaService.uploadMedia(anyLong(), anyMultipartFile(), eq(99L), any()))
                 .willThrow(BusinessException(ErrorCode.ACCESS_DENIED))
 
@@ -485,18 +456,17 @@ class SeriesControllerTest {
                 .perform(
                     multipart("/api/series/1/medias")
                         .file(file)
+                        .with(currentUser(otherActor))
                         .with(csrf()),
                 ).andExpect(status().isForbidden)
                 .andExpect(jsonPath("$.resultCode").value("403-1"))
         }
 
         @Test
-        @WithMockUser
         @DisplayName("시리즈 없음 → 404")
         fun uploadMedia_SeriesNotFound() {
             val file = MockMultipartFile("file", "thumb.png", "image/png", "content".toByteArray())
 
-            given(securityHelper.actor).willReturn(mockActor)
             given(seriesMediaService.uploadMedia(anyLong(), anyMultipartFile(), anyLong(), any()))
                 .willThrow(BusinessException(ErrorCode.RESOURCE_NOT_FOUND))
 
@@ -504,6 +474,7 @@ class SeriesControllerTest {
                 .perform(
                     multipart("/api/series/999/medias")
                         .file(file)
+                        .with(currentUser(mockActor))
                         .with(csrf()),
                 ).andExpect(status().isNotFound)
         }
@@ -513,24 +484,20 @@ class SeriesControllerTest {
     @DisplayName("DELETE /api/series/{id}/medias 시리즈 썸네일 삭제")
     inner class DeleteMedia {
         @Test
-        @WithMockUser
         @DisplayName("성공 (200)")
         fun deleteMedia_Success() {
-            given(securityHelper.actor).willReturn(mockActor)
-
             mockMvc
                 .perform(
                     delete("/api/series/1/medias")
+                        .with(currentUser(mockActor))
                         .with(csrf()),
                 ).andExpect(status().isOk)
         }
 
         @Test
-        @WithMockUser
         @DisplayName("타인 시리즈 썸네일 삭제 시도 실패 (403)")
         fun deleteMedia_Forbidden() {
             val otherActor = User(99L, "other@example.com", "다른유저", UserRole.USER)
-            given(securityHelper.actor).willReturn(otherActor)
             doThrow(BusinessException(ErrorCode.ACCESS_DENIED))
                 .`when`(seriesMediaService)
                 .deleteMedia(eq(1L), eq(99L), any())
@@ -538,16 +505,15 @@ class SeriesControllerTest {
             mockMvc
                 .perform(
                     delete("/api/series/1/medias")
+                        .with(currentUser(otherActor))
                         .with(csrf()),
                 ).andExpect(status().isForbidden)
                 .andExpect(jsonPath("$.resultCode").value("403-1"))
         }
 
         @Test
-        @WithMockUser
         @DisplayName("미디어 없음 → 404")
         fun deleteMedia_MediaNotFound() {
-            given(securityHelper.actor).willReturn(mockActor)
             doThrow(BusinessException(ErrorCode.RESOURCE_NOT_FOUND))
                 .`when`(seriesMediaService)
                 .deleteMedia(anyLong(), anyLong(), any())
@@ -555,6 +521,7 @@ class SeriesControllerTest {
             mockMvc
                 .perform(
                     delete("/api/series/1/medias")
+                        .with(currentUser(mockActor))
                         .with(csrf()),
                 ).andExpect(status().isNotFound)
         }

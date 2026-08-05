@@ -9,11 +9,11 @@ import com.scommit.domain.series.series.dto.SeriesUpdateRequest
 import com.scommit.domain.series.series.service.SeriesService
 import com.scommit.domain.series.seriesmedia.dto.SeriesMediaResponse
 import com.scommit.domain.series.seriesmedia.service.SeriesMediaService
+import com.scommit.domain.user.user.entity.User
 import com.scommit.global.dto.PageResponse
 import com.scommit.global.dto.RsData
-import com.scommit.global.exception.BusinessException
-import com.scommit.global.exception.ErrorCode
-import com.scommit.global.security.SecurityHelper
+import com.scommit.global.security.CurrentUser
+import com.scommit.global.security.SecurityUser
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.validation.Valid
@@ -23,6 +23,7 @@ import org.springframework.data.domain.Sort
 import org.springframework.data.web.PageableDefault
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
+import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
@@ -44,15 +45,14 @@ class SeriesController(
     private val seriesService: SeriesService,
     private val seriesMediaService: SeriesMediaService,
     private val postService: PostService,
-    private val securityHelper: SecurityHelper,
 ) {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "새 시리즈 생성")
     fun createSeries(
+        @CurrentUser actor: User,
         @RequestBody @Valid request: SeriesCreateRequest,
     ): RsData<SeriesResponse> {
-        val actor = securityHelper.actor ?: throw BusinessException(ErrorCode.UNAUTHORIZED)
         val response = seriesService.createSeries(checkNotNull(request.title), request.body, checkNotNull(actor.id))
         return RsData("201-1", "시리즈를 생성하였습니다.", response)
     }
@@ -89,9 +89,9 @@ class SeriesController(
     @GetMapping("/me")
     @Operation(summary = "내 시리즈 조회")
     fun getMySeriesList(
+        @CurrentUser actor: User,
         @PageableDefault(size = 10, sort = ["id"], direction = Sort.Direction.DESC) pageable: Pageable,
     ): RsData<PageResponse<SeriesListResponse>> {
-        val actor = securityHelper.actor ?: throw BusinessException(ErrorCode.UNAUTHORIZED)
         val response = PageResponse(seriesService.getSeriesList(checkNotNull(actor.id), pageable))
         return RsData("200-1", "내 시리즈를 조회하였습니다.", response)
     }
@@ -99,9 +99,10 @@ class SeriesController(
     @GetMapping("/{id}/posts")
     @Operation(summary = "시리즈 내 게시글 목록 조회")
     fun getSeriesPosts(
+        @AuthenticationPrincipal securityUser: SecurityUser?,
         @PathVariable id: Long,
     ): RsData<List<PostListResponse>> {
-        val actor = securityHelper.actor
+        val actor = securityUser?.user
         val response = postService.getPostsBySeriesId(id, actor)
         return RsData("200-1", "시리즈 게시글 목록입니다.", response)
     }
@@ -109,10 +110,10 @@ class SeriesController(
     @PostMapping("/{id}/posts/{postId}")
     @Operation(summary = "시리즈에 포스트 추가")
     fun addPostToSeries(
+        @CurrentUser actor: User,
         @PathVariable id: Long,
         @PathVariable postId: Long,
     ): RsData<Void> {
-        val actor = securityHelper.actor ?: throw BusinessException(ErrorCode.UNAUTHORIZED)
         postService.addPostToSeries(postId, id, actor)
         return RsData("200-1", "포스트가 시리즈에 추가되었습니다.")
     }
@@ -120,10 +121,10 @@ class SeriesController(
     @DeleteMapping("/{id}/posts/{postId}")
     @Operation(summary = "시리즈에서 포스트 제거")
     fun removePostFromSeries(
+        @CurrentUser actor: User,
         @PathVariable id: Long,
         @PathVariable postId: Long,
     ): RsData<Void> {
-        val actor = securityHelper.actor ?: throw BusinessException(ErrorCode.UNAUTHORIZED)
         postService.removePostFromSeries(postId, id, actor)
         return RsData("200-1", "포스트가 시리즈에서 제거되었습니다.")
     }
@@ -140,10 +141,10 @@ class SeriesController(
     @PutMapping("/{id}")
     @Operation(summary = "시리즈 수정")
     fun updateSeries(
+        @CurrentUser actor: User,
         @PathVariable id: Long,
         @RequestBody @Valid request: SeriesUpdateRequest,
     ): RsData<SeriesResponse> {
-        val actor = securityHelper.actor ?: throw BusinessException(ErrorCode.UNAUTHORIZED)
         val response =
             seriesService.updateSeries(
                 id,
@@ -158,9 +159,9 @@ class SeriesController(
     @DeleteMapping("/{id}")
     @Operation(summary = "시리즈 삭제")
     fun deleteSeries(
+        @CurrentUser actor: User,
         @PathVariable id: Long,
     ): RsData<Void> {
-        val actor = securityHelper.actor ?: throw BusinessException(ErrorCode.UNAUTHORIZED)
         seriesService.deleteSeries(id, checkNotNull(actor.id), actor.role)
         return RsData("200-1", "시리즈가 삭제되었습니다.")
     }
@@ -169,10 +170,10 @@ class SeriesController(
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "시리즈 썸네일 생성")
     fun uploadMedia(
+        @CurrentUser actor: User,
         @PathVariable id: Long,
         @RequestPart file: MultipartFile,
     ): RsData<SeriesMediaResponse> {
-        val actor = securityHelper.actor ?: throw BusinessException(ErrorCode.UNAUTHORIZED)
         val response = seriesMediaService.uploadMedia(id, file, checkNotNull(actor.id), actor.role)
         return RsData("201-1", "썸네일을 생성하였습니다.", response)
     }
@@ -189,9 +190,9 @@ class SeriesController(
     @DeleteMapping("/{id}/medias")
     @Operation(summary = "시리즈 썸네일 삭제")
     fun deleteMedia(
+        @CurrentUser actor: User,
         @PathVariable id: Long,
     ): RsData<Void> {
-        val actor = securityHelper.actor ?: throw BusinessException(ErrorCode.UNAUTHORIZED)
         seriesMediaService.deleteMedia(id, checkNotNull(actor.id), actor.role)
         return RsData("200-1", "썸네일이 삭제되었습니다.")
     }
