@@ -53,13 +53,13 @@ interface PostRepository : JpaRepository<Post, Long> {
         pageable: Pageable,
     ): Page<Post>
 
-    @Modifying(clearAutomatically = true)
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("UPDATE Post p SET p.bookmarkCount = p.bookmarkCount + 1 WHERE p.id = :postId")
     fun increaseBookmarkCount(
         @Param("postId") postId: Long,
     )
 
-    @Modifying(clearAutomatically = true)
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query(
         "UPDATE Post p SET p.bookmarkCount = CASE WHEN p.bookmarkCount > 0 THEN p.bookmarkCount - 1 ELSE 0 END " +
             "WHERE p.id = :postId",
@@ -68,13 +68,13 @@ interface PostRepository : JpaRepository<Post, Long> {
         @Param("postId") postId: Long,
     )
 
-    @Modifying(clearAutomatically = true)
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("UPDATE Post p SET p.likeCount = p.likeCount + 1 WHERE p.id = :postId")
     fun increaseLikeCount(
         @Param("postId") postId: Long,
     )
 
-    @Modifying(clearAutomatically = true)
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query(
         "UPDATE Post p SET p.likeCount = CASE WHEN p.likeCount > 0 THEN p.likeCount - 1 ELSE 0 END " +
             "WHERE p.id = :postId",

@@ -5,7 +5,7 @@
  * [선택 이유]
  *   여러 유저가 동시에 같은 게시글에 좋아요를 누르면 DB에서 동시 INSERT 경합이 발생함
  *   이때 HikariCP 커넥션 풀이 얼마나 버티는지, 응답시간이 어떻게 변하는지 확인하기 위해 설계
- *   VU마다 다른 유저 토큰을 사용하는 이유: 같은 유저가 중복 좋아요 시 서버에서 400으로 막혀
+ *   VU마다 다른 유저 토큰을 사용하는 이유: 같은 유저가 중복 좋아요 시 서버에서 409로 막혀
  *   실제 INSERT 경합이 발생하지 않으므로 유저를 분산해야 의미 있는 테스트가 됨
  *
  * 실행 방법:
@@ -21,7 +21,11 @@ import http from 'k6/http';
 import { check, sleep } from 'k6';
 
 const BASE_URL = __ENV.BASE_URL || 'https://api.scommit.store';
-const POST_ID = '52';
+
+// 모듈 스코프에서 한 번만 생성 — default function(매 iteration) 안에서 매번 새로 만들면
+// VU마다 반복 생성돼 불필요한 오버헤드가 생기고, k6 버전에 따라 init 컨텍스트 밖 생성이
+// 막혀 있을 수도 있어 사전 검증이 필요하다.
+const likeResponseCallback = http.expectedStatuses(201, 409);
 
 const PASSWORD = '123456';
 
@@ -73,7 +77,23 @@ export function setup() {
     return res.cookies.accessToken[0].value;
   });
 
-  return { tokens };
+  // 이 스크립트 전용 더미 게시글 — 계정 중 하나로 만들어서 실사용자 게시글을 건드리지 않는다.
+  const postRes = http.post(
+    `${BASE_URL}/api/posts`,
+    JSON.stringify({
+      seriesId: null,
+      title: 'k6 load test dummy (like-scenario2)',
+      body: 'auto-created by k6, safe to delete',
+      publishStatus: 'PUBLIC',
+      accessLevel: 'FREE',
+    }),
+    { headers: { 'Content-Type': 'application/json', Cookie: `accessToken=${tokens[0]}` } },
+  );
+  if (postRes.status !== 201) {
+    throw new Error(`더미 게시글 생성 실패: status ${postRes.status}`);
+  }
+
+  return { tokens, postId: postRes.json('data.id') };
 }
 
 export const options = {
@@ -92,7 +112,7 @@ export const options = {
 export default function (data) {
   // __VU % tokens.length 로 토큰을 순환하는 이유:
   // VU ID는 1부터 순차 증가하므로 나머지 연산으로 토큰 배열을 고르게 분산
-  // 같은 유저가 중복 좋아요하면 서버에서 400으로 막혀 INSERT 자체가 안 일어나므로
+  // 같은 유저가 중복 좋아요하면 서버에서 409로 막혀 INSERT 자체가 안 일어나므로
   // 경합 테스트 의미가 없어짐 — 반드시 유저를 분산해야 함
   const token = data.tokens[__VU % data.tokens.length];
 
@@ -101,12 +121,34 @@ export default function (data) {
     'Cookie': `accessToken=${token}`,
   };
 
-  const res = http.post(`${BASE_URL}/api/posts/${POST_ID}/likes`, null, { headers });
+  const res = http.post(`${BASE_URL}/api/posts/${data.postId}/likes`, null, {
+    headers,
+    responseCallback: likeResponseCallback,
+  });
   check(res, {
-    // 201: 좋아요 성공 / 400: 이미 좋아요 상태 (토큰 순환으로 같은 유저가 겹칠 때)
+    // 201: 좋아요 성공 / 409: 이미 좋아요 상태 (ErrorCode.ALREADY_LIKED, 토큰 순환으로 같은 유저가 겹칠 때)
     // 둘 다 서버가 의도대로 처리한 것이므로 에러로 보지 않음
-    'like 201 or 400': (r) => r.status === 201 || r.status === 400,
+    'like 201 or 409': (r) => r.status === 201 || r.status === 409,
   });
 
   sleep(Math.random() * 1.5 + 0.5);
+}
+
+// 측정 구간(default function)이 전부 끝난 뒤 딱 한 번 실행된다.
+// 여기서 실패해도(예: 이미 취소된 계정) 다음 실행에 영향 없도록 200/404 둘 다 정상 처리한다.
+export function teardown(data) {
+  data.tokens.forEach((token) => {
+    http.del(`${BASE_URL}/api/posts/${data.postId}/likes`, null, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': `accessToken=${token}`,
+      },
+      responseCallback: http.expectedStatuses(200, 404),
+    });
+  });
+
+  // 더미 게시글 정리 — setup()에서 만든 게시글을 만든 계정으로 삭제한다.
+  http.del(`${BASE_URL}/api/posts/${data.postId}`, null, {
+    headers: { Cookie: `accessToken=${data.tokens[0]}` },
+  });
 }
