@@ -76,7 +76,17 @@ class PostService
                 val creator =
                     userRepository.findByIdAndDeletedAtIsNull(creatorId)
                         ?: throw BusinessException(ErrorCode.USER_NOT_FOUND)
-                val slice = postRepository.findSliceByUserAndDeletedAtIsNull(creator, pageable)
+                val isOwner = actor?.id == creatorId
+                val slice =
+                    if (isOwner) {
+                        postRepository.findSliceByUserAndDeletedAtIsNull(creator, pageable)
+                    } else {
+                        postRepository.findSliceByUserAndDeletedAtIsNullAndPublishStatus(
+                            creator,
+                            PublishStatus.PUBLIC,
+                            pageable,
+                        )
+                    }
                 val liked = likedPostIds(slice.content, actor)
                 val bookmarked = bookmarkedPostIds(slice.content, actor)
                 return slice.map { post ->
@@ -99,10 +109,10 @@ class PostService
                 postRepository.findByIdAndDeletedAtIsNull(id)
                     ?: throw BusinessException(ErrorCode.POST_NOT_FOUND)
 
-            val isOwner = actor != null && post.user.id == actor.id
+            val isOwner = actor?.id == post.user.id
 
-            // PRIVATE 게시글은 작성자만 접근 가능
-            if (post.publishStatus == PublishStatus.PRIVATE && !isOwner) {
+            // PRIVATE/DRAFT 게시글은 작성자만 접근 가능
+            if (post.publishStatus != PublishStatus.PUBLIC && !isOwner) {
                 throw BusinessException(ErrorCode.ACCESS_DENIED)
             }
 
@@ -190,7 +200,13 @@ class PostService
             val user =
                 userRepository.findByIdAndDeletedAtIsNull(userId)
                     ?: throw BusinessException(ErrorCode.USER_NOT_FOUND)
-            val page = postRepository.findByUserAndDeletedAtIsNull(user, pageable)
+            val isOwner = actor?.id == userId
+            val page =
+                if (isOwner) {
+                    postRepository.findByUserAndDeletedAtIsNull(user, pageable)
+                } else {
+                    postRepository.findByUserAndDeletedAtIsNullAndPublishStatus(user, PublishStatus.PUBLIC, pageable)
+                }
             val liked = likedPostIds(page.content, actor)
             val bookmarked = bookmarkedPostIds(page.content, actor)
             return page.map { post -> PostListResponse(post, liked.contains(post.id), bookmarked.contains(post.id)) }

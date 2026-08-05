@@ -179,7 +179,13 @@ class PostServiceTest {
             val slice = SliceImpl(listOf(post), pageable, false)
 
             given(userRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(mockUser)
-            given(postRepository.findSliceByUserAndDeletedAtIsNull(mockUser, pageable)).willReturn(slice)
+            given(
+                postRepository.findSliceByUserAndDeletedAtIsNullAndPublishStatus(
+                    mockUser,
+                    PublishStatus.PUBLIC,
+                    pageable,
+                ),
+            ).willReturn(slice)
 
             val result = postService.getPosts(1L, null, pageable)
 
@@ -289,7 +295,9 @@ class PostServiceTest {
             val postPage: Page<Post> = PageImpl(listOf(post), pageable, 1)
 
             given(userRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(mockUser)
-            given(postRepository.findByUserAndDeletedAtIsNull(mockUser, pageable)).willReturn(postPage)
+            given(
+                postRepository.findByUserAndDeletedAtIsNullAndPublishStatus(mockUser, PublishStatus.PUBLIC, pageable),
+            ).willReturn(postPage)
 
             val result: Page<PostListResponse> = postService.getUserPosts(1L, null, pageable)
 
@@ -317,7 +325,9 @@ class PostServiceTest {
             val emptyPage: Page<Post> = PageImpl(emptyList(), pageable, 0)
 
             given(userRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(mockUser)
-            given(postRepository.findByUserAndDeletedAtIsNull(mockUser, pageable)).willReturn(emptyPage)
+            given(
+                postRepository.findByUserAndDeletedAtIsNullAndPublishStatus(mockUser, PublishStatus.PUBLIC, pageable),
+            ).willReturn(emptyPage)
 
             val result = postService.getUserPosts(1L, null, pageable)
 
@@ -333,7 +343,9 @@ class PostServiceTest {
             val postPage: Page<Post> = PageImpl(listOf(post), pageable, 1)
 
             given(userRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(mockUser)
-            given(postRepository.findByUserAndDeletedAtIsNull(mockUser, pageable)).willReturn(postPage)
+            given(
+                postRepository.findByUserAndDeletedAtIsNullAndPublishStatus(mockUser, PublishStatus.PUBLIC, pageable),
+            ).willReturn(postPage)
             given(likeRepository.findPostIdsByPostIdInAndUserId(listOf(1L), checkNotNull(otherUser.id)))
                 .willReturn(listOf(1L))
 
@@ -577,6 +589,45 @@ class PostServiceTest {
             assertThatThrownBy { postService.getPost(1L, null) }
                 .isInstanceOf(BusinessException::class.java)
                 .hasFieldOrPropertyWithValue("errorCode", ErrorCode.ACCESS_DENIED)
+        }
+
+        // DRAFT 게시글은 작성자 본인만 조회 가능 (TRIPLES-32)
+        @Test
+        @DisplayName("실패: DRAFT 게시글을 타인이 조회하면 ACCESS_DENIED 예외를 던진다.")
+        fun getPost_Draft_NotOwner() {
+            val post = buildPost(1L, mockUser, null)
+            ReflectionTestUtils.setField(post, "publishStatus", PublishStatus.DRAFT)
+            given(postRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(post)
+
+            assertThatThrownBy { postService.getPost(1L, otherUser) }
+                .isInstanceOf(BusinessException::class.java)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.ACCESS_DENIED)
+        }
+
+        // DRAFT 게시글은 비로그인 사용자도 조회 불가
+        @Test
+        @DisplayName("실패: DRAFT 게시글을 비로그인 사용자가 조회하면 ACCESS_DENIED 예외를 던진다.")
+        fun getPost_Draft_Anonymous() {
+            val post = buildPost(1L, mockUser, null)
+            ReflectionTestUtils.setField(post, "publishStatus", PublishStatus.DRAFT)
+            given(postRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(post)
+
+            assertThatThrownBy { postService.getPost(1L, null) }
+                .isInstanceOf(BusinessException::class.java)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.ACCESS_DENIED)
+        }
+
+        // DRAFT 게시글은 작성자 본인은 정상 조회 가능
+        @Test
+        @DisplayName("성공: DRAFT 게시글을 작성자 본인이 조회하면 정상 반환한다.")
+        fun getPost_Draft_Owner() {
+            val post = buildPost(1L, mockUser, null)
+            ReflectionTestUtils.setField(post, "publishStatus", PublishStatus.DRAFT)
+            given(postRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(post)
+
+            val response: PostResponse = postService.getPost(1L, mockUser)
+
+            assertThat(response.isLocked).isFalse()
         }
 
         // PAID 게시글을 멤버십 비구독자가 조회하면 본문이 잠긴 상태로 반환
