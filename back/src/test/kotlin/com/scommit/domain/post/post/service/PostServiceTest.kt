@@ -32,6 +32,7 @@ import org.mockito.ArgumentMatchers.any
 import org.mockito.ArgumentMatchers.anyLong
 import org.mockito.ArgumentMatchers.eq
 import org.mockito.BDDMockito.given
+import org.mockito.BDDMockito.willThrow
 import org.mockito.InjectMocks
 import org.mockito.Mock
 import org.mockito.Mockito.never
@@ -81,6 +82,9 @@ class PostServiceTest {
 
     @Mock
     private lateinit var bookmarkRepository: BookmarkRepository
+
+    @Mock
+    private lateinit var postAccessGuard: PostAccessGuard
 
     @InjectMocks
     private lateinit var postService: PostService
@@ -560,6 +564,9 @@ class PostServiceTest {
             val post = buildPost(1L, mockUser, null)
             ReflectionTestUtils.setField(post, "publishStatus", PublishStatus.PRIVATE)
             given(postRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(post)
+            willThrow(BusinessException(ErrorCode.ACCESS_DENIED))
+                .given(postAccessGuard)
+                .blockIfPrivate(post, otherUser)
 
             assertThatThrownBy { postService.getPost(1L, otherUser) }
                 .isInstanceOf(BusinessException::class.java)
@@ -573,6 +580,9 @@ class PostServiceTest {
             val post = buildPost(1L, mockUser, null)
             ReflectionTestUtils.setField(post, "publishStatus", PublishStatus.PRIVATE)
             given(postRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(post)
+            willThrow(BusinessException(ErrorCode.ACCESS_DENIED))
+                .given(postAccessGuard)
+                .blockIfPrivate(post, null)
 
             assertThatThrownBy { postService.getPost(1L, null) }
                 .isInstanceOf(BusinessException::class.java)
@@ -586,9 +596,8 @@ class PostServiceTest {
             val post = buildPost(1L, mockUser, null)
             ReflectionTestUtils.setField(post, "accessLevel", PostAccessLevel.PAID)
             given(postRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(post)
-            given(
-                subscriptionRepository.findByUserIdAndCreatorId(checkNotNull(otherUser.id), checkNotNull(mockUser.id)),
-            ).willReturn(null)
+            given(postAccessGuard.isOwner(post, otherUser)).willReturn(false)
+            given(postAccessGuard.isPaidMember(post, otherUser)).willReturn(false)
 
             val response: PostResponse = postService.getPost(1L, otherUser)
 

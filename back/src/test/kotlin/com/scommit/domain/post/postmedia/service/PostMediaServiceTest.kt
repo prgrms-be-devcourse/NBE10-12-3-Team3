@@ -4,14 +4,12 @@ import com.scommit.domain.media.media.entity.Media
 import com.scommit.domain.media.media.entity.MediaType
 import com.scommit.domain.media.media.service.MediaService
 import com.scommit.domain.post.post.entity.Post
-import com.scommit.domain.post.post.entity.PostAccessLevel
-import com.scommit.domain.post.post.entity.PublishStatus
 import com.scommit.domain.post.post.repository.PostRepository
+import com.scommit.domain.post.post.service.PostAccessGuard
 import com.scommit.domain.post.postmedia.dto.PostMediaResponse
 import com.scommit.domain.post.postmedia.entity.PostMedia
 import com.scommit.domain.post.postmedia.entity.PostMediaType
 import com.scommit.domain.post.postmedia.repository.PostMediaRepository
-import com.scommit.domain.subscription.subscription.repository.SubscriptionRepository
 import com.scommit.global.exception.BusinessException
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
@@ -55,7 +53,7 @@ class PostMediaServiceTest {
 
     @Suppress("UnusedPrivateProperty")
     @Mock
-    private lateinit var subscriptionRepository: SubscriptionRepository
+    private lateinit var postAccessGuard: PostAccessGuard
 
     @InjectMocks
     private lateinit var postMediaService: PostMediaService
@@ -184,8 +182,6 @@ class PostMediaServiceTest {
 
             given(postRepository.findById(postId)).willReturn(Optional.of(post))
             given(post.deletedAt).willReturn(null)
-            given(post.publishStatus).willReturn(PublishStatus.PUBLIC)
-            given(post.accessLevel).willReturn(PostAccessLevel.FREE)
             given(postMediaRepository.findAllByPost(post)).willReturn(listOf(postMedia1, postMedia2))
             given(postMedia1.post).willReturn(post)
             given(postMedia1.media).willReturn(media1)
@@ -211,8 +207,6 @@ class PostMediaServiceTest {
 
             given(postRepository.findById(postId)).willReturn(Optional.of(post))
             given(post.deletedAt).willReturn(null)
-            given(post.publishStatus).willReturn(PublishStatus.PUBLIC)
-            given(post.accessLevel).willReturn(PostAccessLevel.FREE)
             given(postMediaRepository.findAllByPost(post)).willReturn(emptyList())
 
             val result = postMediaService.getMediaList(postId, null)
@@ -256,8 +250,6 @@ class PostMediaServiceTest {
 
             given(postRepository.findById(postId)).willReturn(Optional.of(post))
             given(post.deletedAt).willReturn(null)
-            given(post.publishStatus).willReturn(PublishStatus.PUBLIC)
-            given(post.accessLevel).willReturn(PostAccessLevel.FREE)
             given(postMediaRepository.findByPostAndType(post, PostMediaType.THUMBNAIL)).willReturn(postMedia)
             given(postMedia.post).willReturn(post)
             given(postMedia.media).willReturn(media)
@@ -288,8 +280,6 @@ class PostMediaServiceTest {
 
             given(postRepository.findById(postId)).willReturn(Optional.of(post))
             given(post.deletedAt).willReturn(null)
-            given(post.publishStatus).willReturn(PublishStatus.PUBLIC)
-            given(post.accessLevel).willReturn(PostAccessLevel.FREE)
             given(postMediaRepository.findByPostAndType(post, PostMediaType.THUMBNAIL)).willReturn(null)
 
             val result: PostMediaResponse? = postMediaService.getThumbnail(postId, null)

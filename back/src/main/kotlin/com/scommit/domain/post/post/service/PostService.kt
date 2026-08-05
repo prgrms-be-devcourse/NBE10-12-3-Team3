@@ -38,6 +38,7 @@ class PostService
         private val sseEmitterRepository: SseEmitterRepository,
         private val likeRepository: LikeRepository,
         private val bookmarkRepository: BookmarkRepository,
+        private val postAccessGuard: PostAccessGuard,
     ) {
         // 게시글 생성
         @Suppress("LongParameterList")
@@ -99,25 +100,16 @@ class PostService
                 postRepository.findByIdAndDeletedAtIsNull(id)
                     ?: throw BusinessException(ErrorCode.POST_NOT_FOUND)
 
-            val isOwner = actor != null && post.user.id == actor.id
+            val isOwner = postAccessGuard.isOwner(post, actor)
 
             // PRIVATE 게시글은 작성자만 접근 가능
-            if (post.publishStatus == PublishStatus.PRIVATE && !isOwner) {
-                throw BusinessException(ErrorCode.ACCESS_DENIED)
-            }
+            postAccessGuard.blockIfPrivate(post, actor)
 
             post.increaseViewCount()
 
-            // PAID 게시글은 작성자 또는 멤버십 구독자만 본문 열람 가능
-            if (post.accessLevel == PostAccessLevel.PAID && !isOwner) {
-                val isMember =
-                    actor != null &&
-                        subscriptionRepository
-                            .findByUserIdAndCreatorId(checkNotNull(actor.id), checkNotNull(post.user.id))
-                            ?.tier == SubscriptionTier.MEMBERSHIP
-                if (!isMember) {
-                    return PostResponse(post, true, isLiked(id, actor), isBookmarked(id, actor))
-                }
+            // PAID 게시글은 작성자 또는 멤버십 구독자만 본문 열람 가능 (그 외는 잠금 표시로 응답)
+            if (post.accessLevel == PostAccessLevel.PAID && !isOwner && !postAccessGuard.isPaidMember(post, actor)) {
+                return PostResponse(post, true, isLiked(id, actor), isBookmarked(id, actor))
             }
 
             return PostResponse(post, false, isLiked(id, actor), isBookmarked(id, actor))
