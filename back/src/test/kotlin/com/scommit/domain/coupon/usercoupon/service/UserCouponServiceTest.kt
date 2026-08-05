@@ -145,7 +145,7 @@ class UserCouponServiceTest {
                     startAt = LocalDateTime.now().minusDays(10),
                     endAt = LocalDateTime.now().minusDays(1),
                 )
-            given(couponPolicyRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(policy)
+            given(couponPolicyRepository.findByIdAndDeletedAtIsNullForUpdate(1L)).willReturn(policy)
 
             assertThatThrownBy { userCouponService.issueCoupon(actor, 1L) }
                 .isInstanceOf(BusinessException::class.java)
