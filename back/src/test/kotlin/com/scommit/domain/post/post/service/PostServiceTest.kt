@@ -47,6 +47,12 @@ import org.springframework.data.domain.SliceImpl
 import org.springframework.test.util.ReflectionTestUtils
 import java.util.Optional
 
+private fun <T> anyOfType(): T {
+    any<T>()
+    @Suppress("UNCHECKED_CAST")
+    return null as T
+}
+
 /**
  * PostService 단위 테스트
  * - DB, Spring Context 없이 Mockito로 의존성을 가짜(Mock)로 대체
