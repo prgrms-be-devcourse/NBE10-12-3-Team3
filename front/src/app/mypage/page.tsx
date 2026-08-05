@@ -8,6 +8,7 @@ import { ProfileHeaderSkeleton } from "@/components/mypage/profile-header-skelet
 import { SubscriptionList } from "@/components/mypage/subscription-list";
 import { MySeriesList } from "@/components/mypage/my-series-list";
 import { MyPostList } from "@/components/mypage/my-post-list";
+import { PaymentHistoryList } from "@/components/mypage/payment-history-list";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/providers/auth-provider";
 import { apiFetch, ApiError } from "@/lib/api";
@@ -113,11 +114,7 @@ export default function MyPage() {
 
               {activeTab === "series" && <MySeriesList />}
 
-              {activeTab === "payments" && (
-                <div className="py-20 text-center text-neutral-500">
-                  <p>결제 내역이 존재하지 않습니다.</p>
-                </div>
-              )}
+              {activeTab === "payments" && <PaymentHistoryList />}
             </motion.div>
           </section>
         </motion.div>

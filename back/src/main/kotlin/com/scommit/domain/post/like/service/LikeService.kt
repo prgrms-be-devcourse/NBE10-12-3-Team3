@@ -22,8 +22,9 @@ class LikeService(
         postId: Long,
         actor: User,
     ) {
+        // post row를 먼저 잠가 post_likes 접근 순서를 고정한다 (데드락 방지, 클래스 상단 주석 참고)
         val post =
-            postRepository.findByIdAndDeletedAtIsNull(postId)
+            postRepository.findByIdAndDeletedAtIsNullForUpdate(postId)
                 ?: throw BusinessException(ErrorCode.POST_NOT_FOUND)
 
         val isOwner = post.user.id == actor.id
@@ -31,12 +32,18 @@ class LikeService(
             throw BusinessException(ErrorCode.ACCESS_DENIED)
         }
 
+        val actorId = requireNotNull(actor.id)
+        if (likeRepository.existsByPostIdAndUserId(postId, actorId)) {
+            throw BusinessException(ErrorCode.ALREADY_LIKED)
+        }
+
+        // post row를 위에서 이미 잠갔으므로 사실상 도달하지 않지만, 유니크 제약이 최후 방어선으로 남아있어 대비한다
         try {
             likeRepository.save(Like(post, actor))
-            postRepository.increaseLikeCount(postId)
         } catch (ignored: DataIntegrityViolationException) {
             throw BusinessException(ErrorCode.ALREADY_LIKED)
         }
+        postRepository.increaseLikeCount(postId)
     }
 
     @Transactional
@@ -44,7 +51,7 @@ class LikeService(
         postId: Long,
         actor: User,
     ) {
-        postRepository.findByIdAndDeletedAtIsNull(postId)
+        postRepository.findByIdAndDeletedAtIsNullForUpdate(postId)
             ?: throw BusinessException(ErrorCode.POST_NOT_FOUND)
 
         val actorId = requireNotNull(actor.id)

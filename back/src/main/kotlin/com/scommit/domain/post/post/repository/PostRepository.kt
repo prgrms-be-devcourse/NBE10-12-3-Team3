@@ -4,10 +4,12 @@ import com.scommit.domain.post.post.entity.Post
 import com.scommit.domain.post.post.entity.PostAccessLevel
 import com.scommit.domain.post.post.entity.PublishStatus
 import com.scommit.domain.user.user.entity.User
+import jakarta.persistence.LockModeType
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.data.domain.Slice
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Lock
 import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
@@ -17,6 +19,14 @@ import java.time.LocalDateTime
 interface PostRepository : JpaRepository<Post, Long> {
     // 삭제되지 않은 게시글 단건 조회
     fun findByIdAndDeletedAtIsNull(id: Long): Post?
+
+    // 좋아요 추가/취소 시 post row를 먼저 잠가 post <-> post_likes 간 lock 순서를 고정한다.
+    // (INSERT/UPDATE가 FK·유니크 인덱스 체크로 두 테이블의 lock을 서로 다른 순서로 잡으면 데드락 발생 — 실제 운영 DB에서 확인됨)
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT p FROM Post p WHERE p.id = :id AND p.deletedAt IS NULL")
+    fun findByIdAndDeletedAtIsNullForUpdate(
+        @Param("id") id: Long,
+    ): Post?
 
     // 특정 유저 게시글 전체 조회 - 관리자용 (삭제된 게시글 포함)
     fun findByUser(user: User): List<Post>

@@ -4,10 +4,9 @@ import com.scommit.domain.post.comment.dto.CommentCreateRequest
 import com.scommit.domain.post.comment.dto.CommentResponse
 import com.scommit.domain.post.comment.dto.CommentUpdateRequest
 import com.scommit.domain.post.comment.service.CommentService
+import com.scommit.domain.user.user.entity.User
 import com.scommit.global.dto.RsData
-import com.scommit.global.exception.BusinessException
-import com.scommit.global.exception.ErrorCode
-import com.scommit.global.security.SecurityHelper
+import com.scommit.global.security.CurrentUser
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.data.domain.Page
@@ -29,16 +28,15 @@ import org.springframework.web.bind.annotation.RestController
 @RequestMapping("/api/posts/{postId}/comments")
 class CommentController(
     private val commentService: CommentService,
-    private val securityHelper: SecurityHelper,
 ) {
     @Operation(summary = "댓글 작성", description = "게시글에 댓글을 작성합니다.")
     @ResponseStatus(HttpStatus.CREATED)
     @PostMapping
     fun createComment(
+        @CurrentUser actor: User,
         @PathVariable postId: Long,
         @RequestBody request: CommentCreateRequest,
     ): RsData<CommentResponse> {
-        val actor = securityHelper.actor ?: throw BusinessException(ErrorCode.UNAUTHORIZED)
         val response = commentService.createComment(actor, postId, request.body)
         return RsData("201-1", "댓글이 작성되었습니다.", response)
     }
@@ -57,11 +55,11 @@ class CommentController(
     @PutMapping("/{id}")
     @Suppress("UnusedParameter") // postId는 리소스 경로 중첩을 위한 것으로 로직에는 사용되지 않음
     fun updateComment(
+        @CurrentUser actor: User,
         @PathVariable postId: Long,
         @PathVariable id: Long,
         @RequestBody request: CommentUpdateRequest,
     ): RsData<CommentResponse> {
-        val actor = securityHelper.actor ?: throw BusinessException(ErrorCode.UNAUTHORIZED)
         val response = commentService.updateComment(actor, id, request.body)
         return RsData("200-1", "댓글이 수정되었습니다.", response)
     }
@@ -70,10 +68,10 @@ class CommentController(
     @DeleteMapping("/{id}")
     @Suppress("UnusedParameter") // postId는 리소스 경로 중첩을 위한 것으로 로직에는 사용되지 않음
     fun deleteComment(
+        @CurrentUser actor: User,
         @PathVariable postId: Long,
         @PathVariable id: Long,
     ): RsData<Void> {
-        val actor = securityHelper.actor ?: throw BusinessException(ErrorCode.UNAUTHORIZED)
         commentService.deleteComment(actor, id)
         return RsData("200-1", "댓글이 삭제되었습니다.")
     }
