@@ -10,9 +10,10 @@ interface ProfileHeaderProps {
   email: string;
   followerCount: number;
   avatarUrl?: string;
+  introduction?: string;
 }
 
-export function ProfileHeader({ nickname, email, followerCount, avatarUrl }: ProfileHeaderProps) {
+export function ProfileHeader({ nickname, email, followerCount, avatarUrl, introduction }: ProfileHeaderProps) {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   const formattedFollowers = new Intl.NumberFormat("ko-KR").format(followerCount);
@@ -38,7 +39,10 @@ export function ProfileHeader({ nickname, email, followerCount, avatarUrl }: Pro
                 <Settings className="h-5 w-5" />
               </button>
             </div>
-            <p className="text-sm font-medium text-neutral-500">{email}</p>
+            <p className="text-sm font-medium text-neutral-500 mb-2">{email}</p>
+            <p className="text-sm text-neutral-600 font-normal line-clamp-2 max-w-md">
+              {introduction || "작성한 소개글이 없습니다."}
+            </p>
           </div>
         </div>
 
@@ -66,6 +70,7 @@ export function ProfileHeader({ nickname, email, followerCount, avatarUrl }: Pro
         currentNickname={nickname}
         currentEmail={email}
         currentAvatarUrl={avatarUrl}
+        currentIntroduction={introduction}
       />
     </>
   );

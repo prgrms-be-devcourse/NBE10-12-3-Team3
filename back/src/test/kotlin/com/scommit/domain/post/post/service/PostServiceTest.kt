@@ -9,6 +9,7 @@ import com.scommit.domain.post.post.entity.Post
 import com.scommit.domain.post.post.entity.PostAccessLevel
 import com.scommit.domain.post.post.entity.PublishStatus
 import com.scommit.domain.post.post.repository.PostRepository
+import com.scommit.domain.post.postmedia.repository.PostMediaRepository
 import com.scommit.domain.series.series.entity.Series
 import com.scommit.domain.series.series.repository.SeriesRepository
 import com.scommit.domain.subscription.subscription.entity.Subscription
@@ -81,6 +82,10 @@ class PostServiceTest {
 
     @Mock
     private lateinit var bookmarkRepository: BookmarkRepository
+
+    @Mock
+    @Suppress("UnusedPrivateProperty")
+    private lateinit var postMediaRepository: PostMediaRepository
 
     @InjectMocks
     private lateinit var postService: PostService

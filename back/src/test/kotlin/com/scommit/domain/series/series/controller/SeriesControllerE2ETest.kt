@@ -2604,7 +2604,7 @@ class SeriesControllerE2ETest {
         // (계획서 C-3이 가정한 "build/test-uploads/series/"와 다르다 — 실행해서 확인한 실제 동작).
         private val SERIES_UPLOAD_DIR = Path.of("build", "test-uploadsseries")
 
-        /** B-4 기준 — #6 응답이 노출해야 하는 JSON 키 13개. 초과/누락을 모두 이 상수로 고정한다. */
+        /** B-4 기준 — #6 응답이 노출해야 하는 JSON 키 14개. 초과/누락을 모두 이 상수로 고정한다. */
         private val POST_LIST_RESPONSE_KEYS =
             listOf(
                 "id",
@@ -2620,6 +2620,7 @@ class SeriesControllerE2ETest {
                 "isLiked",
                 "isBookmarked",
                 "createdAt",
+                "thumbnailUrl",
             )
 
         private fun uniqueSearchKeyword(): String =

@@ -5,7 +5,6 @@ import {NotificationProvider} from "@/providers/notification-provider";
 import {NotificationToastContainer} from "@/components/common/notification-toast";
 import {Header} from "@/components/common/header";
 import {Footer} from "@/components/common/footer";
-import {DevTools} from "@/components/common/dev-tools";
 
 import {Suspense} from "react";
 
@@ -29,7 +28,6 @@ export default function RootLayout({
             </Suspense>
             <main className="flex-1">{children}</main>
             <Footer/>
-            <DevTools/>
             <NotificationToastContainer/>
           </NotificationProvider>
         </AuthProvider>

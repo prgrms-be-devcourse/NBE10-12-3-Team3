@@ -46,6 +46,7 @@ export interface PostListResponse {
   accessLevel: "FREE" | "PAID";
   viewCount: number;
   createdAt: string;
+  thumbnailUrl?: string;
 }
 
 // Slice 응답이라 totalPages/totalElements가 없습니다. last로만 "다음 페이지 존재 여부"를 판단합니다.
