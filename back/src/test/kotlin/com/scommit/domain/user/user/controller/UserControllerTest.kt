@@ -5,6 +5,7 @@ import com.scommit.domain.user.user.dto.LoginRequest
 import com.scommit.domain.user.user.dto.SignupRequest
 import com.scommit.domain.user.user.dto.UserDeleteRequest
 import com.scommit.domain.user.user.dto.UserPasswordUpdateRequest
+import com.scommit.domain.user.user.dto.UserSearchResponse
 import com.scommit.domain.user.user.dto.UserUpdateRequest
 import com.scommit.domain.user.user.entity.User
 import com.scommit.domain.user.user.entity.UserRole
@@ -19,6 +20,7 @@ import com.scommit.global.security.SecurityHelper
 import com.scommit.global.security.currentUserWithoutSecurityFilter
 import com.scommit.global.security.jwt.JwtFilter
 import com.scommit.global.security.jwt.JwtProvider
+import org.hamcrest.Matchers.hasSize
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
@@ -38,6 +40,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest
 import org.springframework.context.annotation.ComponentScan
 import org.springframework.context.annotation.FilterType
 import org.springframework.context.annotation.Import
+import org.springframework.data.domain.Page
 import org.springframework.data.jpa.mapping.JpaMetamodelMappingContext
 import org.springframework.http.HttpMethod
 import org.springframework.http.MediaType
@@ -276,6 +279,31 @@ class UserControllerTest {
                 ).andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.resultCode").value("400-1"))
         }
+
+        @Test
+        @DisplayName("성공 (201) - 회원가입 시 user 정보가 응답에 포함된다")
+        fun signup_Success_ReturnsUserInfo() {
+            val mockUser =
+                mock(User::class.java).apply {
+                    given(id).willReturn(2L)
+                    given(email).willReturn(validEmail)
+                    given(nickname).willReturn(validNickname)
+                    given(createdAt).willReturn(LocalDateTime.now())
+                }
+            given(userService.signUp(validEmail, validPassword, validNickname)).willReturn(mockUser)
+
+            val request = SignupRequest(validEmail, validPassword, validNickname)
+
+            mvc
+                .perform(
+                    post(signupUrl)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)),
+                ).andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.email").value(validEmail))
+                .andExpect(jsonPath("$.data.nickname").value(validNickname))
+                .andExpect(jsonPath("$.data.id").value(2))
+        }
     }
 
     @Nested
@@ -403,6 +431,48 @@ class UserControllerTest {
                 ).andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.resultCode").value("400-1"))
         }
+
+        @Test
+        @DisplayName("성공 (200) - 로그인 성공 시 새로운 accessToken 발급")
+        fun login_Success_TokenGeneration() {
+            val mockUser = mockUserWithRefreshToken(existingRefreshToken)
+            given(userService.login(validEmail, validPassword)).willReturn(mockUser)
+            given(jwtProvider.generateAccessToken(1L, validEmail, nickname, UserRole.USER))
+                .willReturn(mockAccessToken)
+
+            val request = LoginRequest(validEmail, validPassword)
+
+            mvc
+                .perform(
+                    post(loginUrl)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)),
+                ).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.accessToken").value(mockAccessToken))
+
+            verify(jwtProvider).generateAccessToken(1L, validEmail, nickname, UserRole.USER)
+        }
+
+        @Test
+        @DisplayName("성공 (200) - 로그인 시 쿠키 설정")
+        fun login_Success_SetsCookies() {
+            val mockUser = mockUserWithRefreshToken(existingRefreshToken)
+            given(userService.login(validEmail, validPassword)).willReturn(mockUser)
+            given(jwtProvider.generateAccessToken(1L, validEmail, nickname, UserRole.USER))
+                .willReturn(mockAccessToken)
+
+            val request = LoginRequest(validEmail, validPassword)
+
+            mvc
+                .perform(
+                    post(loginUrl)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)),
+                ).andExpect(status().isOk())
+
+            verify(securityHelper).setCookie("accessToken", mockAccessToken)
+            verify(securityHelper).setCookie("refreshToken", existingRefreshToken)
+        }
     }
 
     @Nested
@@ -425,6 +495,18 @@ class UserControllerTest {
 
             verify(securityHelper).deleteCookie("accessToken")
             verify(securityHelper).deleteCookie("refreshToken")
+        }
+
+        @Test
+        @DisplayName("성공 (200) - 로그아웃하면 userService.logout도 호출된다")
+        fun logout_Success_CallsUserService() {
+            val actor = mockActor()
+
+            mvc
+                .perform(post(logoutUrl).with(currentUserWithoutSecurityFilter(actor)))
+                .andExpect(status().isOk())
+
+            verify(userService).logout(1L)
         }
     }
 
@@ -493,6 +575,66 @@ class UserControllerTest {
 
             verify(securityHelper, never()).deleteCookie(anyString())
         }
+
+        @Test
+        @DisplayName("성공 (200) - 계정 삭제 시 userService 호출 확인")
+        fun withdraw_Success_VerifyServiceCall() {
+            val actor = mockActor()
+            val request = UserDeleteRequest("password123")
+
+            mvc
+                .perform(
+                    delete(withdrawUrl)
+                        .with(currentUserWithoutSecurityFilter(actor))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)),
+                ).andExpect(status().isOk())
+
+            verify(userService).deleteUser(1L, "password123")
+        }
+
+        @Test
+        @DisplayName("성공 (200) - 계정을 삭제하고 쿠키를 정리한다")
+        fun withdraw_Success_CookieDeletion() {
+            val actor = mockActor()
+
+            val request = UserDeleteRequest("password123")
+
+            mvc
+                .perform(
+                    delete(withdrawUrl)
+                        .with(currentUserWithoutSecurityFilter(actor))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)),
+                ).andExpect(status().isOk())
+                .andExpect(jsonPath("$.resultCode").value("200-1"))
+
+            verify(userService).deleteUser(1L, "password123")
+            verify(securityHelper).deleteCookie("accessToken")
+            verify(securityHelper).deleteCookie("refreshToken")
+        }
+
+        @Test
+        @DisplayName("실패 (401) - 비밀번호 불일치 시 쿠키는 유지된다")
+        fun withdraw_WrongPassword_NoCookieDeletion() {
+            val actor = mockActor()
+            willThrow(BusinessException(ErrorCode.UNAUTHORIZED))
+                .given(userService)
+                .deleteUser(1L, "wrongpwd")
+
+            val request = UserDeleteRequest("wrongpwd")
+
+            mvc
+                .perform(
+                    delete(withdrawUrl)
+                        .with(currentUserWithoutSecurityFilter(actor))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)),
+                ).andExpect(status().isUnauthorized())
+
+            verify(securityHelper, never()).deleteCookie("accessToken")
+            verify(securityHelper, never()).deleteCookie("refreshToken")
+        }
     }
 
     @Nested
@@ -534,6 +676,46 @@ class UserControllerTest {
                 .andExpect(jsonPath("$.data.profile.introduction").value(introduction))
                 .andExpect(jsonPath("$.data.createdAt").exists())
                 .andExpect(jsonPath("$.data.updatedAt").exists())
+        }
+
+        @Test
+        @DisplayName("성공 (200) - 프로필 이미지가 있는 경우")
+        fun getMe_WithProfileImage() {
+            val actor = mockActor()
+            given(userService.getUser(1L)).willReturn(actor)
+            given(userMediaService.getMedia(1L)).willReturn(
+                UserMediaResponse(1L, 1L, "user/uuid.png", MediaFileType.IMAGE),
+            )
+
+            mvc
+                .perform(get(meUrl).with(currentUserWithoutSecurityFilter(actor)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.profile.profileImageUrl").value("user/uuid.png"))
+        }
+
+        @Test
+        @DisplayName("실패 (404) - 유저가 없는 경우")
+        fun getMe_UserNotFound() {
+            val actor = mockActor()
+            given(userService.getUser(1L)).willReturn(null)
+
+            mvc
+                .perform(get(meUrl).with(currentUserWithoutSecurityFilter(actor)))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.resultCode").value("404-2"))
+        }
+
+        @Test
+        @DisplayName("성공 (200) - 프로필 이미지가 없는 경우 응답에 미포함")
+        fun getMe_NoProfileImage() {
+            val actor = mockActor()
+            given(userService.getUser(1L)).willReturn(actor)
+            given(userMediaService.getMedia(1L)).willReturn(null)
+
+            mvc
+                .perform(get(meUrl).with(currentUserWithoutSecurityFilter(actor)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.profile.profileImageUrl").doesNotExist())
         }
     }
 
@@ -669,6 +851,69 @@ class UserControllerTest {
                 ).andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.resultCode").value("400-1"))
         }
+
+        @Test
+        @DisplayName("성공 (200) - 새 이미지를 첨부하면 새로운 프로필 이미지 URL을 응답한다")
+        fun updateMe_WithProfileImageUpload() {
+            val actor = mockActor()
+
+            val updatedUser = mock(User::class.java)
+            given(updatedUser.id).willReturn(1L)
+            given(updatedUser.email).willReturn(email)
+            given(updatedUser.nickname).willReturn(newNickname)
+            given(updatedUser.introduction).willReturn(newIntroduction)
+            given(updatedUser.createdAt).willReturn(LocalDateTime.now())
+            given(userService.updateUser(1L, newNickname, newIntroduction)).willReturn(updatedUser)
+            given(userMediaService.uploadMedia(anyLong(), anyOfType<MultipartFile>())).willReturn(
+                UserMediaResponse(1L, 1L, "user/new-uuid.png", MediaFileType.IMAGE),
+            )
+
+            val request = UserUpdateRequest(newNickname, newIntroduction)
+            val profileImage = MockMultipartFile("profileImage", "profile.png", "image/png", "content".toByteArray())
+
+            mvc
+                .perform(
+                    multipart(HttpMethod.PATCH, meUrl)
+                        .file(requestPart(request))
+                        .file(profileImage)
+                        .with(currentUserWithoutSecurityFilter(actor))
+                        .with(csrf()),
+                ).andExpect(status().isOk())
+                .andExpect(jsonPath("$.resultCode").value("200-1"))
+                .andExpect(jsonPath("$.data.profile.profileImageUrl").value("user/new-uuid.png"))
+        }
+
+        @Test
+        @DisplayName("성공 (200) - 새 이미지를 첨부하고 기존 이미지를 대체한다")
+        fun updateMe_ReplaceProfileImage() {
+            val actor = mockActor()
+
+            val updatedUser = mock(User::class.java)
+            given(updatedUser.id).willReturn(1L)
+            given(updatedUser.email).willReturn(email)
+            given(updatedUser.nickname).willReturn(newNickname)
+            given(updatedUser.introduction).willReturn(newIntroduction)
+            given(updatedUser.createdAt).willReturn(LocalDateTime.now())
+            given(userService.updateUser(1L, newNickname, newIntroduction)).willReturn(updatedUser)
+            given(userMediaService.uploadMedia(anyLong(), anyOfType<MultipartFile>())).willReturn(
+                UserMediaResponse(1L, 1L, "user/replaced-uuid.png", MediaFileType.IMAGE),
+            )
+
+            val request = UserUpdateRequest(newNickname, newIntroduction)
+            val profileImage = MockMultipartFile("profileImage", "new.png", "image/png", "new-content".toByteArray())
+
+            mvc
+                .perform(
+                    multipart(HttpMethod.PATCH, meUrl)
+                        .file(requestPart(request))
+                        .file(profileImage)
+                        .with(currentUserWithoutSecurityFilter(actor))
+                        .with(csrf()),
+                ).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.profile.profileImageUrl").value("user/replaced-uuid.png"))
+
+            verify(userMediaService).uploadMedia(1L, profileImage)
+        }
     }
 
     @Nested
@@ -683,6 +928,16 @@ class UserControllerTest {
         private val refreshToken = "33333333-3333-3333-3333-333333333333"
 
         private fun mockActor(): User {
+            val mockUser = mock(User::class.java)
+            given(mockUser.id).willReturn(1L)
+            given(mockUser.email).willReturn(email)
+            given(mockUser.nickname).willReturn(nickname)
+            given(mockUser.role).willReturn(UserRole.USER)
+            given(mockUser.refreshToken).willReturn(refreshToken)
+            return mockUser
+        }
+
+        private fun mockUpdatedUser(): User {
             val mockUser = mock(User::class.java)
             given(mockUser.id).willReturn(1L)
             given(mockUser.email).willReturn(email)
@@ -784,6 +1039,137 @@ class UserControllerTest {
                         .content(objectMapper.writeValueAsString(request)),
                 ).andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.resultCode").value("500-1"))
+        }
+
+        @Test
+        @DisplayName("실패 (401) - 현재 비밀번호 불일치")
+        fun updatePassword_WrongCurrentPassword() {
+            val actor = mockActor()
+            willThrow(BusinessException(ErrorCode.UNAUTHORIZED))
+                .given(userService)
+                .updatePassword(1L, "wrongpassword", newPassword)
+
+            val request = UserPasswordUpdateRequest("wrongpassword", newPassword)
+
+            mvc
+                .perform(
+                    put(passwordUrl)
+                        .with(currentUserWithoutSecurityFilter(actor))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)),
+                ).andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.resultCode").value("401-1"))
+        }
+
+        @Test
+        @DisplayName("성공 (200) - 비밀번호 변경 후 쿠키를 갱신한다")
+        fun updatePassword_Success_CookieRefresh() {
+            val actor = mockActor()
+            val updatedUser = mockUpdatedUser()
+            given(userService.getUser(1L)).willReturn(updatedUser)
+            given(jwtProvider.generateAccessToken(1L, email, nickname, UserRole.USER))
+                .willReturn(mockAccessToken)
+
+            val request = UserPasswordUpdateRequest(currentPassword, newPassword)
+
+            mvc
+                .perform(
+                    put(passwordUrl)
+                        .with(currentUserWithoutSecurityFilter(actor))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)),
+                ).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.accessToken").value(mockAccessToken))
+
+            verify(securityHelper).setCookie("accessToken", mockAccessToken)
+            verify(securityHelper).setCookie("refreshToken", refreshToken)
+        }
+
+        @Test
+        @DisplayName("성공 (200) - 새 accessToken과 refreshToken을 응답한다")
+        fun updatePassword_Success_ReturnsTokens() {
+            val actor = mockActor()
+            val updatedUser = mockUpdatedUser()
+            given(userService.getUser(1L)).willReturn(updatedUser)
+            given(jwtProvider.generateAccessToken(1L, email, nickname, UserRole.USER))
+                .willReturn(mockAccessToken)
+
+            val request = UserPasswordUpdateRequest(currentPassword, newPassword)
+
+            mvc
+                .perform(
+                    put(passwordUrl)
+                        .with(currentUserWithoutSecurityFilter(actor))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)),
+                ).andExpect(status().isOk())
+                .andExpect(jsonPath("$.resultCode").value("200-1"))
+                .andExpect(jsonPath("$.data.accessToken").value(mockAccessToken))
+                .andExpect(jsonPath("$.data.refreshToken").value(refreshToken))
+                .andExpect(jsonPath("$.data.expiresIn").isNumber())
+
+            verify(userService).updatePassword(1L, currentPassword, newPassword)
+            verify(userService).getUser(1L)
+            verify(jwtProvider).generateAccessToken(1L, email, nickname, UserRole.USER)
+        }
+
+        @Test
+        @DisplayName("실패 (404) - 비밀번호 변경 후 유저를 조회하지 못한 경우")
+        fun updatePassword_UserNotFoundAfterUpdate() {
+            val actor = mockActor()
+            given(userService.getUser(1L)).willReturn(null)
+
+            val request = UserPasswordUpdateRequest(currentPassword, newPassword)
+
+            mvc
+                .perform(
+                    put(passwordUrl)
+                        .with(currentUserWithoutSecurityFilter(actor))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)),
+                ).andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.resultCode").value("404-2"))
+        }
+    }
+
+    @Nested
+    @DisplayName("GET /api/users/search 유저 검색")
+    inner class SearchUsers {
+        private val searchUrl = "/api/users/search"
+
+        @Test
+        @DisplayName("성공 (200) - 검색 키워드가 빈 문자열 → 빈 페이지 반환")
+        fun searchUsers_BlankKeyword() {
+            mvc
+                .perform(get(searchUrl).param("keyword", ""))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.resultCode").value("200-1"))
+                .andExpect(jsonPath("$.data.content").isArray())
+                .andExpect(jsonPath("$.data.content", hasSize<Any>(0)))
+        }
+
+        @Test
+        @DisplayName("성공 (200) - 검색 키워드가 있는 경우")
+        fun searchUsers_WithKeyword() {
+            val searchResponse = Page.empty<UserSearchResponse>()
+            given(userService.searchUsers(anyString(), anyOfType())).willReturn(searchResponse)
+
+            mvc
+                .perform(get(searchUrl).param("keyword", "test"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.resultCode").value("200-1"))
+                .andExpect(jsonPath("$.data.content", hasSize<Any>(0)))
+        }
+
+        @Test
+        @DisplayName("성공 (200) - 공백만 있는 키워드도 빈 페이지 반환")
+        fun searchUsers_WhitespaceOnlyKeyword() {
+            mvc
+                .perform(get(searchUrl).param("keyword", "   "))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.resultCode").value("200-1"))
+                .andExpect(jsonPath("$.data.content").isArray())
+                .andExpect(jsonPath("$.data.content", hasSize<Any>(0)))
         }
     }
 
@@ -925,6 +1311,28 @@ class UserControllerTest {
                         .with(csrf()),
                 ).andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.url").value("user/uuid.png"))
+        }
+
+        @Test
+        @DisplayName("성공 (201) - 응답에 userId와 mediaType 포함")
+        fun uploadMedia_Success_FullResponse() {
+            val actor = User(1L, "test@example.com", "테스터")
+
+            val response = UserMediaResponse(2L, 1L, "user/new-uuid.png", MediaFileType.IMAGE)
+            val file = MockMultipartFile("file", "avatar.jpg", "image/jpeg", "jpeg-content".toByteArray())
+            given(userMediaService.uploadMedia(anyLong(), anyOfType<MultipartFile>())).willReturn(response)
+
+            mvc
+                .perform(
+                    multipart("/api/users/me/medias")
+                        .file(file)
+                        .with(currentUserWithoutSecurityFilter(actor))
+                        .with(csrf()),
+                ).andExpect(status().isCreated())
+                .andExpect(jsonPath("$.resultCode").value("201-1"))
+                .andExpect(jsonPath("$.data.id").value(2))
+                .andExpect(jsonPath("$.data.userId").value(1))
+                .andExpect(jsonPath("$.data.url").value("user/new-uuid.png"))
         }
     }
 
