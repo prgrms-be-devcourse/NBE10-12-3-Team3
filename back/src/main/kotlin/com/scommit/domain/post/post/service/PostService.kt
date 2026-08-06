@@ -38,6 +38,7 @@ class PostService
         private val notificationService: NotificationService,
         private val likeRepository: LikeRepository,
         private val bookmarkRepository: BookmarkRepository,
+        private val postAccessGuard: PostAccessGuard,
         private val postMediaRepository: PostMediaRepository,
     ) {
         // 게시글 생성
@@ -114,10 +115,11 @@ class PostService
                 postRepository.findByIdAndDeletedAtIsNull(id)
                     ?: throw BusinessException(ErrorCode.POST_NOT_FOUND)
 
-            val isOwner = actor?.id == post.user.id
+            // PRIVATE 게시글은 작성자만 접근 가능
+            postAccessGuard.blockIfPrivate(post, actor)
 
-            // PRIVATE/DRAFT 게시글은 작성자만 접근 가능
-            if (post.publishStatus != PublishStatus.PUBLIC && !isOwner) {
+            // DRAFT 게시글은 작성자만 접근 가능 (TRIPLES-32)
+            if (post.publishStatus == PublishStatus.DRAFT && actor?.id != post.user.id) {
                 throw BusinessException(ErrorCode.ACCESS_DENIED)
             }
 
@@ -125,16 +127,12 @@ class PostService
 
             val thumbnailUrl = postMediaRepository.findByPostAndType(post, PostMediaType.THUMBNAIL)?.media?.url
 
-            // PAID 게시글은 작성자 또는 멤버십 구독자만 본문 열람 가능
-            if (post.accessLevel == PostAccessLevel.PAID && !isOwner) {
-                val isMember =
-                    actor != null &&
-                        subscriptionRepository
-                            .findByUserIdAndCreatorId(checkNotNull(actor.id), checkNotNull(post.user.id))
-                            ?.tier == SubscriptionTier.MEMBERSHIP
-                if (!isMember) {
-                    return PostResponse(post, true, isLiked(id, actor), isBookmarked(id, actor), thumbnailUrl)
-                }
+            // PAID 게시글은 작성자 또는 멤버십 구독자만 본문 열람 가능 (그 외는 잠금 표시로 응답)
+            if (post.accessLevel == PostAccessLevel.PAID &&
+                !postAccessGuard.isOwner(post, actor) &&
+                !postAccessGuard.isPaidMember(post, actor)
+            ) {
+                return PostResponse(post, true, isLiked(id, actor), isBookmarked(id, actor), thumbnailUrl)
             }
 
             return PostResponse(post, false, isLiked(id, actor), isBookmarked(id, actor), thumbnailUrl)
