@@ -759,6 +759,32 @@ class UserControllerTest {
                 ).andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.resultCode").value("400-1"))
         }
+
+        @Test
+        @DisplayName("실패 (500) - 변경 후 조회한 유저의 refreshToken이 없는 경우")
+        fun updatePassword_NullRefreshToken() {
+            val actor = mockActor()
+            val userWithoutRefreshToken = mock(User::class.java)
+            given(userWithoutRefreshToken.id).willReturn(1L)
+            given(userWithoutRefreshToken.email).willReturn(email)
+            given(userWithoutRefreshToken.nickname).willReturn(nickname)
+            given(userWithoutRefreshToken.role).willReturn(UserRole.USER)
+            given(userWithoutRefreshToken.refreshToken).willReturn(null)
+            given(userService.getUser(1L)).willReturn(userWithoutRefreshToken)
+            given(jwtProvider.generateAccessToken(1L, email, nickname, UserRole.USER))
+                .willReturn(mockAccessToken)
+
+            val request = UserPasswordUpdateRequest(currentPassword, newPassword)
+
+            mvc
+                .perform(
+                    put(passwordUrl)
+                        .with(currentUserWithoutSecurityFilter(actor))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)),
+                ).andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.resultCode").value("500-1"))
+        }
     }
 
     @Nested
