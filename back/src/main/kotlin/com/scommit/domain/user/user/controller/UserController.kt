@@ -62,7 +62,7 @@ class UserController(
     fun signUp(
         @Valid @RequestBody request: SignupRequest,
     ): RsData<SignupResponse> {
-        val user = userService.signUp(requireNotNull(request.email), request.password, request.nickname)
+        val user = userService.signUp(request.email!!, request.password, request.nickname)
         return RsData(
             "201-1",
             "회원가입에 성공했습니다.",
@@ -75,8 +75,8 @@ class UserController(
     fun login(
         @Valid @RequestBody request: LoginRequest,
     ): RsData<LoginResponse> {
-        val user = userService.login(request.email, requireNotNull(request.password))
-        val accessToken = jwtProvider.generateAccessToken(checkNotNull(user.id), user.email, user.nickname, user.role)
+        val user = userService.login(request.email, request.password!!)
+        val accessToken = jwtProvider.generateAccessToken(user.id!!, user.email, user.nickname, user.role)
 
         securityHelper.setCookie("accessToken", accessToken)
         securityHelper.setCookie("refreshToken", user.refreshToken)
@@ -95,7 +95,7 @@ class UserController(
     ): RsData<Unit> {
         securityHelper.deleteCookie("accessToken")
         securityHelper.deleteCookie("refreshToken")
-        userService.logout(checkNotNull(actor.id))
+        userService.logout(actor.id!!)
         return RsData("200-1", "로그아웃에 성공했습니다.")
     }
 
@@ -105,7 +105,7 @@ class UserController(
         @CurrentUser actor: User,
         @Valid @RequestBody request: UserDeleteRequest,
     ): RsData<Unit> {
-        userService.deleteUser(checkNotNull(actor.id), requireNotNull(request.password))
+        userService.deleteUser(actor.id!!, request.password!!)
         securityHelper.deleteCookie("accessToken")
         securityHelper.deleteCookie("refreshToken")
         return RsData("200-1", "회원탈퇴에 성공했습니다.")
@@ -116,8 +116,8 @@ class UserController(
     fun getMyInfo(
         @CurrentUser actor: User,
     ): RsData<UserMeResponse> {
-        val user = userService.getUser(checkNotNull(actor.id)) ?: throw BusinessException(ErrorCode.USER_NOT_FOUND)
-        val profileImageUrl = userMediaService.getMedia(checkNotNull(actor.id))?.url
+        val user = userService.getUser(actor.id!!) ?: throw BusinessException(ErrorCode.USER_NOT_FOUND)
+        val profileImageUrl = userMediaService.getMedia(actor.id!!)?.url
 
         return RsData(
             "200-1",
@@ -133,12 +133,12 @@ class UserController(
         @Valid @RequestPart(value = "request") request: UserUpdateRequest,
         @RequestPart(value = "profileImage", required = false) profileImage: MultipartFile?,
     ): RsData<UserUpdateResponse> {
-        val updatedUser = userService.updateUser(checkNotNull(actor.id), request.nickname, request.introduction)
+        val updatedUser = userService.updateUser(actor.id!!, request.nickname, request.introduction)
         val profileImageUrl =
             if (profileImage != null) {
-                userMediaService.uploadMedia(checkNotNull(actor.id), profileImage).url
+                userMediaService.uploadMedia(actor.id!!, profileImage).url
             } else {
-                userMediaService.getMedia(checkNotNull(actor.id))?.url
+                userMediaService.getMedia(actor.id!!)?.url
             }
 
         return RsData("200-1", "내 정보를 수정하였습니다.", UserUpdateResponse(updatedUser, profileImageUrl))
@@ -150,11 +150,11 @@ class UserController(
         @CurrentUser actor: User,
         @Valid @RequestBody request: UserPasswordUpdateRequest,
     ): RsData<UserPasswordUpdateResponse> {
-        userService.updatePassword(checkNotNull(actor.id), requireNotNull(request.currentPassword), request.newPassword)
+        userService.updatePassword(actor.id!!, request.currentPassword!!, request.newPassword)
 
-        val user = userService.getUser(checkNotNull(actor.id)) ?: throw BusinessException(ErrorCode.USER_NOT_FOUND)
+        val user = userService.getUser(actor.id!!) ?: throw BusinessException(ErrorCode.USER_NOT_FOUND)
         val accessToken =
-            jwtProvider.generateAccessToken(checkNotNull(actor.id), actor.email, actor.nickname, user.role)
+            jwtProvider.generateAccessToken(actor.id!!, actor.email, actor.nickname, user.role)
         securityHelper.setCookie("accessToken", accessToken)
         securityHelper.setCookie("refreshToken", user.refreshToken)
         return RsData(
@@ -203,7 +203,7 @@ class UserController(
         @CurrentUser actor: User,
         @RequestPart file: MultipartFile,
     ): RsData<UserMediaResponse> {
-        val response = userMediaService.uploadMedia(checkNotNull(actor.id), file)
+        val response = userMediaService.uploadMedia(actor.id!!, file)
         return RsData("201-1", "프로필 이미지를 생성하였습니다.", response)
     }
 
@@ -221,7 +221,7 @@ class UserController(
     fun deleteMedia(
         @CurrentUser actor: User,
     ): RsData<Unit> {
-        userMediaService.deleteMedia(checkNotNull(actor.id))
+        userMediaService.deleteMedia(actor.id!!)
         return RsData("200-1", "프로필 이미지가 삭제되었습니다.")
     }
 }

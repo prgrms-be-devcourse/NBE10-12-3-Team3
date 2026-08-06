@@ -18,7 +18,7 @@ class NotificationController(
     fun subscribe(
         @CurrentUser actor: User,
     ): SseEmitter {
-        val userId = checkNotNull(actor.id)
+        val userId = actor.id!!
         return notificationService.subscribe(userId)
     }
 }
