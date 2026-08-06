@@ -1,7 +1,6 @@
 package com.scommit.domain.post.post.service
 
-import com.scommit.domain.notification.notification.dto.NotificationResponse
-import com.scommit.domain.notification.notification.repository.SseEmitterRepository
+import com.scommit.domain.notification.notification.service.NotificationService
 import com.scommit.domain.post.bookmark.repository.BookmarkRepository
 import com.scommit.domain.post.like.repository.LikeRepository
 import com.scommit.domain.post.post.dto.PostListResponse
@@ -29,8 +28,10 @@ import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.ArgumentMatchers.any
+import org.mockito.ArgumentMatchers.anyList
 import org.mockito.ArgumentMatchers.anyLong
-import org.mockito.ArgumentMatchers.eq
+import org.mockito.ArgumentMatchers.anyString
+import org.mockito.ArgumentMatchers.isNull
 import org.mockito.BDDMockito.given
 import org.mockito.InjectMocks
 import org.mockito.Mock
@@ -46,7 +47,6 @@ import org.springframework.data.domain.SliceImpl
 import org.springframework.test.util.ReflectionTestUtils
 import java.util.Optional
 
-// any() returns null at runtime, which fails Kotlin's non-null check on Kotlin-declared repository params.
 private fun <T> anyOfType(): T {
     any<T>()
     @Suppress("UNCHECKED_CAST")
@@ -74,7 +74,7 @@ class PostServiceTest {
     private lateinit var subscriptionRepository: SubscriptionRepository
 
     @Mock
-    private lateinit var sseEmitterRepository: SseEmitterRepository
+    private lateinit var notificationService: NotificationService
 
     @Mock
     private lateinit var likeRepository: LikeRepository
@@ -384,7 +384,7 @@ class PostServiceTest {
 
             postService.createPost(mockUser, "제목", "내용", PublishStatus.PUBLIC, PostAccessLevel.FREE, null)
 
-            verify(sseEmitterRepository).sendToUser(eq(2L), anyOfType<NotificationResponse>())
+            verify(notificationService).notifyNewPost(anyList(), anyString(), isNull())
         }
 
         @Test
@@ -396,7 +396,7 @@ class PostServiceTest {
 
             postService.createPost(mockUser, "제목", "내용", PublishStatus.PUBLIC, PostAccessLevel.PAID, null)
 
-            verify(sseEmitterRepository).sendToUser(eq(2L), anyOfType<NotificationResponse>())
+            verify(notificationService).notifyNewPost(anyList(), anyString(), isNull())
             verify(subscriptionRepository, never()).findByCreatorIdAndDeletedAtIsNull(anyLong())
         }
 
@@ -405,7 +405,7 @@ class PostServiceTest {
         fun create_Draft_NoSse() {
             postService.createPost(mockUser, "제목", "내용", PublishStatus.DRAFT, PostAccessLevel.FREE, null)
 
-            verify(sseEmitterRepository, never()).sendToUser(anyLong(), anyOfType<NotificationResponse>())
+            verify(notificationService, never()).notifyNewPost(anyList(), anyString(), anyLong())
         }
 
         // 없는 시리즈 ID를 넘기면 저장 전에 예외가 발생해야 함
@@ -448,7 +448,7 @@ class PostServiceTest {
 
             postService.updatePost(mockUser, 1L, "제목", "내용", PublishStatus.PUBLIC, PostAccessLevel.FREE, null)
 
-            verify(sseEmitterRepository).sendToUser(eq(2L), anyOfType<NotificationResponse>())
+            verify(notificationService).notifyNewPost(anyList(), anyString(), anyLong())
         }
 
         @Test
@@ -459,7 +459,7 @@ class PostServiceTest {
 
             postService.updatePost(mockUser, 1L, "수정제목", "수정내용", PublishStatus.PUBLIC, PostAccessLevel.FREE, null)
 
-            verify(sseEmitterRepository, never()).sendToUser(anyLong(), anyOfType<NotificationResponse>())
+            verify(notificationService, never()).notifyNewPost(anyList(), anyString(), anyLong())
         }
 
         // 없는 게시글 ID → 조회 시점에 예외 발생
@@ -781,6 +781,7 @@ class PostServiceTest {
             val series = buildSeries(5L, mockUser)
             val post = buildPost(1L, mockUser, series)
 
+            given(seriesRepository.findByIdAndDeletedAtIsNull(5L)).willReturn(series)
             given(postRepository.findBySeriesIdAndDeletedAtIsNull(5L)).willReturn(listOf(post))
 
             val result = postService.getPostsBySeriesId(5L, null)
@@ -792,6 +793,8 @@ class PostServiceTest {
         @Test
         @DisplayName("성공: 시리즈 게시글이 없으면 빈 목록을 반환한다.")
         fun getPostsBySeriesId_empty() {
+            val series = buildSeries(5L, mockUser)
+            given(seriesRepository.findByIdAndDeletedAtIsNull(5L)).willReturn(series)
             given(postRepository.findBySeriesIdAndDeletedAtIsNull(5L)).willReturn(emptyList())
 
             val result = postService.getPostsBySeriesId(5L, null)
@@ -805,6 +808,7 @@ class PostServiceTest {
             val series = buildSeries(5L, otherUser)
             val post = buildPost(1L, otherUser, series)
 
+            given(seriesRepository.findByIdAndDeletedAtIsNull(5L)).willReturn(series)
             given(postRepository.findBySeriesIdAndDeletedAtIsNull(5L)).willReturn(listOf(post))
             given(likeRepository.findPostIdsByPostIdInAndUserId(listOf(1L), checkNotNull(mockUser.id)))
                 .willReturn(listOf(1L))
@@ -820,6 +824,7 @@ class PostServiceTest {
             val series = buildSeries(5L, mockUser)
             val post = buildPost(1L, mockUser, series)
 
+            given(seriesRepository.findByIdAndDeletedAtIsNull(5L)).willReturn(series)
             given(postRepository.findBySeriesIdAndDeletedAtIsNull(5L)).willReturn(listOf(post))
 
             val result = postService.getPostsBySeriesId(5L, null)
@@ -828,6 +833,18 @@ class PostServiceTest {
             assertThat(result[0].isBookmarked).isFalse()
             verify(likeRepository, never()).findPostIdsByPostIdInAndUserId(anyOfType(), anyLong())
             verify(bookmarkRepository, never()).findPostIdsByPostIdInAndUserId(anyOfType(), anyLong())
+        }
+
+        @Test
+        @DisplayName("실패: 존재하지 않는(혹은 삭제된) 시리즈면 SERIES_NOT_FOUND 예외를 던진다.")
+        fun getPostsBySeriesId_seriesNotFound() {
+            given(seriesRepository.findByIdAndDeletedAtIsNull(999L)).willReturn(null)
+
+            assertThatThrownBy { postService.getPostsBySeriesId(999L, null) }
+                .isInstanceOf(BusinessException::class.java)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.SERIES_NOT_FOUND)
+
+            verify(postRepository, never()).findBySeriesIdAndDeletedAtIsNull(anyLong())
         }
     }
 }

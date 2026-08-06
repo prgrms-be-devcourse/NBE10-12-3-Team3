@@ -1,8 +1,6 @@
 package com.scommit.domain.post.post.service
 
-import com.scommit.domain.notification.notification.dto.NotificationResponse
-import com.scommit.domain.notification.notification.dto.NotificationType
-import com.scommit.domain.notification.notification.repository.SseEmitterRepository
+import com.scommit.domain.notification.notification.service.NotificationService
 import com.scommit.domain.post.bookmark.repository.BookmarkRepository
 import com.scommit.domain.post.like.repository.LikeRepository
 import com.scommit.domain.post.post.dto.PostListResponse
@@ -35,7 +33,7 @@ class PostService
         private val seriesRepository: SeriesRepository,
         private val userRepository: UserRepository,
         private val subscriptionRepository: SubscriptionRepository,
-        private val sseEmitterRepository: SseEmitterRepository,
+        private val notificationService: NotificationService,
         private val likeRepository: LikeRepository,
         private val bookmarkRepository: BookmarkRepository,
     ) {
@@ -269,6 +267,9 @@ class PostService
             seriesId: Long,
             actor: User?,
         ): List<PostListResponse> {
+            seriesRepository.findByIdAndDeletedAtIsNull(seriesId)
+                ?: throw BusinessException(ErrorCode.SERIES_NOT_FOUND)
+
             val posts = postRepository.findBySeriesIdAndDeletedAtIsNull(seriesId)
             val liked = likedPostIds(posts, actor)
             val bookmarked = bookmarkedPostIds(posts, actor)
@@ -288,16 +289,7 @@ class PostService
                         .map { checkNotNull(it.user.id) }
                 }
 
-            for (subscriberId in subscriberIds) {
-                sseEmitterRepository.sendToUser(
-                    subscriberId,
-                    NotificationResponse(
-                        NotificationType.NEW_POST,
-                        "${post.user.nickname}님이 새 게시글을 작성했습니다.",
-                        post.id,
-                    ),
-                )
-            }
+            notificationService.notifyNewPost(subscriberIds, post.user.nickname, post.id)
         }
 
         private fun isLiked(
