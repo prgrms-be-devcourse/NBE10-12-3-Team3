@@ -283,12 +283,13 @@ class UserControllerTest {
         @Test
         @DisplayName("성공 (201) - 회원가입 시 user 정보가 응답에 포함된다")
         fun signup_Success_ReturnsUserInfo() {
-            val mockUser = mock(User::class.java).apply {
-                given(id).willReturn(2L)
-                given(email).willReturn(validEmail)
-                given(nickname).willReturn(validNickname)
-                given(createdAt).willReturn(LocalDateTime.now())
-            }
+            val mockUser =
+                mock(User::class.java).apply {
+                    given(id).willReturn(2L)
+                    given(email).willReturn(validEmail)
+                    given(nickname).willReturn(validNickname)
+                    given(createdAt).willReturn(LocalDateTime.now())
+                }
             given(userService.signUp(validEmail, validPassword, validNickname)).willReturn(mockUser)
 
             val request = SignupRequest(validEmail, validPassword, validNickname)
