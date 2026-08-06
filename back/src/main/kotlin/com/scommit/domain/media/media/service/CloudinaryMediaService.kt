@@ -30,7 +30,6 @@ class CloudinaryMediaService(
      * @return DB에 저장된 Media 엔티티. url 필드에 Cloudinary의 절대 URL이 담겨있음
      */
     @Transactional
-    @Suppress("SwallowedException") // BusinessException에 cause를 실어줄 생성자가 없어 원인 체이닝 불가
     override fun uploadMedia(
         file: MultipartFile?,
         category: String,
@@ -52,7 +51,7 @@ class CloudinaryMediaService(
                 // "url"(http)이 아닌 "secure_url"(https)을 저장 — 브라우저 혼합 콘텐츠 차단 방지
                 uploadResult["secure_url"] as? String
             } catch (e: IOException) {
-                throw BusinessException(ErrorCode.INTERNAL_SERVER_ERROR)
+                throw BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, e)
             }
 
         return mediaRepository.save(Media(url = secureUrl, type = mediaType))
@@ -64,7 +63,6 @@ class CloudinaryMediaService(
      * 동영상 파일 삭제 시 404 오류 발생.
      */
     @Transactional
-    @Suppress("SwallowedException") // BusinessException에 cause를 실어줄 생성자가 없어 원인 체이닝 불가
     override fun deleteMedia(mediaId: Long) {
         val media =
             mediaRepository.findByIdOrNull(mediaId)
@@ -78,7 +76,7 @@ class CloudinaryMediaService(
             val resourceType = if (url.contains("/video/upload/")) "video" else "image"
             cloudinary.uploader().destroy(extractPublicId(url), ObjectUtils.asMap("resource_type", resourceType))
         } catch (e: IOException) {
-            throw BusinessException(ErrorCode.INTERNAL_SERVER_ERROR)
+            throw BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, e)
         }
     }
 

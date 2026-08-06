@@ -940,30 +940,36 @@ class SeriesControllerE2ETest {
             expectResultCode(deleteSeriesRequest(accessToken, seriesId), HttpStatus.NOT_FOUND, "404-5")
         }
 
-        // FIXME: SeriesService.deleteSeries()는 시리즈에 속한 Post만 series_id를 null로 떼어내고
-        // SeriesMedia는 손대지 않는다. Series에 SeriesMedia 역방향 컬렉션도, cascade/orphanRemoval
-        // 설정도 없어서 시리즈를 soft delete해도 series_media 행, media 행, 디스크 파일이 그대로 남는다.
-        // 이후 GET /{id}/medias는 시리즈가 없다며 404-5를 주므로 API로는 접근할 수 없는 고아 데이터가 된다.
-        // 상세: docs/series-e2e-known-issues.md #2
         @Test
-        @DisplayName("6. 삭제해도 썸네일(series_media/media 행, 파일)은 정리되지 않고 그대로 남는다 (D-2, FIXME)")
-        @Suppress("ForbiddenComment")
-        fun deleteSeries_owner_leavesThumbnailOrphaned() {
+        @DisplayName("6. 삭제하면 썸네일(series_media/media 행, 파일)도 함께 정리된다 (D-2)")
+        fun deleteSeries_owner_cleansUpThumbnail() {
             val accessToken = newUserToken()
-            val seriesId = createSeries(accessToken, "썸네일 고아 확인용 시리즈", "본문")
+            val seriesId = createSeries(accessToken, "썸네일 정리 확인용 시리즈", "본문")
             val uploaded = uploadSeriesMedia(accessToken, seriesId, PNG_BYTES, "thumbnail.png")
             val mediaCountBeforeDelete = mediaRepository.count()
+            val uploadedPath = uploadedFilePath(requireNotNull(uploaded.url))
 
             expectResultCode(deleteSeriesRequest(accessToken, seriesId), HttpStatus.OK, "200-1")
 
             val series = checkNotNull(seriesRepository.findByIdOrNull(seriesId))
             assertThat(series.deletedAt).isNotNull()
 
-            val seriesMediaAfterDelete = seriesMediaRepository.findBySeries(series)
-            assertThat(seriesMediaAfterDelete).isNotNull()
-            assertThat(checkNotNull(seriesMediaAfterDelete).id).isEqualTo(uploaded.id)
-            assertThat(mediaRepository.count()).isEqualTo(mediaCountBeforeDelete)
-            assertThat(Files.exists(uploadedFilePath(requireNotNull(uploaded.url)))).isTrue()
+            assertThat(seriesMediaRepository.findBySeries(series)).isNull()
+            assertThat(mediaRepository.count()).isEqualTo(mediaCountBeforeDelete - 1)
+            assertThat(Files.exists(uploadedPath)).isFalse()
+        }
+
+        @Test
+        @DisplayName("7. 썸네일이 없는 시리즈를 삭제해도 정상 처리된다")
+        fun deleteSeries_owner_withoutThumbnail_succeeds() {
+            val accessToken = newUserToken()
+            val seriesId = createSeries(accessToken, "썸네일 없는 삭제 대상 시리즈", "본문")
+
+            expectResultCode(deleteSeriesRequest(accessToken, seriesId), HttpStatus.OK, "200-1")
+
+            val series = checkNotNull(seriesRepository.findByIdOrNull(seriesId))
+            assertThat(series.deletedAt).isNotNull()
+            assertThat(seriesMediaRepository.findBySeries(series)).isNull()
         }
     }
 
@@ -1166,14 +1172,10 @@ class SeriesControllerE2ETest {
             expectResultCode(searchSeriesRequest("?keyword= "), HttpStatus.BAD_REQUEST, "400-1")
         }
 
-        // FIXME: keyword는 @RequestParam(required=true)이고 기본값이 없다. 파라미터 누락 시
-        // MissingServletRequestParameterException이 발생하는데 GlobalExceptionHandler는 이 예외를
-        // 명시적으로 잡지 않아 포괄 Exception 핸들러로 떨어져 500-1이 된다. 상세: docs/series-e2e-known-issues.md #4
         @Test
-        @DisplayName("6. keyword 파라미터 자체가 없으면 실제 동작을 그대로 고정한다 (D-4, FIXME)")
-        @Suppress("ForbiddenComment")
-        fun searchSeries_missingKeyword_returns500_1() {
-            expectResultCode(searchSeriesRequest(""), HttpStatus.INTERNAL_SERVER_ERROR, "500-1")
+        @DisplayName("6. keyword 파라미터 자체가 없으면 400-1을 반환한다")
+        fun searchSeries_missingKeyword_returns400_1() {
+            expectResultCode(searchSeriesRequest(""), HttpStatus.BAD_REQUEST, "400-1")
         }
 
         @Test
@@ -1660,25 +1662,13 @@ class SeriesControllerE2ETest {
                 }
         }
 
-        // FIXME: SeriesMediaService.getMedia()는 orElse(null)로 끝내고 컨트롤러가 그 null을 그대로
-        // 200-1로 감싼다. 반면 같은 상황에서 DELETE /{id}/medias는 404-7(MEDIA_NOT_FOUND)을 던진다 —
-        // 한 리소스의 "없음"이 메서드에 따라 200과 404로 갈린다. 상세: docs/series-e2e-known-issues.md #3
         @Test
-        @DisplayName("3. 썸네일이 없으면 실제 동작을 그대로 고정한다 (200 + data:null)")
-        @Suppress("ForbiddenComment")
-        fun getMedia_withoutMedia_returns200WithNullData() {
+        @DisplayName("3. 썸네일이 없으면 404-7을 반환한다 (DELETE와 동일한 '없음' 표현)")
+        fun getMedia_withoutMedia_returns404_7() {
             val accessToken = newUserToken()
             val seriesId = createSeries(accessToken, "썸네일 없는 시리즈", "본문")
 
-            getMediaRequest(seriesId)
-                .expectStatus()
-                .isOk()
-                .expectBody<ApiResponse<SeriesMediaResponse>>()
-                .value { body ->
-                    checkNotNull(body)
-                    assertThat(body.resultCode).isEqualTo("200-1")
-                    assertThat(body.data).isNull()
-                }
+            expectResultCode(getMediaRequest(seriesId), HttpStatus.NOT_FOUND, "404-7")
         }
 
         @Test
@@ -1714,7 +1704,7 @@ class SeriesControllerE2ETest {
         }
 
         @Test
-        @DisplayName("2. 소유자가 삭제하면 200을 반환하고, GET은 data:null이 되며 파일도 삭제된다")
+        @DisplayName("2. 소유자가 삭제하면 200을 반환하고, GET은 404-7이 되며 파일도 삭제된다")
         fun deleteMedia_owner_returns200_andMediaAndFileAreGone() {
             val accessToken = newUserToken()
             val seriesId = createSeries(accessToken, "썸네일 삭제 대상", "본문")
@@ -1724,14 +1714,7 @@ class SeriesControllerE2ETest {
 
             expectResultCode(deleteMediaRequest(accessToken, seriesId), HttpStatus.OK, "200-1")
 
-            getMediaRequest(seriesId)
-                .expectStatus()
-                .isOk()
-                .expectBody<ApiResponse<SeriesMediaResponse>>()
-                .value { body ->
-                    checkNotNull(body)
-                    assertThat(body.data).isNull()
-                }
+            expectResultCode(getMediaRequest(seriesId), HttpStatus.NOT_FOUND, "404-7")
             assertThat(Files.exists(filePath)).isFalse()
         }
 
@@ -2293,35 +2276,17 @@ class SeriesControllerE2ETest {
             assertThat(post.get("accessLevel").asString()).isEqualTo("PAID")
         }
 
-        // FIXME: PostService.getPostsBySeriesId()는 seriesRepository를 아예 참조하지 않고
-        // postRepository.findBySeriesIdAndDeletedAtIsNull(seriesId)만 호출한다. 그래서 같은 id에 대해
-        // GET /api/series/{id}는 404-5인데 /posts는 200 + 빈 배열이 되고, 클라이언트는 "글이 없는
-        // 시리즈"와 "없는 시리즈"를 구분할 수 없다. 상세: docs/series-e2e-known-issues.md #1
         @Test
-        @DisplayName("9. 존재하지 않는 시리즈여도 실제 동작을 그대로 고정한다 (200 + 빈 배열)")
-        @Suppress("ForbiddenComment")
-        fun getSeriesPosts_nonExistentSeries_returns200WithEmptyList() {
-            // 같은 id에 대해 상세 조회는 404-5라는 점을 나란히 고정한다.
+        @DisplayName("9. 존재하지 않는 시리즈면 404-5를 반환한다")
+        fun getSeriesPosts_nonExistentSeries_returns404_5() {
+            // 같은 id에 대해 상세 조회와 동일하게 404-5여야 "글이 없는 시리즈"와 "없는 시리즈"를 구분할 수 있다.
             expectResultCode(getSeries(NON_EXISTENT_SERIES_ID), HttpStatus.NOT_FOUND, "404-5")
-
-            getSeriesPostsRequest(NON_EXISTENT_SERIES_ID)
-                .expectStatus()
-                .isOk()
-                .expectBody<ApiResponse<List<PostListResponse>>>()
-                .value { body ->
-                    checkNotNull(body)
-                    assertThat(body.resultCode).isEqualTo("200-1")
-                    assertThat(body.data).isEmpty()
-                }
+            expectResultCode(getSeriesPostsRequest(NON_EXISTENT_SERIES_ID), HttpStatus.NOT_FOUND, "404-5")
         }
 
-        // FIXME: 9번과 같은 원인이다. 시리즈를 삭제하면 그 시리즈의 살아있는 포스트는 series_id가
-        // null로 떨어져 나가므로(B-3) 목록은 비어 보이지만, 시리즈가 없다는 사실 자체는 알려 주지 않는다.
-        // 상세: docs/series-e2e-known-issues.md #1
         @Test
-        @DisplayName("10. soft delete된 시리즈여도 실제 동작을 그대로 고정한다 (200 + 빈 배열)")
-        @Suppress("ForbiddenComment")
-        fun getSeriesPosts_softDeletedSeries_returns200WithEmptyList() {
+        @DisplayName("10. soft delete된 시리즈면 404-5를 반환한다")
+        fun getSeriesPosts_softDeletedSeries_returns404_5() {
             val accessToken = newUserToken()
             val seriesId = createSeries(accessToken, "삭제 후 포스트 목록을 조회할 시리즈", "본문")
             val postId = createPostInSeries(accessToken, seriesId, "시리즈와 함께 떨어져 나올 포스트")
@@ -2331,16 +2296,7 @@ class SeriesControllerE2ETest {
             deleteSeriesRequest(accessToken, seriesId).expectStatus().isOk()
 
             expectResultCode(getSeries(seriesId), HttpStatus.NOT_FOUND, "404-5")
-
-            getSeriesPostsRequest(seriesId)
-                .expectStatus()
-                .isOk()
-                .expectBody<ApiResponse<List<PostListResponse>>>()
-                .value { body ->
-                    checkNotNull(body)
-                    assertThat(body.resultCode).isEqualTo("200-1")
-                    assertThat(body.data).isEmpty()
-                }
+            expectResultCode(getSeriesPostsRequest(seriesId), HttpStatus.NOT_FOUND, "404-5")
         }
 
         @Test

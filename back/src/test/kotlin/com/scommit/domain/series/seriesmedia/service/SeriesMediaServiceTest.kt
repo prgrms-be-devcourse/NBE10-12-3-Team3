@@ -158,6 +158,45 @@ class SeriesMediaServiceTest {
         }
 
         @Test
+        @DisplayName("실패: 소유자 정보가 유실된 시리즈(user.id가 null)는 업로드 시 ACCESS_DENIED 예외를 던진다")
+        fun uploadMedia_OwnerIdNull_Forbidden() {
+            val series = mock(Series::class.java)
+            val owner = mock(User::class.java)
+
+            given(seriesRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(series)
+            given(series.user).willReturn(owner)
+            given(owner.id).willReturn(null)
+
+            assertThatThrownBy { seriesMediaService.uploadMedia(1L, file, 1L, UserRole.USER) }
+                .isInstanceOf(BusinessException::class.java)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.ACCESS_DENIED)
+
+            verify(mediaService, never()).uploadMedia(any<MultipartFile?>(), any<String>())
+        }
+
+        @Test
+        @DisplayName("실패: 기존 썸네일의 media.id가 null이면 교체 시 예외를 던진다")
+        fun uploadMedia_ExistingMediaIdNull_Fail() {
+            val series = mock(Series::class.java)
+            val owner = mock(User::class.java)
+
+            val existingMedia = mock(Media::class.java)
+            given(existingMedia.id).willReturn(null)
+            val existingSeriesMedia = mock(SeriesMedia::class.java)
+            given(existingSeriesMedia.media).willReturn(existingMedia)
+
+            given(seriesRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(series)
+            given(series.user).willReturn(owner)
+            given(owner.id).willReturn(1L)
+            given(seriesMediaRepository.findBySeries(series)).willReturn(existingSeriesMedia)
+
+            assertThatThrownBy { seriesMediaService.uploadMedia(1L, file, 1L, UserRole.USER) }
+                .isInstanceOf(IllegalStateException::class.java)
+
+            verify(mediaService, never()).uploadMedia(any<MultipartFile?>(), any<String>())
+        }
+
+        @Test
         @DisplayName("성공: 어드민은 타인 시리즈에도 썸네일을 업로드할 수 있다")
         fun uploadMedia_AdminCanUploadOthers() {
             val series = mock(Series::class.java)
@@ -212,15 +251,16 @@ class SeriesMediaServiceTest {
         }
 
         @Test
-        @DisplayName("성공: 썸네일 없는 시리즈 조회 시 null을 반환한다")
-        fun getMedia_NoMedia_Success() {
+        @DisplayName("실패: 썸네일 없는 시리즈 조회 시 MEDIA_NOT_FOUND 예외를 던진다")
+        fun getMedia_NoMedia_Fail() {
             val series = mock(Series::class.java)
 
             given(seriesRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(series)
             given(seriesMediaRepository.findBySeries(series)).willReturn(null)
 
-            val result = seriesMediaService.getMedia(1L)
-            assertThat(result).isNull()
+            assertThatThrownBy { seriesMediaService.getMedia(1L) }
+                .isInstanceOf(BusinessException::class.java)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.MEDIA_NOT_FOUND)
         }
     }
 
@@ -306,6 +346,45 @@ class SeriesMediaServiceTest {
         }
 
         @Test
+        @DisplayName("실패: 소유자 정보가 유실된 시리즈(user.id가 null)는 삭제 시 ACCESS_DENIED 예외를 던진다")
+        fun deleteMedia_OwnerIdNull_Forbidden() {
+            val series = mock(Series::class.java)
+            val owner = mock(User::class.java)
+
+            given(seriesRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(series)
+            given(series.user).willReturn(owner)
+            given(owner.id).willReturn(null)
+
+            assertThatThrownBy { seriesMediaService.deleteMedia(1L, 1L, UserRole.USER) }
+                .isInstanceOf(BusinessException::class.java)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.ACCESS_DENIED)
+
+            verify(seriesMediaRepository, never()).delete(any<SeriesMedia>())
+        }
+
+        @Test
+        @DisplayName("실패: 썸네일의 media.id가 null이면 삭제 시 예외를 던진다")
+        fun deleteMedia_MediaIdNull_Fail() {
+            val series = mock(Series::class.java)
+            val owner = mock(User::class.java)
+
+            val media = mock(Media::class.java)
+            given(media.id).willReturn(null)
+            val seriesMedia = mock(SeriesMedia::class.java)
+            given(seriesMedia.media).willReturn(media)
+
+            given(seriesRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(series)
+            given(series.user).willReturn(owner)
+            given(owner.id).willReturn(1L)
+            given(seriesMediaRepository.findBySeries(series)).willReturn(seriesMedia)
+
+            assertThatThrownBy { seriesMediaService.deleteMedia(1L, 1L, UserRole.USER) }
+                .isInstanceOf(IllegalStateException::class.java)
+
+            verify(seriesMediaRepository, never()).delete(any<SeriesMedia>())
+        }
+
+        @Test
         @DisplayName("성공: 어드민은 타인 시리즈의 썸네일도 삭제할 수 있다")
         fun deleteMedia_AdminCanDeleteOthers() {
             val series = mock(Series::class.java)
@@ -321,6 +400,39 @@ class SeriesMediaServiceTest {
 
             verify(seriesMediaRepository).delete(seriesMedia)
             verify(mediaService).deleteMedia(10L)
+        }
+    }
+
+    @Nested
+    @DisplayName("deleteMediaIfExists")
+    inner class DeleteMediaIfExists {
+        @Test
+        @DisplayName("성공: 썸네일이 있으면 SeriesMedia와 Media를 정리한다")
+        fun deleteMediaIfExists_Success() {
+            val series = mock(Series::class.java)
+            val media = mock(Media::class.java)
+            given(media.id).willReturn(10L)
+            val seriesMedia = mock(SeriesMedia::class.java)
+            given(seriesMedia.media).willReturn(media)
+
+            given(seriesMediaRepository.findBySeries(series)).willReturn(seriesMedia)
+
+            seriesMediaService.deleteMediaIfExists(series)
+
+            verify(seriesMediaRepository).delete(seriesMedia)
+            verify(mediaService).deleteMedia(10L)
+        }
+
+        @Test
+        @DisplayName("성공: 썸네일이 없으면 아무 것도 하지 않는다")
+        fun deleteMediaIfExists_NoMedia_NoOp() {
+            val series = mock(Series::class.java)
+            given(seriesMediaRepository.findBySeries(series)).willReturn(null)
+
+            seriesMediaService.deleteMediaIfExists(series)
+
+            verify(seriesMediaRepository, never()).delete(any<SeriesMedia>())
+            verify(mediaService, never()).deleteMedia(anyLong())
         }
     }
 }
