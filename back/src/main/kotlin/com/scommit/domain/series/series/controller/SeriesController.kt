@@ -53,7 +53,7 @@ class SeriesController(
         @CurrentUser actor: User,
         @RequestBody @Valid request: SeriesCreateRequest,
     ): RsData<SeriesResponse> {
-        val response = seriesService.createSeries(checkNotNull(request.title), request.body, checkNotNull(actor.id))
+        val response = seriesService.createSeries(request.title!!, request.body, checkNotNull(actor.id))
         return RsData("201-1", "시리즈를 생성하였습니다.", response)
     }
 
@@ -148,7 +148,7 @@ class SeriesController(
         val response =
             seriesService.updateSeries(
                 id,
-                checkNotNull(request.title),
+                request.title!!,
                 request.body,
                 checkNotNull(actor.id),
                 actor.role,
