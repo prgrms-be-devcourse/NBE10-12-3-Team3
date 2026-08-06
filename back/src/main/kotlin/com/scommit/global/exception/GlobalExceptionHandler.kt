@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity
 import org.springframework.http.converter.HttpMessageNotReadableException
 import org.springframework.validation.BindException
 import org.springframework.web.bind.MethodArgumentNotValidException
+import org.springframework.web.bind.MissingServletRequestParameterException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException
@@ -61,6 +62,22 @@ class GlobalExceptionHandler {
                 errorCode.code,
                 errorMessage ?: errorCode.message,
             )
+        return ResponseEntity(rsData, errorCode.httpStatus)
+    }
+
+    /**
+     * 필수 @RequestParam 자체가 요청에 없을 때 (예: keyword 파라미터를 아예 안 보낸 경우)
+     */
+    @ExceptionHandler(MissingServletRequestParameterException::class)
+    fun handleMissingServletRequestParameterException(
+        e: MissingServletRequestParameterException,
+    ): ResponseEntity<RsData<Void>> {
+        log.warn("MissingServletRequestParameterException: {}", e.message)
+
+        val errorCode = ErrorCode.INVALID_INPUT_VALUE
+        val errorMessage = "'${e.parameterName}' 파라미터는 필수입니다."
+
+        val rsData: RsData<Void> = RsData(errorCode.code, errorMessage)
         return ResponseEntity(rsData, errorCode.httpStatus)
     }
 

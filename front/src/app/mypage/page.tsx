@@ -68,6 +68,7 @@ export default function MyPage() {
                 email={user?.email || "로그인해주세요"}
                 followerCount={followerCount}
                 avatarUrl={user?.avatarUrl}
+                introduction={user?.introduction}
               />
             )}
           </section>
