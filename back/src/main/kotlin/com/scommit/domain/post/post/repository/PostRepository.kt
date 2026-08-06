@@ -31,15 +31,29 @@ interface PostRepository : JpaRepository<Post, Long> {
     // 특정 유저 게시글 전체 조회 - 관리자용 (삭제된 게시글 포함)
     fun findByUser(user: User): List<Post>
 
-    // 특정 유저의 삭제되지 않은 게시글 페이지 조회
+    // 특정 유저의 삭제되지 않은 게시글 페이지 조회 (본인 조회용 — PRIVATE/DRAFT 포함)
     fun findByUserAndDeletedAtIsNull(
         user: User,
         pageable: Pageable,
     ): Page<Post>
 
-    // 특정 유저의 삭제되지 않은 게시글 무한 스크롤 조회
+    // 특정 유저의 삭제되지 않은 게시글 무한 스크롤 조회 (본인 조회용 — PRIVATE/DRAFT 포함)
     fun findSliceByUserAndDeletedAtIsNull(
         user: User,
+        pageable: Pageable,
+    ): Slice<Post>
+
+    // 특정 유저의 게시글 페이지 조회 (제3자/비로그인용 — publishStatus로 좁힘, 프로필 화면)
+    fun findByUserAndDeletedAtIsNullAndPublishStatus(
+        user: User,
+        publishStatus: PublishStatus,
+        pageable: Pageable,
+    ): Page<Post>
+
+    // 특정 유저의 게시글 무한 스크롤 조회 (제3자/비로그인용 — publishStatus로 좁힘, creatorId 필터)
+    fun findSliceByUserAndDeletedAtIsNullAndPublishStatus(
+        user: User,
+        publishStatus: PublishStatus,
         pageable: Pageable,
     ): Slice<Post>
 
