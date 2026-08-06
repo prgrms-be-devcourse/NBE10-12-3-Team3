@@ -26,6 +26,7 @@ data class PostListResponse(
     @get:JsonProperty("isLiked") val isLiked: Boolean,
     @get:JsonProperty("isBookmarked") val isBookmarked: Boolean,
     val createdAt: LocalDateTime?,
+    val thumbnailUrl: String? = null,
 ) {
     constructor(post: Post, isLiked: Boolean, isBookmarked: Boolean) : this(
         post.id,
@@ -41,5 +42,23 @@ data class PostListResponse(
         isLiked,
         isBookmarked,
         post.createdAt,
+        null,
+    )
+
+    constructor(post: Post, isLiked: Boolean, isBookmarked: Boolean, thumbnailUrl: String?) : this(
+        post.id,
+        post.user.id,
+        post.user.nickname,
+        post.series?.id,
+        post.title,
+        post.publishStatus,
+        post.accessLevel,
+        post.viewCount,
+        post.likeCount,
+        post.bookmarkCount,
+        isLiked,
+        isBookmarked,
+        post.createdAt,
+        thumbnailUrl,
     )
 }

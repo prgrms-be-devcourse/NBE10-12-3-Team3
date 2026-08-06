@@ -446,7 +446,42 @@ class PostControllerE2ETest {
         }
 
         @Test
-        @DisplayName("6. PAID 게시글은 비멤버십 유저에게 잠금 처리(200 + isLocked=true, body 없음)된다")
+        @DisplayName("6. DRAFT 게시글은 타인이 조회하면 403-1을 반환한다")
+        fun getPost_draft_otherUser_returns403_1() {
+            val ownerToken = newUserToken()
+            val postId = createPost(ownerToken, "임시저장 글", PublishStatus.DRAFT, PostAccessLevel.FREE)
+
+            val otherToken = newUserToken()
+            expectResultCode(getPost(postId, otherToken), HttpStatus.FORBIDDEN, "403-1")
+        }
+
+        @Test
+        @DisplayName("7. DRAFT 게시글은 비로그인으로 조회하면 403-1을 반환한다")
+        fun getPost_draft_anonymous_returns403_1() {
+            val ownerToken = newUserToken()
+            val postId = createPost(ownerToken, "임시저장 글", PublishStatus.DRAFT, PostAccessLevel.FREE)
+
+            expectResultCode(getPost(postId, null), HttpStatus.FORBIDDEN, "403-1")
+        }
+
+        @Test
+        @DisplayName("8. DRAFT 게시글은 작성자 본인은 정상 조회 가능하다")
+        fun getPost_draft_owner_returns200() {
+            val ownerToken = newUserToken()
+            val postId = createPost(ownerToken, "임시저장 글", PublishStatus.DRAFT, PostAccessLevel.FREE)
+
+            getPost(postId, ownerToken)
+                .expectStatus()
+                .isOk()
+                .expectBody<ApiResponse<PostResponse>>()
+                .value { body ->
+                    checkNotNull(body)
+                    assertThat(body.data.id).isEqualTo(postId)
+                }
+        }
+
+        @Test
+        @DisplayName("9. PAID 게시글은 비멤버십 유저에게 잠금 처리(200 + isLocked=true, body 없음)된다")
         fun getPost_paid_nonMember_returnsLocked() {
             val ownerToken = newUserToken()
             val postId = createPost(ownerToken, "유료 게시글", PublishStatus.PUBLIC, PostAccessLevel.PAID)
@@ -464,7 +499,7 @@ class PostControllerE2ETest {
         }
 
         @Test
-        @DisplayName("7. PAID 게시글은 멤버십 가입자에게는 잠금 해제된다")
+        @DisplayName("10. PAID 게시글은 멤버십 가입자에게는 잠금 해제된다")
         fun getPost_paid_member_returnsUnlocked() {
             val owner = signUpAndLoginHolder()
             val postId = createPost(owner.accessToken, "유료 게시글", PublishStatus.PUBLIC, PostAccessLevel.PAID)
@@ -490,7 +525,7 @@ class PostControllerE2ETest {
         }
 
         @Test
-        @DisplayName("8. PAID 게시글은 작성자 본인에게는 구독 여부와 무관하게 항상 잠금 해제된다")
+        @DisplayName("11. PAID 게시글은 작성자 본인에게는 구독 여부와 무관하게 항상 잠금 해제된다")
         fun getPost_paid_owner_alwaysUnlocked() {
             val ownerToken = newUserToken()
             val postId = createPost(ownerToken, "내 유료 게시글", PublishStatus.PUBLIC, PostAccessLevel.PAID)
@@ -868,11 +903,9 @@ class PostControllerE2ETest {
                 }
         }
 
-        // FIXME(#3): PostRepository.findByUserAndDeletedAtIsNull()에 publishStatus 필터가 없어
-        // 다른 유저의 PRIVATE/DRAFT 게시글까지 그대로 노출된다.
         @Test
-        @DisplayName("2. PRIVATE/DRAFT 게시글도 실제 동작을 그대로 고정한다 — 그대로 노출된다")
-        fun getUserPosts_privateAndDraft_actualBehaviorExposesThem() {
+        @DisplayName("2. 제3자가 조회하면 PRIVATE/DRAFT 게시글은 제외된다 (TRIPLES-32)")
+        fun getUserPosts_privateAndDraft_excludedForThirdParty() {
             val owner = signUpAndLoginHolder()
             createPost(owner.accessToken, "공개 글", PublishStatus.PUBLIC, PostAccessLevel.FREE)
             createPost(owner.accessToken, "비공개 글", PublishStatus.PRIVATE, PostAccessLevel.FREE)
@@ -882,6 +915,29 @@ class PostControllerE2ETest {
                 .get()
                 .uri("/api/posts/users/${owner.userId}")
                 .header("Authorization", bearer(newUserToken()))
+                .exchange()
+                .expectStatus()
+                .isOk()
+                .expectBody<ApiResponse<PageResult<PostListResponse>>>()
+                .value { body ->
+                    checkNotNull(body)
+                    assertThat(body.data.content).hasSize(1)
+                    assertThat(body.data.content).extracting("title").containsExactly("공개 글")
+                }
+        }
+
+        @Test
+        @DisplayName("3. 본인이 조회하면 PRIVATE/DRAFT 게시글도 포함된다 (TRIPLES-32)")
+        fun getUserPosts_privateAndDraft_includedForOwner() {
+            val owner = signUpAndLoginHolder()
+            createPost(owner.accessToken, "공개 글", PublishStatus.PUBLIC, PostAccessLevel.FREE)
+            createPost(owner.accessToken, "비공개 글", PublishStatus.PRIVATE, PostAccessLevel.FREE)
+            createPost(owner.accessToken, "임시저장 글", PublishStatus.DRAFT, PostAccessLevel.FREE)
+
+            client
+                .get()
+                .uri("/api/posts/users/${owner.userId}")
+                .header("Authorization", bearer(owner.accessToken))
                 .exchange()
                 .expectStatus()
                 .isOk()
@@ -920,11 +976,9 @@ class PostControllerE2ETest {
                 }
         }
 
-        // FIXME(#3): PostRepository.findSliceByUserAndDeletedAtIsNull()에도 publishStatus 필터가 없다.
-        // 바로 위 GetUserPosts#2와 같은 근본 원인.
         @Test
-        @DisplayName("2. creatorId 필터링도 PRIVATE/DRAFT를 실제 동작 그대로 노출한다")
-        fun getPosts_filterByCreatorId_actualBehaviorExposesPrivateAndDraft() {
+        @DisplayName("2. 제3자가 creatorId로 필터링하면 PRIVATE/DRAFT는 제외된다 (TRIPLES-32)")
+        fun getPosts_filterByCreatorId_excludesPrivateAndDraftForThirdParty() {
             val owner = signUpAndLoginHolder()
             createPost(owner.accessToken, "공개 글", PublishStatus.PUBLIC, PostAccessLevel.FREE)
             createPost(owner.accessToken, "비공개 글", PublishStatus.PRIVATE, PostAccessLevel.FREE)
@@ -934,6 +988,29 @@ class PostControllerE2ETest {
                 .get()
                 .uri("/api/posts?creatorId=${owner.userId}")
                 .header("Authorization", bearer(newUserToken()))
+                .exchange()
+                .expectStatus()
+                .isOk()
+                .expectBody<ApiResponse<SliceResult<PostListResponse>>>()
+                .value { body ->
+                    checkNotNull(body)
+                    assertThat(body.data.content).hasSize(1)
+                    assertThat(body.data.content).extracting("title").containsExactly("공개 글")
+                }
+        }
+
+        @Test
+        @DisplayName("3. 본인이 creatorId로 필터링하면 PRIVATE/DRAFT도 포함된다 (TRIPLES-32)")
+        fun getPosts_filterByCreatorId_includesPrivateAndDraftForOwner() {
+            val owner = signUpAndLoginHolder()
+            createPost(owner.accessToken, "공개 글", PublishStatus.PUBLIC, PostAccessLevel.FREE)
+            createPost(owner.accessToken, "비공개 글", PublishStatus.PRIVATE, PostAccessLevel.FREE)
+            createPost(owner.accessToken, "임시저장 글", PublishStatus.DRAFT, PostAccessLevel.FREE)
+
+            client
+                .get()
+                .uri("/api/posts?creatorId=${owner.userId}")
+                .header("Authorization", bearer(owner.accessToken))
                 .exchange()
                 .expectStatus()
                 .isOk()
@@ -1515,6 +1592,97 @@ class PostControllerE2ETest {
                 .exchange()
                 .expectStatus()
                 .isOk()
+        }
+
+        @Test
+        @DisplayName("18. 타인의 게시글에 업로드 시도하면 403-1을 반환하고 미디어가 생성/변경되지 않는다")
+        fun uploadMedia_notOwner_returns403_1AndDoesNotChangeMedia() {
+            val ownerToken = newUserToken()
+            val intruderToken = newUserToken()
+            val postId = createPost(ownerToken, "소유권 침해 업로드 테스트", PublishStatus.PUBLIC, PostAccessLevel.FREE)
+
+            val original =
+                checkNotNull(
+                    uploadMediaRequest(
+                        ownerToken,
+                        postId,
+                        PostMediaType.THUMBNAIL,
+                        PNG_BYTES,
+                        "owner.png",
+                        MediaType.IMAGE_PNG,
+                    ).expectStatus()
+                        .isCreated()
+                        .expectBody<ApiResponse<PostMediaResponse>>()
+                        .returnResult()
+                        .responseBody,
+                ).data
+
+            expectResultCode(
+                uploadMediaRequest(
+                    intruderToken,
+                    postId,
+                    PostMediaType.THUMBNAIL,
+                    PNG_BYTES,
+                    "intruder.png",
+                    MediaType.IMAGE_PNG,
+                ),
+                HttpStatus.FORBIDDEN,
+                "403-1",
+            )
+
+            // owner의 썸네일이 그대로인지(교체되지 않았는지) DB에 남은 행 수와 조회 API로 확인한다.
+            // PostMedia.media는 지연 로딩이라 트랜잭션 밖에서 엔티티 필드에 직접 접근할 수 없어 API로 검증한다.
+            val post = checkNotNull(postRepository.findByIdOrNull(postId))
+            assertThat(postMediaRepository.findAllByPost(post)).hasSize(1)
+
+            client
+                .get()
+                .uri("/api/posts/$postId/medias/thumbnail")
+                .header("Authorization", bearer(ownerToken))
+                .exchange()
+                .expectBody<ApiResponse<PostMediaResponse>>()
+                .value { body ->
+                    checkNotNull(body)
+                    assertThat(body.data.id).isEqualTo(original.id)
+                    assertThat(body.data.url).isEqualTo(original.url)
+                }
+        }
+
+        @Test
+        @DisplayName("19. 타인의 게시글 미디어 삭제 시도하면 403-1을 반환하고 미디어가 삭제되지 않는다")
+        fun deleteMedia_notOwner_returns403_1AndDoesNotDeleteMedia() {
+            val ownerToken = newUserToken()
+            val intruderToken = newUserToken()
+            val postId = createPost(ownerToken, "소유권 침해 삭제 테스트", PublishStatus.PUBLIC, PostAccessLevel.FREE)
+            val mediaId =
+                checkNotNull(
+                    checkNotNull(
+                        uploadMediaRequest(
+                            ownerToken,
+                            postId,
+                            PostMediaType.BODY,
+                            PNG_BYTES,
+                            "body.png",
+                            MediaType.IMAGE_PNG,
+                        ).expectStatus()
+                            .isCreated()
+                            .expectBody<ApiResponse<PostMediaResponse>>()
+                            .returnResult()
+                            .responseBody,
+                    ).data.id,
+                )
+
+            expectResultCode(
+                client
+                    .method(HttpMethod.DELETE)
+                    .uri("/api/posts/$postId/medias/$mediaId")
+                    .header("Authorization", bearer(intruderToken))
+                    .exchange(),
+                HttpStatus.FORBIDDEN,
+                "403-1",
+            )
+
+            assertThat(postMediaRepository.findByIdOrNull(mediaId)).isNotNull()
         }
     }
 

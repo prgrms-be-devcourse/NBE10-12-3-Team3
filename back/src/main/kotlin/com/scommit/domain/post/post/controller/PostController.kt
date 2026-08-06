@@ -163,11 +163,12 @@ class PostController(
     @ResponseStatus(HttpStatus.CREATED)
     @PostMapping("/{id}/medias", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
     fun uploadMedia(
+        @CurrentUser actor: User,
         @PathVariable id: Long,
         @RequestPart file: MultipartFile,
         @RequestParam type: PostMediaType,
     ): RsData<PostMediaResponse> {
-        val response = postMediaService.uploadMedia(id, file, type)
+        val response = postMediaService.uploadMedia(id, file, type, checkNotNull(actor.id), actor.role)
         return RsData("201-1", "게시글 미디어가 추가되었습니다.", response)
     }
 
@@ -199,10 +200,11 @@ class PostController(
     @Operation(summary = "게시글 미디어 삭제", description = "특정 게시글의 특정 미디어를 삭제합니다.")
     @DeleteMapping("/{id}/medias/{postMediaId}")
     fun deleteMedia(
+        @CurrentUser actor: User,
         @PathVariable id: Long,
         @PathVariable postMediaId: Long,
     ): RsData<Void> {
-        postMediaService.deleteMedia(id, postMediaId)
+        postMediaService.deleteMedia(id, postMediaId, checkNotNull(actor.id), actor.role)
         return RsData("200-1", "게시글 미디어가 삭제되었습니다.")
     }
 }

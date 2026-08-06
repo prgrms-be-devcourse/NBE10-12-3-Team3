@@ -1,7 +1,6 @@
 package com.scommit.domain.post.post.service
 
-import com.scommit.domain.notification.notification.dto.NotificationResponse
-import com.scommit.domain.notification.notification.repository.SseEmitterRepository
+import com.scommit.domain.notification.notification.service.NotificationService
 import com.scommit.domain.post.bookmark.repository.BookmarkRepository
 import com.scommit.domain.post.like.repository.LikeRepository
 import com.scommit.domain.post.post.dto.PostListResponse
@@ -10,6 +9,7 @@ import com.scommit.domain.post.post.entity.Post
 import com.scommit.domain.post.post.entity.PostAccessLevel
 import com.scommit.domain.post.post.entity.PublishStatus
 import com.scommit.domain.post.post.repository.PostRepository
+import com.scommit.domain.post.postmedia.repository.PostMediaRepository
 import com.scommit.domain.series.series.entity.Series
 import com.scommit.domain.series.series.repository.SeriesRepository
 import com.scommit.domain.subscription.subscription.entity.Subscription
@@ -29,8 +29,10 @@ import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.ArgumentMatchers.any
+import org.mockito.ArgumentMatchers.anyList
 import org.mockito.ArgumentMatchers.anyLong
-import org.mockito.ArgumentMatchers.eq
+import org.mockito.ArgumentMatchers.anyString
+import org.mockito.ArgumentMatchers.isNull
 import org.mockito.BDDMockito.given
 import org.mockito.BDDMockito.willThrow
 import org.mockito.InjectMocks
@@ -47,7 +49,6 @@ import org.springframework.data.domain.SliceImpl
 import org.springframework.test.util.ReflectionTestUtils
 import java.util.Optional
 
-// any() returns null at runtime, which fails Kotlin's non-null check on Kotlin-declared repository params.
 private fun <T> anyOfType(): T {
     any<T>()
     @Suppress("UNCHECKED_CAST")
@@ -75,7 +76,7 @@ class PostServiceTest {
     private lateinit var subscriptionRepository: SubscriptionRepository
 
     @Mock
-    private lateinit var sseEmitterRepository: SseEmitterRepository
+    private lateinit var notificationService: NotificationService
 
     @Mock
     private lateinit var likeRepository: LikeRepository
@@ -85,6 +86,10 @@ class PostServiceTest {
 
     @Mock
     private lateinit var postAccessGuard: PostAccessGuard
+
+    @Mock
+    @Suppress("UnusedPrivateProperty")
+    private lateinit var postMediaRepository: PostMediaRepository
 
     @InjectMocks
     private lateinit var postService: PostService
@@ -183,7 +188,13 @@ class PostServiceTest {
             val slice = SliceImpl(listOf(post), pageable, false)
 
             given(userRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(mockUser)
-            given(postRepository.findSliceByUserAndDeletedAtIsNull(mockUser, pageable)).willReturn(slice)
+            given(
+                postRepository.findSliceByUserAndDeletedAtIsNullAndPublishStatus(
+                    mockUser,
+                    PublishStatus.PUBLIC,
+                    pageable,
+                ),
+            ).willReturn(slice)
 
             val result = postService.getPosts(1L, null, pageable)
 
@@ -293,7 +304,9 @@ class PostServiceTest {
             val postPage: Page<Post> = PageImpl(listOf(post), pageable, 1)
 
             given(userRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(mockUser)
-            given(postRepository.findByUserAndDeletedAtIsNull(mockUser, pageable)).willReturn(postPage)
+            given(
+                postRepository.findByUserAndDeletedAtIsNullAndPublishStatus(mockUser, PublishStatus.PUBLIC, pageable),
+            ).willReturn(postPage)
 
             val result: Page<PostListResponse> = postService.getUserPosts(1L, null, pageable)
 
@@ -321,7 +334,9 @@ class PostServiceTest {
             val emptyPage: Page<Post> = PageImpl(emptyList(), pageable, 0)
 
             given(userRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(mockUser)
-            given(postRepository.findByUserAndDeletedAtIsNull(mockUser, pageable)).willReturn(emptyPage)
+            given(
+                postRepository.findByUserAndDeletedAtIsNullAndPublishStatus(mockUser, PublishStatus.PUBLIC, pageable),
+            ).willReturn(emptyPage)
 
             val result = postService.getUserPosts(1L, null, pageable)
 
@@ -337,7 +352,9 @@ class PostServiceTest {
             val postPage: Page<Post> = PageImpl(listOf(post), pageable, 1)
 
             given(userRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(mockUser)
-            given(postRepository.findByUserAndDeletedAtIsNull(mockUser, pageable)).willReturn(postPage)
+            given(
+                postRepository.findByUserAndDeletedAtIsNullAndPublishStatus(mockUser, PublishStatus.PUBLIC, pageable),
+            ).willReturn(postPage)
             given(likeRepository.findPostIdsByPostIdInAndUserId(listOf(1L), checkNotNull(otherUser.id)))
                 .willReturn(listOf(1L))
 
@@ -388,7 +405,7 @@ class PostServiceTest {
 
             postService.createPost(mockUser, "제목", "내용", PublishStatus.PUBLIC, PostAccessLevel.FREE, null)
 
-            verify(sseEmitterRepository).sendToUser(eq(2L), anyOfType<NotificationResponse>())
+            verify(notificationService).notifyNewPost(anyList(), anyString(), isNull())
         }
 
         @Test
@@ -400,7 +417,7 @@ class PostServiceTest {
 
             postService.createPost(mockUser, "제목", "내용", PublishStatus.PUBLIC, PostAccessLevel.PAID, null)
 
-            verify(sseEmitterRepository).sendToUser(eq(2L), anyOfType<NotificationResponse>())
+            verify(notificationService).notifyNewPost(anyList(), anyString(), isNull())
             verify(subscriptionRepository, never()).findByCreatorIdAndDeletedAtIsNull(anyLong())
         }
 
@@ -409,7 +426,7 @@ class PostServiceTest {
         fun create_Draft_NoSse() {
             postService.createPost(mockUser, "제목", "내용", PublishStatus.DRAFT, PostAccessLevel.FREE, null)
 
-            verify(sseEmitterRepository, never()).sendToUser(anyLong(), anyOfType<NotificationResponse>())
+            verify(notificationService, never()).notifyNewPost(anyList(), anyString(), anyLong())
         }
 
         // 없는 시리즈 ID를 넘기면 저장 전에 예외가 발생해야 함
@@ -452,7 +469,7 @@ class PostServiceTest {
 
             postService.updatePost(mockUser, 1L, "제목", "내용", PublishStatus.PUBLIC, PostAccessLevel.FREE, null)
 
-            verify(sseEmitterRepository).sendToUser(eq(2L), anyOfType<NotificationResponse>())
+            verify(notificationService).notifyNewPost(anyList(), anyString(), anyLong())
         }
 
         @Test
@@ -463,7 +480,7 @@ class PostServiceTest {
 
             postService.updatePost(mockUser, 1L, "수정제목", "수정내용", PublishStatus.PUBLIC, PostAccessLevel.FREE, null)
 
-            verify(sseEmitterRepository, never()).sendToUser(anyLong(), anyOfType<NotificationResponse>())
+            verify(notificationService, never()).notifyNewPost(anyList(), anyString(), anyLong())
         }
 
         // 없는 게시글 ID → 조회 시점에 예외 발생
@@ -587,6 +604,45 @@ class PostServiceTest {
             assertThatThrownBy { postService.getPost(1L, null) }
                 .isInstanceOf(BusinessException::class.java)
                 .hasFieldOrPropertyWithValue("errorCode", ErrorCode.ACCESS_DENIED)
+        }
+
+        // DRAFT 게시글은 작성자 본인만 조회 가능 (TRIPLES-32)
+        @Test
+        @DisplayName("실패: DRAFT 게시글을 타인이 조회하면 ACCESS_DENIED 예외를 던진다.")
+        fun getPost_Draft_NotOwner() {
+            val post = buildPost(1L, mockUser, null)
+            ReflectionTestUtils.setField(post, "publishStatus", PublishStatus.DRAFT)
+            given(postRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(post)
+
+            assertThatThrownBy { postService.getPost(1L, otherUser) }
+                .isInstanceOf(BusinessException::class.java)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.ACCESS_DENIED)
+        }
+
+        // DRAFT 게시글은 비로그인 사용자도 조회 불가
+        @Test
+        @DisplayName("실패: DRAFT 게시글을 비로그인 사용자가 조회하면 ACCESS_DENIED 예외를 던진다.")
+        fun getPost_Draft_Anonymous() {
+            val post = buildPost(1L, mockUser, null)
+            ReflectionTestUtils.setField(post, "publishStatus", PublishStatus.DRAFT)
+            given(postRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(post)
+
+            assertThatThrownBy { postService.getPost(1L, null) }
+                .isInstanceOf(BusinessException::class.java)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.ACCESS_DENIED)
+        }
+
+        // DRAFT 게시글은 작성자 본인은 정상 조회 가능
+        @Test
+        @DisplayName("성공: DRAFT 게시글을 작성자 본인이 조회하면 정상 반환한다.")
+        fun getPost_Draft_Owner() {
+            val post = buildPost(1L, mockUser, null)
+            ReflectionTestUtils.setField(post, "publishStatus", PublishStatus.DRAFT)
+            given(postRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(post)
+
+            val response: PostResponse = postService.getPost(1L, mockUser)
+
+            assertThat(response.isLocked).isFalse()
         }
 
         // PAID 게시글을 멤버십 비구독자가 조회하면 본문이 잠긴 상태로 반환
@@ -790,6 +846,7 @@ class PostServiceTest {
             val series = buildSeries(5L, mockUser)
             val post = buildPost(1L, mockUser, series)
 
+            given(seriesRepository.findByIdAndDeletedAtIsNull(5L)).willReturn(series)
             given(postRepository.findBySeriesIdAndDeletedAtIsNull(5L)).willReturn(listOf(post))
 
             val result = postService.getPostsBySeriesId(5L, null)
@@ -801,6 +858,8 @@ class PostServiceTest {
         @Test
         @DisplayName("성공: 시리즈 게시글이 없으면 빈 목록을 반환한다.")
         fun getPostsBySeriesId_empty() {
+            val series = buildSeries(5L, mockUser)
+            given(seriesRepository.findByIdAndDeletedAtIsNull(5L)).willReturn(series)
             given(postRepository.findBySeriesIdAndDeletedAtIsNull(5L)).willReturn(emptyList())
 
             val result = postService.getPostsBySeriesId(5L, null)
@@ -814,6 +873,7 @@ class PostServiceTest {
             val series = buildSeries(5L, otherUser)
             val post = buildPost(1L, otherUser, series)
 
+            given(seriesRepository.findByIdAndDeletedAtIsNull(5L)).willReturn(series)
             given(postRepository.findBySeriesIdAndDeletedAtIsNull(5L)).willReturn(listOf(post))
             given(likeRepository.findPostIdsByPostIdInAndUserId(listOf(1L), checkNotNull(mockUser.id)))
                 .willReturn(listOf(1L))
@@ -829,6 +889,7 @@ class PostServiceTest {
             val series = buildSeries(5L, mockUser)
             val post = buildPost(1L, mockUser, series)
 
+            given(seriesRepository.findByIdAndDeletedAtIsNull(5L)).willReturn(series)
             given(postRepository.findBySeriesIdAndDeletedAtIsNull(5L)).willReturn(listOf(post))
 
             val result = postService.getPostsBySeriesId(5L, null)
@@ -837,6 +898,18 @@ class PostServiceTest {
             assertThat(result[0].isBookmarked).isFalse()
             verify(likeRepository, never()).findPostIdsByPostIdInAndUserId(anyOfType(), anyLong())
             verify(bookmarkRepository, never()).findPostIdsByPostIdInAndUserId(anyOfType(), anyLong())
+        }
+
+        @Test
+        @DisplayName("실패: 존재하지 않는(혹은 삭제된) 시리즈면 SERIES_NOT_FOUND 예외를 던진다.")
+        fun getPostsBySeriesId_seriesNotFound() {
+            given(seriesRepository.findByIdAndDeletedAtIsNull(999L)).willReturn(null)
+
+            assertThatThrownBy { postService.getPostsBySeriesId(999L, null) }
+                .isInstanceOf(BusinessException::class.java)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.SERIES_NOT_FOUND)
+
+            verify(postRepository, never()).findBySeriesIdAndDeletedAtIsNull(anyLong())
         }
     }
 }

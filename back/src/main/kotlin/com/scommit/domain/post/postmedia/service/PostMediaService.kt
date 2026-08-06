@@ -8,6 +8,7 @@ import com.scommit.domain.post.postmedia.entity.PostMedia
 import com.scommit.domain.post.postmedia.entity.PostMediaType
 import com.scommit.domain.post.postmedia.repository.PostMediaRepository
 import com.scommit.domain.user.user.entity.User
+import com.scommit.domain.user.user.entity.UserRole
 import com.scommit.global.exception.BusinessException
 import com.scommit.global.exception.ErrorCode
 import org.springframework.data.repository.findByIdOrNull
@@ -22,11 +23,14 @@ class PostMediaService(
     private val postRepository: PostRepository,
     private val postAccessGuard: PostAccessGuard,
 ) {
+    @Suppress("ThrowsCount") // 서로 다른 검증 실패(포스트 없음/삭제됨/권한 없음)마다 별개의 에러코드가 필요해 분리
     @Transactional
     fun uploadMedia(
         postId: Long,
         file: MultipartFile,
         type: PostMediaType,
+        actorId: Long,
+        actorRole: UserRole?,
     ): PostMediaResponse {
         val post =
             postRepository.findByIdOrNull(postId)
@@ -34,6 +38,10 @@ class PostMediaService(
 
         if (post.deletedAt != null) {
             throw BusinessException(ErrorCode.POST_NOT_FOUND)
+        }
+
+        if (actorRole != UserRole.ADMIN && post.user.id != actorId) {
+            throw BusinessException(ErrorCode.ACCESS_DENIED)
         }
 
         if (type == PostMediaType.THUMBNAIL) {
@@ -95,6 +103,8 @@ class PostMediaService(
     fun deleteMedia(
         postId: Long,
         postMediaId: Long,
+        actorId: Long,
+        actorRole: UserRole?,
     ) {
         val postMedia =
             postMediaRepository.findByIdOrNull(postMediaId)
@@ -106,6 +116,10 @@ class PostMediaService(
 
         if (postMedia.post.deletedAt != null) {
             throw BusinessException(ErrorCode.POST_NOT_FOUND)
+        }
+
+        if (actorRole != UserRole.ADMIN && postMedia.post.user.id != actorId) {
+            throw BusinessException(ErrorCode.ACCESS_DENIED)
         }
 
         val mediaId = checkNotNull(postMedia.media.id)

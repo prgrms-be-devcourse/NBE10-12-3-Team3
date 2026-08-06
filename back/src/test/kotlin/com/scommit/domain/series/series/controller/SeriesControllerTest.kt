@@ -411,14 +411,14 @@ class SeriesControllerTest {
 
         @Test
         @WithMockUser
-        @DisplayName("미디어 없음 → 200 (data: null)")
+        @DisplayName("미디어 없음 → 404")
         fun getMedia_NotFound() {
-            given(seriesMediaService.getMedia(999L)).willReturn(null)
+            given(seriesMediaService.getMedia(999L)).willThrow(BusinessException(ErrorCode.MEDIA_NOT_FOUND))
 
             mockMvc
                 .perform(get("/api/series/999/medias"))
-                .andExpect(status().isOk)
-                .andExpect(jsonPath("$.data").doesNotExist())
+                .andExpect(status().isNotFound)
+                .andExpect(jsonPath("$.resultCode").value("404-7"))
         }
     }
 
