@@ -5,6 +5,7 @@ import com.scommit.domain.media.media.entity.MediaType
 import com.scommit.domain.media.media.service.MediaService
 import com.scommit.domain.post.post.entity.Post
 import com.scommit.domain.post.post.repository.PostRepository
+import com.scommit.domain.post.post.service.PostAccessGuard
 import com.scommit.domain.post.postmedia.dto.PostMediaResponse
 import com.scommit.domain.post.postmedia.entity.PostMedia
 import com.scommit.domain.post.postmedia.entity.PostMediaType
@@ -51,6 +52,10 @@ class PostMediaServiceTest {
 
     @Mock
     private lateinit var postRepository: PostRepository
+
+    @Suppress("UnusedPrivateProperty")
+    @Mock
+    private lateinit var postAccessGuard: PostAccessGuard
 
     @InjectMocks
     private lateinit var postMediaService: PostMediaService
@@ -225,7 +230,7 @@ class PostMediaServiceTest {
             given(media2.url).willReturn("post/uuid_body.png")
             given(media2.type).willReturn(MediaType.IMAGE)
 
-            val result = postMediaService.getMediaList(postId)
+            val result = postMediaService.getMediaList(postId, null)
 
             assertThat(result).hasSize(2)
         }
@@ -240,7 +245,7 @@ class PostMediaServiceTest {
             given(post.deletedAt).willReturn(null)
             given(postMediaRepository.findAllByPost(post)).willReturn(emptyList())
 
-            val result = postMediaService.getMediaList(postId)
+            val result = postMediaService.getMediaList(postId, null)
 
             assertThat(result).isEmpty()
         }
@@ -250,7 +255,7 @@ class PostMediaServiceTest {
         fun getMediaList_PostNotFound_Fail() {
             given(postRepository.findById(999L)).willReturn(Optional.empty())
 
-            assertThatThrownBy { postMediaService.getMediaList(999L) }
+            assertThatThrownBy { postMediaService.getMediaList(999L, null) }
                 .isInstanceOf(BusinessException::class.java)
         }
 
@@ -263,7 +268,7 @@ class PostMediaServiceTest {
             given(postRepository.findById(postId)).willReturn(Optional.of(post))
             given(post.deletedAt).willReturn(LocalDateTime.now())
 
-            assertThatThrownBy { postMediaService.getMediaList(postId) }
+            assertThatThrownBy { postMediaService.getMediaList(postId, null) }
                 .isInstanceOf(BusinessException::class.java)
         }
     }
@@ -288,7 +293,7 @@ class PostMediaServiceTest {
             given(media.url).willReturn("post/uuid_thumb.png")
             given(media.type).willReturn(MediaType.IMAGE)
 
-            val result = postMediaService.getThumbnail(postId)
+            val result = postMediaService.getThumbnail(postId, null)
 
             assertThat(result).isNotNull()
             assertThat(result!!.url).isEqualTo("post/uuid_thumb.png")
@@ -299,7 +304,7 @@ class PostMediaServiceTest {
         fun getThumbnail_PostNotFound_Fail() {
             given(postRepository.findById(999L)).willReturn(Optional.empty())
 
-            assertThatThrownBy { postMediaService.getThumbnail(999L) }
+            assertThatThrownBy { postMediaService.getThumbnail(999L, null) }
                 .isInstanceOf(BusinessException::class.java)
         }
 
@@ -313,7 +318,7 @@ class PostMediaServiceTest {
             given(post.deletedAt).willReturn(null)
             given(postMediaRepository.findByPostAndType(post, PostMediaType.THUMBNAIL)).willReturn(null)
 
-            val result: PostMediaResponse? = postMediaService.getThumbnail(postId)
+            val result: PostMediaResponse? = postMediaService.getThumbnail(postId, null)
             assertThat(result).isNull()
         }
 
@@ -326,7 +331,7 @@ class PostMediaServiceTest {
             given(postRepository.findById(postId)).willReturn(Optional.of(post))
             given(post.deletedAt).willReturn(LocalDateTime.now())
 
-            assertThatThrownBy { postMediaService.getThumbnail(postId) }
+            assertThatThrownBy { postMediaService.getThumbnail(postId, null) }
                 .isInstanceOf(BusinessException::class.java)
         }
     }
