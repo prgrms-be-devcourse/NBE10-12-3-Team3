@@ -11,5 +11,10 @@ interface PostMediaRepository : JpaRepository<PostMedia, Long> {
         type: PostMediaType,
     ): PostMedia?
 
+    fun findByPostInAndType(
+        posts: Collection<Post>,
+        type: PostMediaType,
+    ): List<PostMedia>
+
     fun findAllByPost(post: Post): List<PostMedia>
 }
