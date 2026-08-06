@@ -1,7 +1,6 @@
 package com.scommit.domain.subscription.subscription.service
 
-import com.scommit.domain.notification.notification.dto.NotificationResponse
-import com.scommit.domain.notification.notification.repository.SseEmitterRepository
+import com.scommit.domain.notification.notification.service.NotificationService
 import com.scommit.domain.subscription.subscription.dto.SubscriptionInfo
 import com.scommit.domain.subscription.subscription.dto.SubscriptionStatus
 import com.scommit.domain.subscription.subscription.entity.Subscription
@@ -41,7 +40,7 @@ class SubscriptionServiceTest {
 
     @Suppress("UnusedPrivateProperty")
     @Mock
-    private lateinit var sseEmitterRepository: SseEmitterRepository
+    private lateinit var notificationService: NotificationService
 
     @InjectMocks
     private lateinit var subscriptionService: SubscriptionService

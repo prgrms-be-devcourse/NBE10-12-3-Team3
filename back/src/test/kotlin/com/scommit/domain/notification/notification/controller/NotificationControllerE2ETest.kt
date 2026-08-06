@@ -505,10 +505,9 @@ class NotificationControllerE2ETest {
             }
         }
 
-        // FIXME(#6): SseEmitterRepository.add 가 ConcurrentHashMap.put 이라 같은 userId 의 이전 emitter 를
-        // 그냥 덮어쓴다. 이전 emitter 는 complete() 되지도 remove() 되지도 않아, 클라이언트는 끊긴 줄 모른 채
-        // 30분 타임아웃까지 연결을 붙들고 아무 알림도 받지 못한다(탭 두 개를 열면 바로 재현된다).
-        // 상세: docs/like-bookmark-notification-e2e-known-issues.md #6
+        // SseEmitterRepository.add 에서 emitters.put(userId, emitter)?.complete() + 조건부 remove(userId, emitter) 로
+        // 재구독 시 이전 emitter 정리 및 레이스 컨디션이 수정됐다. 이 테스트는 수정 후 동작을 검증한다:
+        // 새 연결(second)만 알림을 받고, 이전 연결(first)은 complete() 신호를 받아 스트림이 종료된다.
         @Test
         @DisplayName("13. 같은 유저가 다시 구독하면 새 연결만 알림을 받고 이전 연결은 조용해진다")
         fun subscribe_secondSubscriptionSilentlyReplacesFirst() {
