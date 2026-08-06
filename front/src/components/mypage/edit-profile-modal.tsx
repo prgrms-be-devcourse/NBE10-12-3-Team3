@@ -13,10 +13,19 @@ interface EditProfileModalProps {
   currentNickname?: string;
   currentEmail?: string;
   currentAvatarUrl?: string;
+  currentIntroduction?: string;
 }
 
-export function EditProfileModal({ isOpen, onClose, currentNickname = "User", currentEmail = "user@test.com", currentAvatarUrl }: EditProfileModalProps) {
+export function EditProfileModal({
+  isOpen,
+  onClose,
+  currentNickname = "User",
+  currentEmail = "user@test.com",
+  currentAvatarUrl,
+  currentIntroduction = "",
+}: EditProfileModalProps) {
   const [nickname, setNickname] = useState(currentNickname);
+  const [introduction, setIntroduction] = useState(currentIntroduction);
   const [isLoading, setIsLoading] = useState(false);
   const [profileImageFile, setProfileImageFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -57,7 +66,7 @@ export function EditProfileModal({ isOpen, onClose, currentNickname = "User", cu
     try {
       // multipart/form-data 처리를 위해 FormData 사용 (백엔드 요구사항: request 파트)
       const formData = new FormData();
-      const requestBlob = new Blob([JSON.stringify({ nickname })], { type: "application/json" });
+      const requestBlob = new Blob([JSON.stringify({ nickname, introduction })], { type: "application/json" });
       formData.append("request", requestBlob);
       if (profileImageFile) {
         formData.append("profileImage", profileImageFile);
@@ -149,6 +158,21 @@ export function EditProfileModal({ isOpen, onClose, currentNickname = "User", cu
                       className="w-full px-4 py-3 rounded-xl border border-neutral-200 bg-neutral-50 text-neutral-dark focus:bg-white focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all font-medium"
                       placeholder="새로운 닉네임을 입력하세요"
                       required
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="block text-sm font-bold text-neutral-700">자기소개</label>
+                      <span className="text-xs text-neutral-400 font-medium">{introduction.length}/100자</span>
+                    </div>
+                    <textarea
+                      value={introduction}
+                      onChange={(e) => setIntroduction(e.target.value)}
+                      maxLength={100}
+                      rows={3}
+                      className="w-full px-4 py-3 rounded-xl border border-neutral-200 bg-neutral-50 text-neutral-dark focus:bg-white focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all font-medium resize-none text-sm"
+                      placeholder="자신을 나타내는 소개글을 작성해보세요 (100자 이내)"
                     />
                   </div>
                 </div>

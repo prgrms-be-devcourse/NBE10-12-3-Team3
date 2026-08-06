@@ -2,4 +2,5 @@ package com.scommit.global.exception
 
 class BusinessException(
     val errorCode: ErrorCode,
-) : RuntimeException(errorCode.message)
+    cause: Throwable? = null,
+) : RuntimeException(errorCode.message, cause)

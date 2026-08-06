@@ -1,8 +1,6 @@
 package com.scommit.domain.subscription.subscription.service
 
-import com.scommit.domain.notification.notification.dto.NotificationResponse
-import com.scommit.domain.notification.notification.dto.NotificationType
-import com.scommit.domain.notification.notification.repository.SseEmitterRepository
+import com.scommit.domain.notification.notification.service.NotificationService
 import com.scommit.domain.subscription.subscription.dto.SubscriptionInfo
 import com.scommit.domain.subscription.subscription.dto.SubscriptionStatus
 import com.scommit.domain.subscription.subscription.entity.Subscription
@@ -23,7 +21,7 @@ import java.time.LocalDate
 class SubscriptionService(
     private val subscriptionRepository: SubscriptionRepository,
     private val userRepository: UserRepository,
-    private val sseEmitterRepository: SseEmitterRepository,
+    private val notificationService: NotificationService,
 ) {
     private fun fail(errorCode: ErrorCode): Nothing = throw BusinessException(errorCode)
 
@@ -54,14 +52,7 @@ class SubscriptionService(
             subscriptionRepository.save(newSubscription)
         }
 
-        sseEmitterRepository.sendToUser(
-            creatorId,
-            NotificationResponse(
-                type = NotificationType.FOLLOW,
-                message = "${user.nickname}님이 팔로우했습니다.",
-                targetId = userId,
-            ),
-        )
+        notificationService.notifyFollow(creatorId, user.nickname, userId)
     }
 
     @Transactional
@@ -98,14 +89,7 @@ class SubscriptionService(
                 subscription.upgradeToMembership()
             }
 
-            sseEmitterRepository.sendToUser(
-                creatorId,
-                NotificationResponse(
-                    type = NotificationType.MEMBERSHIP,
-                    message = "${subscription.user.nickname}님이 멤버십에 가입했습니다.",
-                    targetId = userId,
-                ),
-            )
+            notificationService.notifyMembership(creatorId, subscription.user.nickname, userId)
         } else {
             val user = userRepository.findByIdOrNull(userId) ?: fail(ErrorCode.USER_NOT_FOUND)
             val creator = userRepository.findByIdOrNull(creatorId) ?: fail(ErrorCode.USER_NOT_FOUND)
@@ -120,14 +104,7 @@ class SubscriptionService(
                 )
             subscriptionRepository.save(newSubscription)
 
-            sseEmitterRepository.sendToUser(
-                creatorId,
-                NotificationResponse(
-                    type = NotificationType.MEMBERSHIP,
-                    message = "${user.nickname}님이 멤버십에 가입했습니다.",
-                    targetId = userId,
-                ),
-            )
+            notificationService.notifyMembership(creatorId, user.nickname, userId)
         }
     }
 

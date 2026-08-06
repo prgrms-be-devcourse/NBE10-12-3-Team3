@@ -5,6 +5,7 @@ import com.scommit.domain.series.series.dto.SeriesListResponse
 import com.scommit.domain.series.series.dto.SeriesResponse
 import com.scommit.domain.series.series.entity.Series
 import com.scommit.domain.series.series.repository.SeriesRepository
+import com.scommit.domain.series.seriesmedia.service.SeriesMediaService
 import com.scommit.domain.user.user.entity.UserRole
 import com.scommit.domain.user.user.repository.UserRepository
 import com.scommit.global.exception.BusinessException
@@ -21,6 +22,7 @@ class SeriesService(
     private val seriesRepository: SeriesRepository,
     private val userRepository: UserRepository,
     private val postRepository: PostRepository,
+    private val seriesMediaService: SeriesMediaService,
 ) {
     @Transactional
     fun createSeries(
@@ -110,6 +112,7 @@ class SeriesService(
             .findBySeriesIdAndDeletedAtIsNull(id)
             .forEach { post -> post.updateSeries(null) }
 
+        seriesMediaService.deleteMediaIfExists(series)
         series.softDelete()
     }
 }

@@ -30,6 +30,7 @@ data class PostResponse(
     @get:JsonProperty("isBookmarked") val isBookmarked: Boolean,
     val createdAt: LocalDateTime?,
     val updatedAt: LocalDateTime?,
+    val thumbnailUrl: String? = null,
 ) {
     constructor(post: Post) : this(
         post.id,
@@ -48,6 +49,7 @@ data class PostResponse(
         false,
         post.createdAt,
         post.updatedAt,
+        null,
     )
 
     constructor(post: Post, isLocked: Boolean, isLiked: Boolean, isBookmarked: Boolean) : this(
@@ -67,5 +69,32 @@ data class PostResponse(
         isBookmarked,
         post.createdAt,
         post.updatedAt,
+        null,
+    )
+
+    constructor(
+        post: Post,
+        isLocked: Boolean,
+        isLiked: Boolean,
+        isBookmarked: Boolean,
+        thumbnailUrl: String?,
+    ) : this(
+        post.id,
+        post.user.id,
+        post.user.nickname,
+        post.series?.id,
+        post.title,
+        if (isLocked) null else post.body,
+        post.publishStatus,
+        post.accessLevel,
+        post.viewCount,
+        post.likeCount,
+        post.bookmarkCount,
+        isLocked,
+        isLiked,
+        isBookmarked,
+        post.createdAt,
+        post.updatedAt,
+        thumbnailUrl,
     )
 }

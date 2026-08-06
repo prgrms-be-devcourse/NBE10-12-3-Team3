@@ -1,8 +1,6 @@
 package com.scommit.domain.post.comment.service
 
-import com.scommit.domain.notification.notification.dto.NotificationResponse
-import com.scommit.domain.notification.notification.dto.NotificationType
-import com.scommit.domain.notification.notification.repository.SseEmitterRepository
+import com.scommit.domain.notification.notification.service.NotificationService
 import com.scommit.domain.post.comment.dto.CommentResponse
 import com.scommit.domain.post.comment.entity.Comment
 import com.scommit.domain.post.comment.repository.CommentRepository
@@ -21,7 +19,7 @@ import org.springframework.transaction.annotation.Transactional
 class CommentService(
     private val commentRepository: CommentRepository,
     private val postRepository: PostRepository,
-    private val sseEmitterRepository: SseEmitterRepository,
+    private val notificationService: NotificationService,
 ) {
     // 댓글 작성
     @Transactional
@@ -38,14 +36,7 @@ class CommentService(
         val response = CommentResponse(commentRepository.save(comment))
 
         if (actor.id != post.user.id) {
-            sseEmitterRepository.sendToUser(
-                checkNotNull(post.user.id),
-                NotificationResponse(
-                    NotificationType.COMMENT,
-                    "${actor.nickname}님이 댓글을 작성했습니다.",
-                    post.id,
-                ),
-            )
+            notificationService.notifyComment(checkNotNull(post.user.id), actor.nickname, checkNotNull(post.id))
         }
 
         return response
