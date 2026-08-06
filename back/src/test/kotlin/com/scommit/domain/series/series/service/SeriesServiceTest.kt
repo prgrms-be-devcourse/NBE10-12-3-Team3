@@ -4,6 +4,7 @@ import com.scommit.domain.post.post.repository.PostRepository
 import com.scommit.domain.series.series.dto.SeriesListResponse
 import com.scommit.domain.series.series.entity.Series
 import com.scommit.domain.series.series.repository.SeriesRepository
+import com.scommit.domain.series.seriesmedia.service.SeriesMediaService
 import com.scommit.domain.user.user.entity.User
 import com.scommit.domain.user.user.entity.UserRole
 import com.scommit.domain.user.user.repository.UserRepository
@@ -63,6 +64,9 @@ class SeriesServiceTest {
 
     @Mock
     private lateinit var postRepository: PostRepository
+
+    @Mock
+    private lateinit var seriesMediaService: SeriesMediaService
 
     @InjectMocks
     private lateinit var seriesService: SeriesService
@@ -316,6 +320,19 @@ class SeriesServiceTest {
 
             assertThat(result.title).isEqualTo("수정된 제목")
         }
+
+        @Test
+        @DisplayName("실패: 소유자 정보가 유실된 시리즈(user.id가 null)는 수정 시 ACCESS_DENIED 예외를 던진다.")
+        fun update_OwnerIdNull_Forbidden() {
+            val unpersistedOwner = User(email = "orphan@example.com", nickname = "미저장유저", role = UserRole.USER)
+            val series = Series(user = unpersistedOwner, title = "기존 제목", body = "기존 설명")
+            ReflectionTestUtils.setField(series, "id", 1L)
+            given(seriesRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(series)
+
+            assertThatThrownBy { seriesService.updateSeries(1L, "수정된 제목", "수정된 설명", 1L, UserRole.USER) }
+                .isInstanceOf(BusinessException::class.java)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.ACCESS_DENIED)
+        }
     }
 
     @Nested
@@ -332,6 +349,7 @@ class SeriesServiceTest {
 
             assertThat(series.deletedAt).isNotNull
             verify(postRepository, times(1)).findBySeriesIdAndDeletedAtIsNull(1L)
+            verify(seriesMediaService, times(1)).deleteMediaIfExists(series)
         }
 
         @Test
@@ -364,6 +382,19 @@ class SeriesServiceTest {
             seriesService.deleteSeries(1L, 99L, UserRole.ADMIN)
 
             assertThat(series.deletedAt).isNotNull
+        }
+
+        @Test
+        @DisplayName("실패: 소유자 정보가 유실된 시리즈(user.id가 null)는 삭제 시 ACCESS_DENIED 예외를 던진다.")
+        fun delete_OwnerIdNull_Forbidden() {
+            val unpersistedOwner = User(email = "orphan@example.com", nickname = "미저장유저", role = UserRole.USER)
+            val series = Series(user = unpersistedOwner, title = "시리즈 제목", body = "시리즈 설명")
+            ReflectionTestUtils.setField(series, "id", 1L)
+            given(seriesRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(series)
+
+            assertThatThrownBy { seriesService.deleteSeries(1L, 1L, UserRole.USER) }
+                .isInstanceOf(BusinessException::class.java)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.ACCESS_DENIED)
         }
     }
 }

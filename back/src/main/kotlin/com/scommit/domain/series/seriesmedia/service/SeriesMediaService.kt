@@ -1,6 +1,7 @@
 package com.scommit.domain.series.seriesmedia.service
 
 import com.scommit.domain.media.media.service.MediaService
+import com.scommit.domain.series.series.entity.Series
 import com.scommit.domain.series.series.repository.SeriesRepository
 import com.scommit.domain.series.seriesmedia.dto.SeriesMediaResponse
 import com.scommit.domain.series.seriesmedia.entity.SeriesMedia
@@ -48,12 +49,13 @@ class SeriesMediaService(
     }
 
     @Transactional(readOnly = true)
-    fun getMedia(seriesId: Long): SeriesMediaResponse? {
+    fun getMedia(seriesId: Long): SeriesMediaResponse {
         val series =
             seriesRepository.findByIdAndDeletedAtIsNull(seriesId)
                 ?: throw BusinessException(ErrorCode.SERIES_NOT_FOUND)
 
-        val seriesMedia = seriesMediaRepository.findBySeries(series) ?: return null
+        val seriesMedia =
+            seriesMediaRepository.findBySeries(series) ?: throw BusinessException(ErrorCode.MEDIA_NOT_FOUND)
         return SeriesMediaResponse(seriesMedia)
     }
 
@@ -75,6 +77,16 @@ class SeriesMediaService(
         val seriesMedia =
             seriesMediaRepository.findBySeries(series) ?: throw BusinessException(ErrorCode.MEDIA_NOT_FOUND)
 
+        val mediaId = checkNotNull(seriesMedia.media.id)
+        seriesMediaRepository.delete(seriesMedia)
+        mediaService.deleteMedia(mediaId)
+    }
+
+    /** 시리즈 삭제(SeriesService.deleteSeries) 시 고아 미디어를 남기지 않기 위한 정리용 — 소유권은
+     *  호출부에서 이미 확인했으므로 여기서는 재확인하지 않고, 썸네일이 없으면 그냥 넘어간다. */
+    @Transactional
+    fun deleteMediaIfExists(series: Series) {
+        val seriesMedia = seriesMediaRepository.findBySeries(series) ?: return
         val mediaId = checkNotNull(seriesMedia.media.id)
         seriesMediaRepository.delete(seriesMedia)
         mediaService.deleteMedia(mediaId)

@@ -182,7 +182,7 @@ class SeriesController(
     @Operation(summary = "시리즈 썸네일 조회")
     fun getMedia(
         @PathVariable id: Long,
-    ): RsData<SeriesMediaResponse?> {
+    ): RsData<SeriesMediaResponse> {
         val response = seriesMediaService.getMedia(id)
         return RsData("200-1", "썸네일을 조회하였습니다.", response)
     }

@@ -267,6 +267,9 @@ class PostService
             seriesId: Long,
             actor: User?,
         ): List<PostListResponse> {
+            seriesRepository.findByIdAndDeletedAtIsNull(seriesId)
+                ?: throw BusinessException(ErrorCode.SERIES_NOT_FOUND)
+
             val posts = postRepository.findBySeriesIdAndDeletedAtIsNull(seriesId)
             val liked = likedPostIds(posts, actor)
             val bookmarked = bookmarkedPostIds(posts, actor)
